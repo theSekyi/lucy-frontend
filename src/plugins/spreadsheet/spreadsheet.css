@@ -1,0 +1,192 @@
+/* Lazy-loaded Spreadsheet Plugin Styles (0 bytes in critical initial bundle) */
+.sheet-viewer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-formula-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: #111114;
+  font-size: 12px;
+}
+
+.sheet-coord {
+  min-width: 34px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+}
+
+.sheet-fx {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sheet-formula-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #e4e4e7;
+}
+
+.sheet-filter-input {
+  width: 108px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--border-subtle);
+  background: #09090b;
+  font-size: 11.5px;
+  outline: none;
+}
+
+.sheet-grid-scroll {
+  flex: 1;
+  overflow: auto;
+}
+
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-corner,
+.sheet-col-header {
+  position: sticky;
+  top: 0;
+  background: #151519;
+  border-bottom: 1px solid var(--border-strong);
+  border-right: 1px solid var(--border-subtle);
+  z-index: 2;
+}
+
+.sheet-corner {
+  width: 34px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.sheet-col-header {
+  padding: 5px 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sheet-col-header:hover {
+  background: #1c1c22;
+}
+
+.sheet-col-letter {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.sheet-col-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 600;
+  color: #e4e4e7;
+}
+
+.sheet-row-num {
+  text-align: center;
+  color: var(--text-muted);
+  background: #121215;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 11px;
+  user-select: none;
+}
+
+.sheet-cell {
+  padding: 6px 8px;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  color: #d4d4d8;
+  white-space: nowrap;
+  cursor: cell;
+}
+
+.sheet-cell.is-numeric {
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.sheet-cell.is-selected {
+  outline: 1.5px solid #4ade80;
+  outline-offset: -1.5px;
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.cell-pill {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.cell-pill.tone-good {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+.cell-pill.tone-warn {
+  background: rgba(249, 115, 22, 0.18);
+  color: #fdba74;
+}
+
+.cell-pill.tone-neutral {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d4d4d8;
+}
+
+.sheet-tabs-bar {
+  height: 36px;
+  padding: 0 12px;
+  border-top: 1px solid var(--border-subtle);
+  background: #111114;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheet-tabs-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sheet-tab {
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.sheet-tab.is-active {
+  background: #1f1f25;
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.sheet-meta-count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
