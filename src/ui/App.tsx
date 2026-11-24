@@ -185,6 +185,9 @@ export function App({ workspace, registry }: AppProps) {
               selectedModelId={state.selectedModelId}
               onReturnHome={() => workspace.returnHome()}
               onInspectBlock={(id, anchor) => workspace.inspectArtifact(id, anchor)}
+              onCommitRevision={(blockId, nextData, summary) =>
+                workspace.commitArtifactRevision(blockId, nextData, summary)
+              }
               onToggleMaximizeStage={() => workspace.toggleStageMaximize()}
               onDraftChange={(text) => workspace.updateDraft(text)}
               onModeChange={(id) => workspace.setMode(id)}

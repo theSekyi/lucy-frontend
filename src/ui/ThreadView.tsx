@@ -25,6 +25,11 @@ interface ThreadViewProps {
   readonly selectedModelId: string;
   readonly onReturnHome: () => void;
   readonly onInspectBlock: (blockId: string | null, anchor?: string | null) => void;
+  readonly onCommitRevision: (
+    blockId: string,
+    nextData: unknown,
+    changeSummary: ReadonlyArray<string>
+  ) => void;
   readonly onToggleMaximizeStage: () => void;
   readonly onDraftChange: (value: string) => void;
   readonly onModeChange: (modeId: string) => void;
@@ -50,6 +55,7 @@ export function ThreadView({
   selectedModelId,
   onReturnHome,
   onInspectBlock,
+  onCommitRevision,
   onToggleMaximizeStage,
   onDraftChange,
   onModeChange,
@@ -202,6 +208,9 @@ export function ThreadView({
                 isCompact={false}
                 focusAnchor={inspectedAnchor}
                 anchorPulse={anchorPulse}
+                onCommitRevision={(nextData, summary) =>
+                  onCommitRevision(activeStageBlock.id, nextData, summary)
+                }
               />
             </div>
           </aside>

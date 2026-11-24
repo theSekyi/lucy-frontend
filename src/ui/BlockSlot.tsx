@@ -11,6 +11,7 @@ interface BlockSlotProps {
   readonly anchorPulse?: number;
   readonly siblingArtifactId?: string | null;
   readonly onInspect?: (blockId: string, anchor?: string) => void;
+  readonly onCommitRevision?: (nextData: unknown, changeSummary: ReadonlyArray<string>) => void;
 }
 
 export function BlockSlot({
@@ -21,6 +22,7 @@ export function BlockSlot({
   anchorPulse,
   siblingArtifactId,
   onInspect,
+  onCommitRevision,
 }: BlockSlotProps) {
   const plugin = registry.resolve(block);
 
@@ -97,6 +99,7 @@ export function BlockSlot({
         anchorPulse,
         siblingArtifactId,
         onInspect,
+        onCommitRevision,
       })}
     </>
   );

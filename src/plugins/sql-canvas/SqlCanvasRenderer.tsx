@@ -4,14 +4,12 @@ import type { CellScalar, SqlCanvasData } from '../../core/types';
 import '../enterprise-stage.css';
 
 type SqlTab = 'chart' | 'grid' | 'sql';
+type ChartKind = 'bars' | 'area';
 
 const VIRTUAL_ROW_HEIGHT = 30;
 const OVERSCAN_ROWS = 6;
+const SEGMENTS = ['All', 'Financial Services', 'Healthcare', 'Global Retail', 'Cloud Infra', 'Defense'];
 
-/**
- * Generates 2,400 deterministic enterprise account cohort rows on-demand in <0.5ms
- * to back the virtualized warehouse grid without shipping 150 KB of static JSON.
- */
 function expandWarehouseDrilldownRows(baseRows: ReadonlyArray<ReadonlyArray<CellScalar>>) {
   if (baseRows.length > 50) return baseRows;
   const segments = ['Financial Services', 'Healthcare', 'Global Retail', 'Cloud Infra', 'Defense'];
@@ -20,7 +18,7 @@ function expandWarehouseDrilldownRows(baseRows: ReadonlyArray<ReadonlyArray<Cell
   for (let i = 0; i < 2400; i += 1) {
     const q = baseRows[i % baseRows.length]!;
     const arr = Math.round(45 + ((i * 37) % 480));
-    const exp = Math.round(arr * (0.12 + ((i % 7) * 0.03)));
+    const exp = Math.round(arr * (0.12 + (i % 7) * 0.03));
     const ndr = Number((114 + ((i * 3) % 24) + (i % 5) * 0.2).toFixed(1));
     expanded.push([
       `${q[0]} · ${segments[i % segments.length]} #${i + 1} (${regions[i % regions.length]})`,
@@ -36,31 +34,103 @@ function expandWarehouseDrilldownRows(baseRows: ReadonlyArray<ReadonlyArray<Cell
 function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasData> }) {
   const data = context.block.data;
   const [tab, setTab] = useState<SqlTab>('chart');
+  const [chartKind, setChartKind] = useState<ChartKind>('bars');
+  const [metricIdx, setMetricIdx] = useState<number>(1);
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+  const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<string>('All');
+  const [sortCol, setSortCol] = useState<{ idx: number; asc: boolean } | null>(null);
+  const [pickedRowIdx, setPickedRowIdx] = useState<number | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [filter, setFilter] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [sqlText, setSqlText] = useState(data.query);
+  const [execMs, setExecMs] = useState(data.executionMs);
+  const [sqlLimit, setSqlLimit] = useState<number | null>(null);
 
   const drilldownRows = useMemo(() => expandWarehouseDrilldownRows(data.rows), [data.rows]);
 
   const filteredGridRows = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return drilldownRows;
-    return drilldownRows.filter((r) => String(r[0] ?? '').toLowerCase().includes(q));
-  }, [drilldownRows, filter]);
+    let result = drilldownRows.filter((row) => {
+      const label = String(row[0] ?? '');
+      if (selectedQuarter && !label.startsWith(selectedQuarter)) return false;
+      if (selectedSegment !== 'All' && !label.includes(selectedSegment)) return false;
+      if (q && !label.toLowerCase().includes(q)) return false;
+      return true;
+    });
 
-  const viewportHeight = 420;
+    if (sortCol) {
+      const { idx, asc } = sortCol;
+      result = [...result].sort((a, b) => {
+        const av = a[idx];
+        const bv = b[idx];
+        const cmp =
+          typeof av === 'number' && typeof bv === 'number'
+            ? av - bv
+            : String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true });
+        return asc ? cmp : -cmp;
+      });
+    }
+
+    if (sqlLimit !== null && sqlLimit > 0) {
+      result = result.slice(0, sqlLimit);
+    }
+    return result;
+  }, [drilldownRows, filter, selectedQuarter, selectedSegment, sortCol, sqlLimit]);
+
+  const summaryStats = useMemo(() => {
+    let sumArr = 0;
+    let sumNdr = 0;
+    for (const r of filteredGridRows) {
+      sumArr += typeof r[1] === 'number' ? r[1] : 0;
+      sumNdr += typeof r[3] === 'number' ? r[3] : 0;
+    }
+    const avgNdr = filteredGridRows.length ? (sumNdr / filteredGridRows.length).toFixed(1) : '0.0';
+    return { sumArr, avgNdr };
+  }, [filteredGridRows]);
+
+  function runInteractiveQuery() {
+    const t0 = performance.now();
+    const limitMatch = sqlText.match(/\bLIMIT\s+(\d+)/i);
+    setSqlLimit(limitMatch ? Number(limitMatch[1]) : null);
+
+    const whereSeg = SEGMENTS.slice(1).find((s) =>
+      new RegExp(s, 'i').test(sqlText)
+    );
+    if (whereSeg) setSelectedSegment(whereSeg);
+
+    const elapsed = Math.max(4, Math.round((performance.now() - t0) * 10 + 11));
+    setExecMs(elapsed);
+    setTab('grid');
+  }
+
+  const viewportHeight = 390;
   const startIdx = Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - OVERSCAN_ROWS);
   const endIdx = Math.min(
     filteredGridRows.length,
     Math.ceil((scrollTop + viewportHeight) / VIRTUAL_ROW_HEIGHT) + OVERSCAN_ROWS
   );
   const visibleSlice = filteredGridRows.slice(startIdx, endIdx);
-  const gridTemplate = `minmax(180px, 2.2fr) repeat(${data.columns.length - 1}, minmax(82px, 1fr))`;
+  const gridTemplate = `minmax(195px, 2.3fr) repeat(${data.columns.length - 1}, minmax(82px, 1fr))`;
 
-  const maxPrimary = Math.max(
-    1,
-    ...data.rows.map((r) => (typeof r[1] === 'number' ? r[1] : 0))
-  );
+  const metricName = data.columns[metricIdx] ?? 'Enterprise ARR ($K)';
+  const chartValues = data.rows.map((r) => Number(r[metricIdx] ?? 0));
+  const maxVal = Math.max(1, ...chartValues);
+  const activeBarIndex = hoveredBar ?? data.rows.length - 1;
+  const activeRow = data.rows[activeBarIndex] ?? data.rows[0]!;
+  const prevRow = activeBarIndex > 0 ? data.rows[activeBarIndex - 1] : null;
+  const qoqDelta =
+    prevRow && Number(prevRow[metricIdx]) > 0
+      ? `+${(((Number(activeRow[metricIdx]) - Number(prevRow[metricIdx])) / Number(prevRow[metricIdx])) * 100).toFixed(1)}% QoQ`
+      : 'Baseline quarter';
+
+  const areaPoints = data.rows
+    .map((row, idx) => {
+      const x = 95 + idx * 110;
+      const y = 185 - (Number(row[metricIdx] ?? 0) / maxVal) * 140;
+      return `${x},${y}`;
+    })
+    .join(' ');
 
   return (
     <div class="stage-plugin-shell">
@@ -91,26 +161,25 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
             class={`seg-tab ${tab === 'sql' ? 'is-active' : ''}`}
             onClick={() => setTab('sql')}
           >
-            SQL Query
+            SQL Editor
           </button>
         </div>
 
-        {tab === 'grid' ? (
-          <input
-            type="search"
-            class="sheet-filter-input"
-            placeholder="Filter 2,400 rows…"
-            value={filter}
-            onInput={(e) => {
-              setFilter((e.currentTarget as HTMLInputElement).value);
-              setScrollTop(0);
-            }}
-          />
-        ) : (
+        <div class="stage-subbar-group">
+          {selectedQuarter && (
+            <button
+              type="button"
+              class="cell-pill tone-good"
+              onClick={() => setSelectedQuarter(null)}
+              title="Clear quarter filter"
+            >
+              Cohort: {selectedQuarter} ×
+            </button>
+          )}
           <span class="sheet-meta-count">
-            {data.warehouse} · {data.executionMs} ms
+            {data.warehouse} · {execMs} ms
           </span>
-        )}
+        </div>
       </div>
 
       {tab === 'chart' && (
@@ -125,54 +194,150 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
               <div class="kpi-tile-value">128.2%</div>
             </div>
             <div class="kpi-tile">
-              <div class="kpi-tile-label">Warehouse Scan</div>
-              <div class="kpi-tile-value">{data.scannedMb} MB</div>
+              <div class="kpi-tile-label">Filtered Accounts</div>
+              <div class="kpi-tile-value">{filteredGridRows.length.toLocaleString()}</div>
             </div>
           </div>
 
-          <svg viewBox="0 0 520 230" width="100%" role="img" aria-label="Quarterly Enterprise ARR chart">
+          <div class="chart-controls-row">
+            <div class="stage-subbar-group">
+              {data.columns.slice(1).map((col, idx) => {
+                const colIndex = idx + 1;
+                return (
+                  <button
+                    key={col}
+                    type="button"
+                    class={`metric-chip ${metricIdx === colIndex ? 'is-active' : ''}`}
+                    onClick={() => setMetricIdx(colIndex)}
+                  >
+                    {col}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div class="seg-tabs">
+              <button
+                type="button"
+                class={`seg-tab ${chartKind === 'bars' ? 'is-active' : ''}`}
+                onClick={() => setChartKind('bars')}
+              >
+                Bars
+              </button>
+              <button
+                type="button"
+                class={`seg-tab ${chartKind === 'area' ? 'is-active' : ''}`}
+                onClick={() => setChartKind('area')}
+              >
+                Trend
+              </button>
+            </div>
+          </div>
+
+          <div class="chart-tooltip-banner">
+            <span>
+              <strong>{String(activeRow[0])}</strong> · {metricName}:{' '}
+              <strong style={{ color: '#38bdf8' }}>
+                {Number(activeRow[metricIdx]).toLocaleString('en-US')}
+              </strong>{' '}
+              <span style={{ color: '#4ade80' }}>({qoqDelta})</span>
+            </span>
+            <span class="sheet-meta-count">Click any quarter to cross-filter 2,400 rows</span>
+          </div>
+
+          <svg viewBox="0 0 520 225" width="100%" role="img" aria-label={metricName}>
+            <defs>
+              <linearGradient id="sqlAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4" />
+                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02" />
+              </linearGradient>
+            </defs>
+
             {[0, 0.25, 0.5, 0.75, 1].map((step) => {
-              const y = 185 - step * 145;
-              const label = `$${((maxPrimary * step) / 1000).toFixed(1)}M`;
+              const y = 185 - step * 140;
+              const rawVal = maxVal * step;
+              const label = rawVal >= 1000 ? `${(rawVal / 1000).toFixed(1)}k` : rawVal.toFixed(0);
               return (
                 <g key={step}>
-                  <line x1="48" y1={y} x2="500" y2={y} stroke="rgba(255,255,255,0.07)" />
-                  <text x="40" y={y + 4} text-anchor="end" fill="#6e6e77" font-size="10">
+                  <line x1="46" y1={y} x2="500" y2={y} stroke="rgba(255,255,255,0.07)" />
+                  <text x="38" y={y + 4} text-anchor="end" fill="#6e6e77" font-size="10">
                     {label}
                   </text>
                 </g>
               );
             })}
 
+            {chartKind === 'area' && (
+              <>
+                <polygon
+                  points={`95,185 ${areaPoints} ${95 + (data.rows.length - 1) * 110},185`}
+                  fill="url(#sqlAreaGrad)"
+                />
+                <polyline
+                  points={areaPoints}
+                  fill="none"
+                  stroke="#38bdf8"
+                  stroke-width="2.5"
+                />
+              </>
+            )}
+
             {data.rows.map((row, idx) => {
-              const arrVal = Number(row[1] ?? 0);
-              const expVal = Number(row[2] ?? 0);
-              const xBase = 88 + idx * 106;
-              const arrH = (arrVal / maxPrimary) * 145;
-              const expH = (expVal / maxPrimary) * 145;
+              const quarterLabel = String(row[0]);
+              const val = Number(row[metricIdx] ?? 0);
+              const xCenter = 95 + idx * 110;
+              const h = (val / maxVal) * 140;
+              const isSelected = selectedQuarter === quarterLabel;
+              const isHovered = hoveredBar === idx;
+
               return (
-                <g key={String(row[0])}>
-                  <rect
-                    x={xBase}
-                    y={185 - arrH}
-                    width="32"
-                    height={arrH}
-                    rx="4"
-                    fill="#38bdf8"
-                  />
-                  <rect
-                    x={xBase + 36}
-                    y={185 - expH}
-                    width="24"
-                    height={expH}
-                    rx="4"
-                    fill="#818cf8"
-                  />
-                  <text x={xBase + 28} y={178 - arrH} text-anchor="middle" fill="#e4e4e7" font-size="10" font-weight="600">
-                    ${(arrVal / 1000).toFixed(2)}M
+                <g
+                  key={quarterLabel}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={() => setHoveredBar(idx)}
+                  onMouseLeave={() => setHoveredBar(null)}
+                  onClick={() =>
+                    setSelectedQuarter((curr) => (curr === quarterLabel ? null : quarterLabel))
+                  }
+                >
+                  {chartKind === 'bars' ? (
+                    <rect
+                      x={xCenter - 22}
+                      y={185 - h}
+                      width="44"
+                      height={h}
+                      rx="6"
+                      fill={isSelected ? '#34d399' : isHovered ? '#7dd3fc' : '#38bdf8'}
+                    />
+                  ) : (
+                    <circle
+                      cx={xCenter}
+                      cy={185 - h}
+                      r={isHovered || isSelected ? 6 : 4.5}
+                      fill={isSelected ? '#34d399' : '#38bdf8'}
+                      stroke="#0b0b0e"
+                      stroke-width="2"
+                    />
+                  )}
+                  <text
+                    x={xCenter}
+                    y={177 - h}
+                    text-anchor="middle"
+                    fill="#f4f4f6"
+                    font-size="10.5"
+                    font-weight="600"
+                  >
+                    {val.toLocaleString('en-US')}
                   </text>
-                  <text x={xBase + 28} y="204" text-anchor="middle" fill="#a1a1aa" font-size="11">
-                    {String(row[0])}
+                  <text
+                    x={xCenter}
+                    y="204"
+                    text-anchor="middle"
+                    fill={isSelected ? '#4ade80' : '#a1a1aa'}
+                    font-size="11"
+                    font-weight={isSelected ? '700' : '500'}
+                  >
+                    {quarterLabel}
                   </text>
                 </g>
               );
@@ -182,67 +347,138 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
       )}
 
       {tab === 'grid' && (
-        <div
-          class="vgrid-viewport"
-          onScroll={(e) => setScrollTop((e.currentTarget as HTMLDivElement).scrollTop)}
-        >
-          <div class="vgrid-header" style={{ gridTemplateColumns: gridTemplate }}>
-            {data.columns.map((col, idx) => (
-              <div key={col} class={`vgrid-cell ${idx > 0 ? 'is-num' : ''}`}>
-                {col}
-              </div>
-            ))}
+        <>
+          <div class="stage-subbar" style={{ background: '#0e0e12' }}>
+            <div class="stage-subbar-group">
+              {SEGMENTS.map((seg) => (
+                <button
+                  key={seg}
+                  type="button"
+                  class={`metric-chip ${selectedSegment === seg ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setSelectedSegment(seg);
+                    setScrollTop(0);
+                  }}
+                >
+                  {seg}
+                </button>
+              ))}
+            </div>
+
+            <input
+              type="search"
+              class="sheet-filter-input"
+              placeholder="Search cohorts…"
+              value={filter}
+              onInput={(e) => {
+                setFilter((e.currentTarget as HTMLInputElement).value);
+                setScrollTop(0);
+              }}
+            />
           </div>
 
           <div
-            style={{
-              height: `${filteredGridRows.length * VIRTUAL_ROW_HEIGHT}px`,
-              position: 'relative',
-            }}
+            class="vgrid-viewport"
+            onScroll={(e) => setScrollTop((e.currentTarget as HTMLDivElement).scrollTop)}
           >
-            {visibleSlice.map((row, offset) => {
-              const rowIndex = startIdx + offset;
-              return (
-                <div
-                  key={rowIndex}
-                  class="vgrid-row"
-                  style={{
-                    top: `${rowIndex * VIRTUAL_ROW_HEIGHT}px`,
-                    gridTemplateColumns: gridTemplate,
-                  }}
-                >
-                  {row.map((cell, cIdx) => (
-                    <div key={cIdx} class={`vgrid-cell ${cIdx > 0 ? 'is-num' : ''}`}>
-                      {typeof cell === 'number' ? cell.toLocaleString('en-US') : String(cell ?? '')}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+            <div class="vgrid-header" style={{ gridTemplateColumns: gridTemplate }}>
+              {data.columns.map((col, idx) => {
+                const sorted = sortCol?.idx === idx;
+                return (
+                  <button
+                    key={col}
+                    type="button"
+                    class="vgrid-header-btn"
+                    onClick={() =>
+                      setSortCol((prev) =>
+                        prev?.idx === idx ? { idx, asc: !prev.asc } : { idx, asc: false }
+                      )
+                    }
+                  >
+                    <span>{col}</span>
+                    {sorted && <span>{sortCol.asc ? '↑' : '↓'}</span>}
+                  </button>
+                );
+              })}
+            </div>
 
-      {tab === 'sql' && (
-        <div class="stage-scroll-area">
-          <div class="code-block-card">
-            <div class="code-block-header">
-              <span>{data.warehouse}</span>
+            <div
+              style={{
+                height: `${filteredGridRows.length * VIRTUAL_ROW_HEIGHT}px`,
+                position: 'relative',
+              }}
+            >
+              {visibleSlice.map((row, offset) => {
+                const rowIndex = startIdx + offset;
+                return (
+                  <div
+                    key={rowIndex}
+                    class={`vgrid-row ${pickedRowIdx === rowIndex ? 'is-picked' : ''}`}
+                    style={{
+                      top: `${rowIndex * VIRTUAL_ROW_HEIGHT}px`,
+                      gridTemplateColumns: gridTemplate,
+                    }}
+                    onClick={() => setPickedRowIdx(rowIndex)}
+                  >
+                    {row.map((cell, cIdx) => (
+                      <div key={cIdx} class={`vgrid-cell ${cIdx > 0 ? 'is-num' : ''}`}>
+                        {typeof cell === 'number' ? cell.toLocaleString('en-US') : String(cell ?? '')}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div class="sheet-tabs-bar">
+            <span class="sheet-meta-count">
+              Rows: <strong>{filteredGridRows.length.toLocaleString()}</strong> · Sum ARR:{' '}
+              <strong>${summaryStats.sumArr.toLocaleString('en-US')}K</strong> · Avg NDR:{' '}
+              <strong>{summaryStats.avgNdr}%</strong>
+            </span>
+            {(selectedQuarter || selectedSegment !== 'All' || filter || sqlLimit) && (
               <button
                 type="button"
                 class="ghost-pill"
                 onClick={() => {
-                  navigator.clipboard?.writeText(data.query);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1200);
+                  setSelectedQuarter(null);
+                  setSelectedSegment('All');
+                  setFilter('');
+                  setSqlLimit(null);
                 }}
               >
-                {copied ? 'Copied' : 'Copy SQL'}
+                Reset filters
               </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {tab === 'sql' && (
+        <div class="stage-scroll-area">
+          <div class="code-block-card" style={{ borderLeft: '3px solid #22d3ee' }}>
+            <div class="code-block-header">
+              <span>{data.warehouse} · Interactive SQL</span>
+              <div class="stage-subbar-group">
+                <span class="sheet-meta-count">Tip: add LIMIT 50 or Healthcare</span>
+                <button type="button" class="sync-llm-btn" onClick={runInteractiveQuery}>
+                  ▶ Run Query
+                </button>
+              </div>
             </div>
-            <pre class="code-block-pre">
-              <code>{data.query}</code>
-            </pre>
+            <textarea
+              class="sql-editor-textarea"
+              value={sqlText}
+              spellcheck={false}
+              onInput={(e) => setSqlText((e.currentTarget as HTMLTextAreaElement).value)}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  runInteractiveQuery();
+                }
+              }}
+            />
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ export interface RendererContext<TData = unknown> {
   readonly anchorPulse?: number;
   readonly siblingArtifactId?: string | null;
   readonly onInspect?: (blockId: string, anchor?: string) => void;
+  readonly onCommitRevision?: (nextData: TData, changeSummary: ReadonlyArray<string>) => void;
 }
 
 export interface LoadedRenderer<TView, TData = unknown> {

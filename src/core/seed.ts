@@ -210,10 +210,40 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
             id: 'b-t3-code',
             kind: 'code',
             title: 'normalizeReferenceFrame.ts',
-            summary: '12 lines · Clamps non-even dimensions before encoder handoff',
+            summary: 'TypeScript · Clamps non-even dimensions before encoder handoff',
             data: {
               language: 'typescript',
-              code: `export function clampEvenDimensions(width: number, height: number) {\n  return {\n    width: Math.max(2, width - (width % 2)),\n    height: Math.max(2, height - (height % 2)),\n  };\n}`,
+              code: `// Clamp frame buffers to even codec macroblocks\nexport function clampEvenDimensions(width: number, height: number) {\n  return {\n    width: Math.max(2, width - (width % 2)),\n    height: Math.max(2, height - (height % 2)),\n  };\n}`,
+            },
+          },
+          {
+            id: 'b-t3-code-py',
+            kind: 'code',
+            title: 'verify_keyframes.py',
+            summary: 'Python · Validates uploaded stream aspect headers',
+            data: {
+              language: 'python',
+              code: `# Verify stream aspect metadata across edge buckets\ndef validate_aspect(width: int, height: int) -> bool:\n    if width <= 0 or height <= 0:\n        return False\n    return (width % 2 == 0) and (height % 2 == 0)`,
+            },
+          },
+          {
+            id: 'b-t3-code-sql',
+            kind: 'code',
+            title: 'frame_upload_failures.sql',
+            summary: 'SQL · Counts 24h transcode retries by codec',
+            data: {
+              language: 'sql',
+              code: `-- Check post-deploy failure rate\nSELECT codec, COUNT(*) AS retries\nFROM media_telemetry.upload_events\nWHERE status = 'RETRY' AND hours_ago <= 24\nGROUP BY 1 ORDER BY 2 DESC;`,
+            },
+          },
+          {
+            id: 'b-t3-code-yaml',
+            kind: 'code',
+            title: 'transcoder-rollout.yaml',
+            summary: 'YAML · Canary rollout thresholds',
+            data: {
+              language: 'yaml',
+              code: `# Progressive canary gate\nrollout:\n  stage: "canary-25"\n  maxErrorPct: 0.05\n  autoRollback: true`,
             },
           },
         ],

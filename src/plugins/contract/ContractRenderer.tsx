@@ -9,6 +9,7 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
   const [activeClause, setActiveClause] = useState<string>(
     context.focusAnchor ?? allClauses[0]?.section ?? ''
   );
+  const [folioTheme, setFolioTheme] = useState<'paper' | 'dark'>('paper');
   const [query, setQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -42,21 +43,41 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
               class={`clause-jump-pill ${activeClause === clause.section ? 'is-focused' : ''}`}
               onClick={() => jumpToClause(clause.section)}
             >
-              {clause.section}
+              <span class={`risk-dot is-${clause.riskLevel ?? 'low'}`} />
+              <span>{clause.section}</span>
             </button>
           ))}
         </div>
 
-        <input
-          type="search"
-          class="sheet-filter-input"
-          placeholder="Search clauses…"
-          value={query}
-          onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-        />
+        <div class="stage-subbar-group">
+          <div class="seg-tabs" role="group" aria-label="Document surface theme">
+            <button
+              type="button"
+              class={`seg-tab ${folioTheme === 'paper' ? 'is-active' : ''}`}
+              onClick={() => setFolioTheme('paper')}
+            >
+              Paper
+            </button>
+            <button
+              type="button"
+              class={`seg-tab ${folioTheme === 'dark' ? 'is-active' : ''}`}
+              onClick={() => setFolioTheme('dark')}
+            >
+              Dark
+            </button>
+          </div>
+
+          <input
+            type="search"
+            class="sheet-filter-input"
+            placeholder="Find in contract…"
+            value={query}
+            onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+          />
+        </div>
       </div>
 
-      <div class="stage-scroll-area" ref={scrollRef}>
+      <div class="pdf-desk-mat" ref={scrollRef}>
         {doc.pages.map((page) => {
           const matchingClauses = filterLower
             ? page.clauses.filter(
@@ -70,13 +91,17 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
           if (matchingClauses.length === 0) return null;
 
           return (
-            <section key={page.pageNumber} class="contract-page-sheet">
-              <div class="contract-page-meta">
-                <span>{page.header}</span>
-                <span>
-                  PAGE {page.pageNumber} OF {doc.totalPages}
-                </span>
-              </div>
+            <section
+              key={page.pageNumber}
+              class={`pdf-folio-page theme-${folioTheme}`}
+              aria-label={`Page ${page.pageNumber}`}
+            >
+              <header class="pdf-running-header">
+                <span>{doc.documentTitle}</span>
+                <span>EXECUTION COPY</span>
+              </header>
+
+              <div class="pdf-section-banner">{page.header}</div>
 
               {matchingClauses.map((clause) => {
                 const isGrounded = activeClause === clause.section;
@@ -91,30 +116,44 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
                   <article
                     key={clause.section}
                     data-clause={clause.section}
-                    class={`contract-clause-box ${isGrounded ? 'is-grounded' : ''}`}
+                    class={`pdf-clause-row ${isGrounded ? 'is-grounded' : ''}`}
                     onClick={() => setActiveClause(clause.section)}
                   >
-                    <div class="clause-title-row">
-                      <div>
-                        <span class="clause-sec-id">{clause.section}</span>
+                    <div class="pdf-clause-num">{clause.section}</div>
+
+                    <div>
+                      <div class="pdf-clause-heading-line">
                         <strong>{clause.heading}</strong>
+                        {clause.riskLevel && (
+                          <span class={`cell-pill ${riskTone}`}>
+                            {clause.riskLevel === 'high'
+                              ? 'Negotiate'
+                              : clause.riskLevel === 'watch'
+                                ? 'Watch'
+                                : 'Standard'}
+                          </span>
+                        )}
                       </div>
-                      {clause.riskLevel && (
-                        <span class={`cell-pill ${riskTone}`}>
-                          {clause.riskLevel === 'high'
-                            ? 'Negotiate'
-                            : clause.riskLevel === 'watch'
-                              ? 'Watch'
-                              : 'Verified'}
-                        </span>
+
+                      <p class="pdf-clause-prose">{clause.text}</p>
+
+                      {clause.note && (
+                        <div class="pdf-counsel-pin">
+                          <strong>Counsel Note:</strong>
+                          <span>{clause.note}</span>
+                        </div>
                       )}
                     </div>
-
-                    <p class="clause-body-text">{clause.text}</p>
-                    {clause.note && <div class="clause-footnote">↳ {clause.note}</div>}
                   </article>
                 );
               })}
+
+              <footer class="pdf-page-footer">
+                <span>{doc.partySummary}</span>
+                <span>
+                  Page {page.pageNumber} of {doc.totalPages}
+                </span>
+              </footer>
             </section>
           );
         })}

@@ -32,6 +32,11 @@ export interface WorkspaceController extends ReadableStore<WorkspaceState> {
   attachContent: (block: ContentBlock) => void;
   removeAttachment: (blockId: string) => void;
   inspectArtifact: (blockId: string | null, anchor?: string | null) => void;
+  commitArtifactRevision: <TData>(
+    blockId: string,
+    nextData: TData,
+    changeSummary: ReadonlyArray<string>
+  ) => void;
   toggleStageMaximize: () => void;
   setNetworkStatus: (status: NetworkStatus) => void;
   launchPluginSample: (pluginId: string) => Promise<string | null>;
@@ -255,6 +260,70 @@ export function createWorkspace<TView = unknown>(
         anchorPulse: anchor ? state.anchorPulse + 1 : state.anchorPulse,
         isStageMaximized: blockId === null ? false : state.isStageMaximized,
       }));
+    },
+
+    commitArtifactRevision(blockId, nextData, changeSummary) {
+      if (changeSummary.length === 0) return;
+
+      store.update((state) => {
+        const targetTopic = state.topics.find((t) =>
+          t.turns.some((turn) => turn.blocks.some((b) => b.id === blockId))
+        );
+        if (!targetTopic) return state;
+
+        const targetBlock = targetTopic.turns
+          .flatMap((t) => t.blocks)
+          .find((b) => b.id === blockId);
+        const artifactLabel = targetBlock?.filename ?? targetBlock?.title ?? 'artifact';
+        const bulletLines = changeSummary.map((line) => `• ${line}`).join('\n');
+
+        const userRevisionTurn: ConversationTurn = {
+          id: nextWorkspaceId('turn-user-rev'),
+          role: 'user',
+          createdAt: 'Just now',
+          status: 'complete',
+          blocks: [
+            {
+              id: nextWorkspaceId('block'),
+              kind: 'prose',
+              data: `Updated **${artifactLabel}** with ${changeSummary.length} correction${changeSummary.length === 1 ? '' : 's'}:\n\n${bulletLines}`,
+            },
+          ],
+        };
+
+        const assistantAckTurn: ConversationTurn = {
+          id: nextWorkspaceId('turn-assistant-rev'),
+          role: 'assistant',
+          createdAt: 'Just now',
+          status: 'complete',
+          blocks: [
+            {
+              id: nextWorkspaceId('block'),
+              kind: 'prose',
+              data: `Synced your ${changeSummary.length} revision${changeSummary.length === 1 ? '' : 's'} from **${artifactLabel}** into the active context. All subsequent drafts, calculations, and exports in this thread will reflect your updated values.`,
+            },
+          ],
+        };
+
+        return {
+          ...state,
+          topics: state.topics.map((topic) => {
+            if (topic.id !== targetTopic.id) return topic;
+            const updatedTurns = topic.turns.map((turn) => ({
+              ...turn,
+              blocks: turn.blocks.map((b) =>
+                b.id === blockId ? { ...b, data: nextData } : b
+              ),
+            }));
+            return {
+              ...topic,
+              dateLabel: 'Just now',
+              preview: `Synced ${changeSummary.length} correction(s) to ${artifactLabel}`,
+              turns: [...updatedTurns, userRevisionTurn, assistantAckTurn],
+            };
+          }),
+        };
+      });
     },
 
     toggleStageMaximize() {

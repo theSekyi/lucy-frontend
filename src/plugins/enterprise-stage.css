@@ -1,10 +1,11 @@
-/* Shared ultra-lean styles for lazy-loaded Enterprise Stage Plugins */
+/* Shared styles for lazy-loaded Enterprise Stage Plugins */
 .stage-plugin-shell {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   font-size: 12.5px;
+  background: #0b0b0e;
 }
 
 .stage-subbar {
@@ -12,9 +13,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 12px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border-subtle);
-  background: #111114;
+  background: #111115;
   flex-shrink: 0;
 }
 
@@ -30,14 +31,14 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 14px;
+  padding: 18px;
 }
 
 .seg-tabs {
   display: inline-flex;
   padding: 2px;
   border-radius: 7px;
-  background: #0a0a0c;
+  background: #09090c;
   border: 1px solid var(--border-subtle);
 }
 
@@ -46,106 +47,244 @@
   border-radius: 5px;
   font-size: 11.5px;
   color: var(--text-muted);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.seg-tab:hover {
+  color: var(--text-secondary);
 }
 
 .seg-tab.is-active {
-  background: #202026;
+  background: #222229;
   color: var(--text-primary);
   font-weight: 600;
 }
 
-/* 1. Cited Contract / PDF Inspector */
+.sync-llm-btn {
+  padding: 4px 11px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.35);
+}
+
+.sync-llm-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* 1. Cited Contract / PDF Folio Inspector */
 .contract-clause-nav {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   overflow-x: auto;
 }
 
 .clause-jump-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 3px 8px;
   border-radius: 5px;
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
   color: var(--text-secondary);
 }
 
 .clause-jump-pill.is-focused {
-  background: rgba(245, 158, 11, 0.22);
+  background: rgba(245, 158, 11, 0.18);
+  border-color: rgba(245, 158, 11, 0.45);
   color: #fcd34d;
   font-weight: 600;
 }
 
-.contract-page-sheet {
-  background: #131317;
-  border: 1px solid var(--border-subtle);
-  border-radius: 9px;
-  padding: 16px 18px;
+.risk-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.risk-dot.is-high {
+  background: #f97316;
+}
+.risk-dot.is-watch {
+  background: #eab308;
+}
+.risk-dot.is-low {
+  background: #22c55e;
+}
+
+.pdf-desk-mat {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 24px 32px;
+  background: #0a0a0d;
+}
+
+.pdf-folio-page {
+  max-width: 680px;
+  margin: 0 auto 22px;
+  border-radius: 6px;
+  padding: 28px 34px 30px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.pdf-folio-page.theme-paper {
+  background: #fbfaf7;
+  color: #1c1917;
+  border: 1px solid #e7e5e4;
+}
+
+.pdf-folio-page.theme-dark {
+  background: #141419;
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.pdf-running-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.52;
+  padding-bottom: 10px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid currentColor;
+}
+
+.pdf-section-banner {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.72;
   margin-bottom: 14px;
 }
 
-.contract-page-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10.5px;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 8px;
-  margin-bottom: 12px;
-}
-
-.contract-clause-box {
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  margin-bottom: 10px;
+.pdf-clause-row {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 0 -14px 12px;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  cursor: pointer;
   transition: background 180ms ease, border-color 180ms ease;
 }
 
-.contract-clause-box:last-child {
-  margin-bottom: 0;
+.theme-paper .pdf-clause-row:hover {
+  background: rgba(0, 0, 0, 0.03);
 }
 
-.contract-clause-box.is-grounded {
-  background: rgba(245, 158, 11, 0.11);
-  border-color: rgba(245, 158, 11, 0.48);
+.theme-dark .pdf-clause-row:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.clause-title-row {
+.theme-paper .pdf-clause-row.is-grounded {
+  background: rgba(251, 191, 36, 0.22);
+  border-left-color: #d97706;
+}
+
+.theme-dark .pdf-clause-row.is-grounded {
+  background: rgba(245, 158, 11, 0.14);
+  border-left-color: #f59e0b;
+}
+
+.pdf-clause-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding-top: 2px;
+  opacity: 0.75;
+}
+
+.pdf-clause-heading-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 13px;
 }
 
-.clause-sec-id {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 700;
-  color: #fcd34d;
-  margin-right: 6px;
-}
-
-.clause-body-text {
+.pdf-clause-prose {
   margin: 0;
-  line-height: 1.58;
-  color: #e4e4e7;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 14px;
+  line-height: 1.68;
 }
 
-.clause-footnote {
-  margin-top: 6px;
+.pdf-counsel-pin {
+  margin-top: 9px;
+  padding: 7px 10px;
+  border-radius: 5px;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   font-size: 11.5px;
-  color: #a1a1aa;
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
-/* 2. Semantic Redline & Diff Viewer */
+.theme-paper .pdf-counsel-pin {
+  background: rgba(28, 25, 23, 0.06);
+  color: #44403c;
+}
+
+.theme-dark .pdf-counsel-pin {
+  background: rgba(255, 255, 255, 0.06);
+  color: #d4d4d8;
+}
+
+.pdf-page-footer {
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(128, 128, 128, 0.22);
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  opacity: 0.55;
+}
+
+/* 2. Semantic Word-Level Redline & Diff Viewer */
+.redline-doc-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: 9px;
+  background: #141419;
+  border: 1px solid var(--border-subtle);
+}
+
 .redline-hunk-card {
   border: 1px solid var(--border-subtle);
+  border-left: 3px solid #52525b;
   border-radius: 9px;
-  background: #121216;
-  margin-bottom: 12px;
+  background: #131318;
+  margin-bottom: 14px;
   overflow: hidden;
+  transition: border-color 150ms ease;
+}
+
+.redline-hunk-card.status-accepted {
+  border-left-color: #22c55e;
+}
+
+.redline-hunk-card.status-rejected {
+  border-left-color: #ef4444;
+  opacity: 0.82;
 }
 
 .redline-hunk-header {
@@ -153,16 +292,46 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 12px;
-  background: #17171c;
+  padding: 9px 14px;
+  background: #18181f;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .redline-rationale {
-  padding: 6px 12px;
+  padding: 7px 14px;
   font-size: 11.5px;
-  color: var(--text-secondary);
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.redline-unified-prose {
+  padding: 14px 16px;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 14px;
+  line-height: 1.72;
+  color: #e4e4e7;
+}
+
+.diff-del {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  text-decoration: line-through;
+  text-decoration-color: #f87171;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin: 0 1px;
+}
+
+.diff-ins {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  text-decoration: none;
+  border-bottom: 1.5px solid #4ade80;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin: 0 1px;
+  font-weight: 500;
 }
 
 .redline-columns {
@@ -171,25 +340,52 @@
 }
 
 .redline-col {
-  padding: 10px 12px;
-  line-height: 1.55;
+  padding: 12px 14px;
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #d4d4d8;
 }
 
 .redline-col.is-before {
-  background: rgba(239, 68, 68, 0.07);
   border-right: 1px solid var(--border-subtle);
-  color: #fca5a5;
-  text-decoration: line-through;
-  text-decoration-color: rgba(248, 113, 113, 0.55);
+  background: rgba(239, 68, 68, 0.04);
 }
 
 .redline-col.is-after {
-  background: rgba(34, 197, 94, 0.08);
-  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.redline-col-label {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.redline-note-bar {
+  padding: 7px 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: #101014;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.redline-note-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 11.5px;
+  color: var(--text-primary);
 }
 
 .decision-btn {
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 5px;
   font-size: 11px;
   font-weight: 600;
@@ -209,7 +405,7 @@
   color: #fca5a5;
 }
 
-/* 3. SQL + Linked Chart + Virtualized Data Grid */
+/* 3. SQL + Interactive Chart + Virtualized Grid */
 .sql-kpi-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -218,9 +414,9 @@
 }
 
 .kpi-tile {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #141418;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-subtle);
 }
 
@@ -230,11 +426,48 @@
 }
 
 .kpi-tile-value {
-  margin-top: 3px;
-  font-size: 17px;
+  margin-top: 4px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+.chart-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.metric-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.metric-chip.is-active {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.48);
+  color: #7dd3fc;
+  font-weight: 600;
+}
+
+.chart-tooltip-banner {
+  min-height: 32px;
+  padding: 6px 11px;
+  margin-bottom: 8px;
+  border-radius: 7px;
+  background: #15151b;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
 }
 
 .vgrid-viewport {
@@ -256,9 +489,26 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #16161b;
+  background: #16161c;
   font-weight: 600;
-  height: 30px;
+  height: 32px;
+}
+
+.vgrid-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 0 10px;
+  font-weight: 600;
+  font-size: 11.5px;
+  color: #e4e4e7;
+}
+
+.vgrid-header-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .vgrid-row {
@@ -266,6 +516,15 @@
   left: 0;
   right: 0;
   height: 30px;
+  cursor: pointer;
+}
+
+.vgrid-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.vgrid-row.is-picked {
+  background: rgba(56, 189, 248, 0.12);
 }
 
 .vgrid-cell {
@@ -280,97 +539,236 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.sql-editor-textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 14px;
+  background: #0d0d11;
+  color: #e4e4e7;
+  border: 0;
+  outline: none;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
 /* 4. Interactive Lineage & Topology Graph */
 .topology-canvas-wrap {
   flex: 1;
   min-height: 0;
   position: relative;
   overflow: hidden;
-  background: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0);
+  background-color: #0b0b0f;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 0);
   background-size: 20px 20px;
   cursor: grab;
+  user-select: none;
 }
 
 .topology-canvas-wrap:active {
   cursor: grabbing;
 }
 
+@keyframes dagPulseFlow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.dag-hot-edge {
+  stroke-dasharray: 6 4;
+  animation: dagPulseFlow 0.9s linear infinite;
+}
+
 .topology-inspector {
-  padding: 10px 14px;
+  padding: 11px 14px;
   border-top: 1px solid var(--border-subtle);
-  background: #121216;
+  background: #121217;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 5. Editable Executive Deck */
+.deck-workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.09), transparent 55%), #0a0a0e;
+}
+
+.deck-slide-canvas {
+  position: relative;
+  background:
+    radial-gradient(circle at 92% 12%, rgba(139, 92, 246, 0.16), transparent 42%),
+    radial-gradient(circle at 8% 92%, rgba(56, 189, 248, 0.08), transparent 40%),
+    linear-gradient(160deg, #161620 0%, #101016 100%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 14px;
+  padding: 28px 32px 24px;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.deck-progress-track {
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.deck-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #38bdf8);
+  transition: width 200ms ease;
+}
+
+.deck-top-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.editable-field {
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: 5px;
+  outline: none;
+  width: 100%;
+  padding: 2px 5px;
+  margin: -2px -5px;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.editable-field:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.editable-field:focus {
+  border-style: solid;
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.deck-eyebrow-input {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a78bfa;
+  width: auto;
+  min-width: 220px;
+}
+
+.deck-headline-textarea {
+  margin-top: 8px;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+  resize: none;
+}
+
+.deck-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.deck-kpi-card {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-/* 5. Executive Brief / Slide Deck */
-.slide-stage-center {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 14px;
-}
-
-.slide-card-frame {
-  background: linear-gradient(155deg, #17171d 0%, #101014 100%);
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  padding: 24px 26px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.slide-card-frame.is-widescreen {
-  aspect-ratio: 16 / 9;
-}
-
-.slide-eyebrow {
-  font-size: 10.5px;
+.deck-kpi-val-input {
+  font-size: 21px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-kpi-delta-input {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.deck-takeaway-box {
+  padding: 10px 13px;
+  border-left: 3px solid #8b5cf6;
+  background: rgba(139, 92, 246, 0.09);
+  border-radius: 0 8px 8px 0;
+}
+
+.deck-bullets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.deck-bullet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deck-bullet-dot {
+  color: #8b5cf6;
+  font-weight: 700;
+}
+
+.deck-thumbnails-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.deck-thumb-btn {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #14141a;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.deck-thumb-btn.is-active {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.deck-thumb-num {
+  font-size: 10px;
+  font-weight: 700;
   color: #a78bfa;
 }
 
-.slide-headline {
-  margin: 6px 0 0;
-  font-size: 18px;
-  line-height: 1.32;
-  font-weight: 600;
-  color: #f4f4f6;
-}
-
-.slide-takeaway {
-  margin: 0;
-  padding: 8px 11px;
-  border-left: 2.5px solid #a78bfa;
-  background: rgba(167, 139, 250, 0.08);
-  border-radius: 0 6px 6px 0;
-  color: #e4e4e7;
-}
-
-.slide-filmstrip {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-}
-
-.filmstrip-dot {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  background: #151519;
-  color: var(--text-muted);
-  border: 1px solid var(--border-subtle);
-}
-
-.filmstrip-dot.is-active {
-  border-color: #a78bfa;
-  color: #e9d5ff;
+.deck-thumb-title {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

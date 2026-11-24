@@ -161,6 +161,24 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(workspace.getState().anchorPulse).toBe(initialPulse + 1);
     workspace.inspectArtifact(docId, '§4.2');
     expect(workspace.getState().anchorPulse).toBe(initialPulse + 2);
+
+    // Verify bidirectional artifact revision commits updated data + appends LLM context turns
+    const beforeTurnCount = workspace
+      .getState()
+      .topics.find((t) => t.id === workspace.getState().activeTopicId)!.turns.length;
+
+    workspace.commitArtifactRevision(docId, { updated: true }, [
+      'Slide 1 KPI (Ending Enterprise ARR): $5.64M → $5.92M',
+    ]);
+
+    const afterRevTopic = workspace
+      .getState()
+      .topics.find((t) => t.id === workspace.getState().activeTopicId)!;
+    expect(afterRevTopic.turns.length).toBe(beforeTurnCount + 2);
+    const updatedBlock = afterRevTopic.turns
+      .flatMap((t) => t.blocks)
+      .find((b) => b.id === docId)!;
+    expect(updatedBlock.data).toEqual({ updated: true });
   });
 
   it('queues prompts safely while offline and flushes automatically when back online', async () => {
