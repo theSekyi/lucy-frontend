@@ -18,11 +18,69 @@ interface AppProps {
   readonly registry: RendererRegistry<ComponentChildren>;
 }
 
+const STAGE_URL_ALIASES: Readonly<Record<string, string>> = {
+  excel: 'spreadsheet',
+  xlsx: 'spreadsheet',
+  pdf: 'cited-document',
+  contract: 'cited-document',
+  diff: 'redline',
+  sql: 'sql-canvas',
+  dag: 'topology',
+  lineage: 'topology',
+  deck: 'slide-deck',
+  slides: 'slide-deck',
+};
+
 export function App({ workspace, registry }: AppProps) {
   const [state, setState] = useState<WorkspaceState>(() => workspace.getState());
   const [ThreadViewLoaded, setThreadViewLoaded] = useState<typeof ThreadViewComponent | null>(null);
 
   useEffect(() => workspace.subscribe(setState), [workspace]);
+
+  // Deep-link URL routing (?stage=pdf&anchor=§4.2, ?stage=sql, ?stage=diff, etc.)
+  useEffect(() => {
+    async function applyUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const rawStage = params.get('stage')?.trim().toLowerCase();
+      const anchor = params.get('anchor');
+      if (!rawStage) return;
+
+      if (rawStage === 'code') {
+        workspace.openTopic('topic-seedance-14652');
+        return;
+      }
+
+      const pluginId = STAGE_URL_ALIASES[rawStage] ?? rawStage;
+      const topicId = await workspace.launchPluginSample(pluginId);
+      if (topicId && anchor) {
+        const blockId = workspace.getState().inspectedBlockId;
+        if (blockId) workspace.inspectArtifact(blockId, anchor);
+      }
+    }
+
+    void applyUrlParams();
+    window.addEventListener('popstate', applyUrlParams);
+    return () => window.removeEventListener('popstate', applyUrlParams);
+  }, [workspace]);
+
+  // Keep address bar synchronized with active stage or Home
+  useEffect(() => {
+    const topic = state.topics.find((t) => t.id === state.activeTopicId);
+    if (!topic) {
+      if (window.location.search.includes('stage=')) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+      return;
+    }
+    const block = topic.turns.flatMap((t) => t.blocks).find((b) => b.id === state.inspectedBlockId);
+    if (!block) return;
+    const pluginId = registry.resolve(block).id;
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set('stage', pluginId);
+    if (state.inspectedAnchor) nextUrl.searchParams.set('anchor', state.inspectedAnchor);
+    else nextUrl.searchParams.delete('anchor');
+    window.history.replaceState(null, '', `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`);
+  }, [registry, state.activeTopicId, state.inspectedAnchor, state.inspectedBlockId, state.topics]);
 
   useEffect(() => {
     if (state.activeTopicId && !ThreadViewLoaded) {
