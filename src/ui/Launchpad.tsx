@@ -1,3 +1,5 @@
+import type { ComponentChildren } from 'preact';
+import type { RendererRegistry } from '../core/renderers';
 import type {
   ComposerMode,
   ContentBlock,
@@ -18,12 +20,14 @@ interface LaunchpadProps {
   readonly selectedModeId: string;
   readonly models: ReadonlyArray<ModelChoice>;
   readonly selectedModelId: string;
+  readonly registry: RendererRegistry<ComponentChildren>;
   readonly searchQuery: string;
   readonly onDraftChange: (value: string) => void;
   readonly onModeChange: (modeId: string) => void;
   readonly onModelChange: (modelId: string) => void;
   readonly onAttach: (block: ContentBlock) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
+  readonly onLaunchPluginSample: (pluginId: string) => void;
   readonly onSubmit: () => void;
   readonly onStepBrief: (delta: -1 | 1) => void;
   readonly onOpenTopic: (topicId: string) => void;
@@ -39,12 +43,14 @@ export function Launchpad({
   selectedModeId,
   models,
   selectedModelId,
+  registry,
   searchQuery,
   onDraftChange,
   onModeChange,
   onModelChange,
   onAttach,
   onRemoveAttachment,
+  onLaunchPluginSample,
   onSubmit,
   onStepBrief,
   onOpenTopic,
@@ -74,11 +80,13 @@ export function Launchpad({
           selectedModeId={selectedModeId}
           models={models}
           selectedModelId={selectedModelId}
+          registry={registry}
           onDraftChange={onDraftChange}
           onModeChange={onModeChange}
           onModelChange={onModelChange}
           onAttach={onAttach}
           onRemoveAttachment={onRemoveAttachment}
+          onLaunchPluginSample={onLaunchPluginSample}
           onSubmit={onSubmit}
         />
 

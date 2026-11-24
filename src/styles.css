@@ -534,6 +534,16 @@ button {
   width: 236px;
 }
 
+.dropdown-popover.is-enterprise-menu {
+  width: 292px;
+}
+
+.popover-divider {
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--border-subtle);
+}
+
 .dropdown-popover.is-model-list {
   width: 244px;
 }
@@ -894,6 +904,24 @@ button {
   font-size: 12.5px;
 }
 
+.inline-citation {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border-radius: 5px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.36);
+  color: #fcd34d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.inline-citation:hover {
+  background: rgba(245, 158, 11, 0.3);
+}
+
 .thread-composer-dock {
   padding: 8px 24px 18px;
 }
@@ -928,9 +956,30 @@ button {
   flex-shrink: 0;
 }
 
-.artifact-badge.badge-xlsx {
+.artifact-badge.badge-xlsx,
+.artifact-badge.accent-emerald {
   background: rgba(22, 163, 74, 0.22);
   color: #4ade80;
+}
+
+.artifact-badge.accent-amber {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fcd34d;
+}
+
+.artifact-badge.accent-rose {
+  background: rgba(244, 63, 94, 0.22);
+  color: #fda4af;
+}
+
+.artifact-badge.accent-sky {
+  background: rgba(14, 165, 233, 0.22);
+  color: #7dd3fc;
+}
+
+.artifact-badge.accent-violet {
+  background: rgba(139, 92, 246, 0.24);
+  color: #ddd6fe;
 }
 
 .artifact-card-body {

@@ -198,30 +198,6 @@ function SpreadsheetStageView({ context }: { context: RendererContext<Spreadshee
 
 export const spreadsheetRendererModule: LoadedRenderer<preact.ComponentChildren, SpreadsheetWorkbook> = {
   render(context) {
-    const { block, isCompact, onInspect } = context;
-    if (isCompact) {
-      const sheetCount = block.data.sheets.length;
-      const rowCount = block.data.sheets.reduce((sum, s) => sum + s.rows.length, 0);
-      return (
-        <button
-          type="button"
-          class="artifact-inline-card"
-          onClick={() => onInspect?.(block.id)}
-        >
-          <span class="artifact-badge badge-xlsx">XLSX</span>
-          <span class="artifact-card-body">
-            <span class="artifact-card-title">
-              {block.filename ?? block.title ?? 'Spreadsheet Workbook'}
-            </span>
-            <span class="artifact-card-summary">
-              {block.summary ?? `${sheetCount} sheet${sheetCount === 1 ? '' : 's'} · ${rowCount} rows`}
-            </span>
-          </span>
-          <span class="artifact-card-cta">Open sheet →</span>
-        </button>
-      );
-    }
-
     return <SpreadsheetStageView context={context} />;
   },
 };

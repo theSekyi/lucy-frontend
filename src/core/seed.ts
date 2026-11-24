@@ -357,6 +357,8 @@ export function createInitialWorkspaceState(): WorkspaceState {
     activeSection: 'home',
     activeTopicId: null,
     inspectedBlockId: null,
+    inspectedAnchor: null,
+    anchorPulse: 0,
     isStageMaximized: false,
     isSidebarOpen: true,
     isRecentsOpen: true,

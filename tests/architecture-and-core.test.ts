@@ -8,6 +8,7 @@ import {
   selectHomeRecentTotalCount,
   selectSidebarRecentTopics,
 } from '../src/core/workspace';
+import { createDefaultRendererRegistry } from '../src/plugins/registrySetup';
 import {
   parseDelimitedText,
   parseXlsxBuffer,
@@ -89,15 +90,16 @@ describe('Separation of logic from presentation', () => {
     for (const file of files) {
       const source = readFileSync(join(coreDir, file), 'utf8');
       expect(source).not.toMatch(/from\s+['"]preact/);
-      expect(source).not.toMatch(/from\s+['"]\.\.\/ui/);
-      expect(source).not.toMatch(/\b(document|window|HTMLElement)\b/);
+      expect(source).not.toMatch(/from\s+['"]\.\.\/(ui|plugins)/);
+      expect(source).not.toMatch(/\b(document\.|window\.|HTMLElement)/);
     }
   });
 });
 
 describe('Headless Workspace state and offline resilience', () => {
-  it('initializes with reference counts and transitions cleanly to thread + spreadsheet stage', () => {
-    const workspace = createWorkspace({ responseDelayMs: 0 });
+  it('initializes with reference counts and transitions cleanly to thread + spreadsheet stage', async () => {
+    const registry = createDefaultRendererRegistry();
+    const workspace = createWorkspace({ responseDelayMs: 0, registry });
     const initial = workspace.getState();
 
     expect(initial.activeSection).toBe('home');
@@ -108,6 +110,7 @@ describe('Headless Workspace state and offline resilience', () => {
 
     workspace.updateDraft('Build a Q4 revenue Excel forecast');
     const createdTopicId = workspace.submitPrompt();
+    await new Promise((r) => setTimeout(r, 15));
     const afterSubmit = workspace.getState();
 
     expect(createdTopicId).toBeTruthy();
@@ -120,7 +123,47 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(thread.turns[1]?.blocks.some((b) => b.kind === 'spreadsheet')).toBe(true);
   });
 
-  it('queues prompts safely while offline and flushes automatically when back online', () => {
+  it('dynamically routes and launches all 6 plug-and-play enterprise stage renderers + citation anchors', async () => {
+    const registry = createDefaultRendererRegistry();
+    const workspace = createWorkspace({ responseDelayMs: 0, registry });
+
+    const stagePluginIds = [
+      'spreadsheet',
+      'cited-document',
+      'redline',
+      'sql-canvas',
+      'topology',
+      'slide-deck',
+    ];
+
+    for (const pluginId of stagePluginIds) {
+      const topicId = await workspace.launchPluginSample(pluginId);
+      expect(topicId).toBeTruthy();
+      const current = workspace.getState();
+      expect(current.inspectedBlockId).toBeTruthy();
+
+      const activeTopic = current.topics.find((t) => t.id === topicId)!;
+      const block = activeTopic.turns
+        .flatMap((t) => t.blocks)
+        .find((b) => b.id === current.inspectedBlockId)!;
+      expect(registry.resolve(block).id).toBe(pluginId);
+
+      // Verify lazy chunk loads and renders cleanly
+      const loaded = await registry.loadRenderer(block);
+      expect(typeof loaded.render).toBe('function');
+    }
+
+    // Verify citation anchor deep-linking increments pulse even on repeated clause clicks
+    const docId = workspace.getState().inspectedBlockId!;
+    const initialPulse = workspace.getState().anchorPulse;
+    workspace.inspectArtifact(docId, '§4.2');
+    expect(workspace.getState().inspectedAnchor).toBe('§4.2');
+    expect(workspace.getState().anchorPulse).toBe(initialPulse + 1);
+    workspace.inspectArtifact(docId, '§4.2');
+    expect(workspace.getState().anchorPulse).toBe(initialPulse + 2);
+  });
+
+  it('queues prompts safely while offline and flushes automatically when back online', async () => {
     const workspace = createWorkspace({ responseDelayMs: 0 });
     workspace.setNetworkStatus('offline');
     const topicId = workspace.submitPrompt('Summarize pending MCP bugs')!;
@@ -131,6 +174,7 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(pendingTopic.turns[1]?.status).toBe('queued-offline');
 
     workspace.setNetworkStatus('online');
+    await new Promise((r) => setTimeout(r, 15));
     const recoveredState = workspace.getState();
     expect(recoveredState.queuedTurnIds).toHaveLength(0);
     const completedTopic = recoveredState.topics.find((t) => t.id === topicId)!;

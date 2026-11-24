@@ -4,8 +4,8 @@ import { createDefaultRendererRegistry } from './plugins/registrySetup';
 import { App } from './ui/App';
 import './styles.css';
 
-const workspace = createWorkspace();
 const registry = createDefaultRendererRegistry();
+const workspace = createWorkspace({ registry });
 
 render(<App workspace={workspace} registry={registry} />, document.getElementById('app')!);
 

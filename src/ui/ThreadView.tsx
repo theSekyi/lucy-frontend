@@ -14,6 +14,8 @@ interface ThreadViewProps {
   readonly topic: TopicThread;
   readonly registry: RendererRegistry<ComponentChildren>;
   readonly inspectedBlockId: string | null;
+  readonly inspectedAnchor: string | null;
+  readonly anchorPulse: number;
   readonly isStageMaximized: boolean;
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
@@ -22,13 +24,14 @@ interface ThreadViewProps {
   readonly models: ReadonlyArray<ModelChoice>;
   readonly selectedModelId: string;
   readonly onReturnHome: () => void;
-  readonly onInspectBlock: (blockId: string | null) => void;
+  readonly onInspectBlock: (blockId: string | null, anchor?: string | null) => void;
   readonly onToggleMaximizeStage: () => void;
   readonly onDraftChange: (value: string) => void;
   readonly onModeChange: (modeId: string) => void;
   readonly onModelChange: (modelId: string) => void;
   readonly onAttach: (block: ContentBlock) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
+  readonly onLaunchPluginSample: (pluginId: string) => void;
   readonly onSubmit: () => void;
 }
 
@@ -36,6 +39,8 @@ export function ThreadView({
   topic,
   registry,
   inspectedBlockId,
+  inspectedAnchor,
+  anchorPulse,
   isStageMaximized,
   draft,
   attachments,
@@ -51,12 +56,13 @@ export function ThreadView({
   onModelChange,
   onAttach,
   onRemoveAttachment,
+  onLaunchPluginSample,
   onSubmit,
 }: ThreadViewProps) {
   const allBlocks = topic.turns.flatMap((turn) => turn.blocks);
   const stageBlocks = allBlocks.filter((b) => registry.resolve(b).placement === 'stage');
-  const activeStageBlock =
-    allBlocks.find((b) => b.id === inspectedBlockId) ?? null;
+  const activeStageBlock = allBlocks.find((b) => b.id === inspectedBlockId) ?? null;
+  const activeStagePlugin = activeStageBlock ? registry.resolve(activeStageBlock) : null;
 
   return (
     <div class="thread-workspace">
@@ -75,9 +81,9 @@ export function ThreadView({
             <button
               type="button"
               class="ghost-pill"
-              onClick={() => onInspectBlock(stageBlocks[0]!.id)}
+              onClick={() => onInspectBlock(stageBlocks[stageBlocks.length - 1]!.id)}
             >
-              Open {stageBlocks[0]!.filename ?? 'Artifact'}
+              Open {stageBlocks[stageBlocks.length - 1]!.filename ?? 'Artifact'}
             </button>
           )}
         </div>
@@ -88,39 +94,47 @@ export function ThreadView({
           <section class="thread-conversation-pane" aria-label="Conversation">
             <div class="thread-turns-scroll">
               <div class="thread-turns-column">
-                {topic.turns.map((turn) => (
-                  <article
-                    key={turn.id}
-                    class={`turn-item is-${turn.role} status-${turn.status}`}
-                  >
-                    {turn.role === 'assistant' && (
-                      <div class="turn-author-row">
-                        <LobeTopicAvatar size={20} />
-                        <span class="turn-author-name">Lucy</span>
-                        <span class="turn-time">{turn.createdAt}</span>
-                        {turn.status === 'queued-offline' && (
-                          <span class="turn-status-pill">Queued offline</span>
-                        )}
-                      </div>
-                    )}
+                {topic.turns.map((turn) => {
+                  const turnStageArtifactId =
+                    turn.blocks.find((b) => registry.resolve(b).placement === 'stage')?.id ??
+                    stageBlocks[stageBlocks.length - 1]?.id ??
+                    null;
 
-                    <div class="turn-blocks">
-                      {turn.blocks.map((block) => {
-                        const plugin = registry.resolve(block);
-                        const renderCompact = plugin.placement === 'stage';
-                        return (
-                          <BlockSlot
-                            key={block.id}
-                            block={block}
-                            registry={registry}
-                            isCompact={renderCompact}
-                            onInspect={(id) => onInspectBlock(id)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </article>
-                ))}
+                  return (
+                    <article
+                      key={turn.id}
+                      class={`turn-item is-${turn.role} status-${turn.status}`}
+                    >
+                      {turn.role === 'assistant' && (
+                        <div class="turn-author-row">
+                          <LobeTopicAvatar size={20} />
+                          <span class="turn-author-name">Lucy</span>
+                          <span class="turn-time">{turn.createdAt}</span>
+                          {turn.status === 'queued-offline' && (
+                            <span class="turn-status-pill">Queued offline</span>
+                          )}
+                        </div>
+                      )}
+
+                      <div class="turn-blocks">
+                        {turn.blocks.map((block) => {
+                          const plugin = registry.resolve(block);
+                          const renderCompact = plugin.placement === 'stage';
+                          return (
+                            <BlockSlot
+                              key={block.id}
+                              block={block}
+                              registry={registry}
+                              isCompact={renderCompact}
+                              siblingArtifactId={turnStageArtifactId}
+                              onInspect={(id, anchor) => onInspectBlock(id, anchor ?? null)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </div>
 
@@ -128,18 +142,20 @@ export function ThreadView({
               <div class="thread-turns-column">
                 <Composer
                   compact
-                  placeholder="Reply, ask a follow-up, or drop an .xlsx / .csv file…"
+                  placeholder="Reply, ask a follow-up, or click + for enterprise stages…"
                   draft={draft}
                   attachments={attachments}
                   modes={modes}
                   selectedModeId={selectedModeId}
                   models={models}
                   selectedModelId={selectedModelId}
+                  registry={registry}
                   onDraftChange={onDraftChange}
                   onModeChange={onModeChange}
                   onModelChange={onModelChange}
                   onAttach={onAttach}
                   onRemoveAttachment={onRemoveAttachment}
+                  onLaunchPluginSample={onLaunchPluginSample}
                   onSubmit={onSubmit}
                 />
               </div>
@@ -147,15 +163,15 @@ export function ThreadView({
           </section>
         )}
 
-        {activeStageBlock && (
+        {activeStageBlock && activeStagePlugin && (
           <aside class="artifact-stage-pane" aria-label="Artifact inspector">
             <div class="artifact-stage-header">
               <div class="artifact-stage-title-group">
-                <span class="artifact-badge badge-xlsx">
-                  {registry.resolve(activeStageBlock).badge}
+                <span class={`artifact-badge accent-${activeStagePlugin.accent ?? 'emerald'}`}>
+                  {activeStagePlugin.badge}
                 </span>
                 <strong class="artifact-stage-title">
-                  {activeStageBlock.filename ?? activeStageBlock.title ?? 'Artifact'}
+                  {activeStageBlock.filename ?? activeStageBlock.title ?? activeStagePlugin.label}
                 </strong>
               </div>
 
@@ -183,6 +199,8 @@ export function ThreadView({
                 block={activeStageBlock}
                 registry={registry}
                 isCompact={false}
+                focusAnchor={inspectedAnchor}
+                anchorPulse={anchorPulse}
               />
             </div>
           </aside>

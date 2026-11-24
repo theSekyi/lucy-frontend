@@ -116,6 +116,8 @@ export function App({ workspace, registry }: AppProps) {
               topic={activeTopic}
               registry={registry}
               inspectedBlockId={state.inspectedBlockId}
+              inspectedAnchor={state.inspectedAnchor}
+              anchorPulse={state.anchorPulse}
               isStageMaximized={state.isStageMaximized}
               draft={state.composerDraft}
               attachments={state.attachments}
@@ -124,13 +126,14 @@ export function App({ workspace, registry }: AppProps) {
               models={state.models}
               selectedModelId={state.selectedModelId}
               onReturnHome={() => workspace.returnHome()}
-              onInspectBlock={(id) => workspace.inspectArtifact(id)}
+              onInspectBlock={(id, anchor) => workspace.inspectArtifact(id, anchor)}
               onToggleMaximizeStage={() => workspace.toggleStageMaximize()}
               onDraftChange={(text) => workspace.updateDraft(text)}
               onModeChange={(id) => workspace.setMode(id)}
               onModelChange={(id) => workspace.setModel(id)}
               onAttach={(block) => workspace.attachContent(block)}
               onRemoveAttachment={(id) => workspace.removeAttachment(id)}
+              onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
               onSubmit={() => workspace.submitPrompt()}
             />
           ) : (
@@ -193,12 +196,14 @@ export function App({ workspace, registry }: AppProps) {
             selectedModeId={state.selectedModeId}
             models={state.models}
             selectedModelId={state.selectedModelId}
+            registry={registry}
             searchQuery={state.searchQuery}
             onDraftChange={(text) => workspace.updateDraft(text)}
             onModeChange={(id) => workspace.setMode(id)}
             onModelChange={(id) => workspace.setModel(id)}
             onAttach={(block) => workspace.attachContent(block)}
             onRemoveAttachment={(id) => workspace.removeAttachment(id)}
+            onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
             onSubmit={() => workspace.submitPrompt()}
             onStepBrief={(delta) => workspace.stepDailyBrief(delta)}
             onOpenTopic={(id) => workspace.openTopic(id)}

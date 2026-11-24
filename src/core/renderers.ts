@@ -1,9 +1,18 @@
-import type { ContentBlock, RenderPlacement } from './types';
+import type { BadgeAccent, ContentBlock, RenderPlacement } from './types';
+
+export interface SampleTurnPayload {
+  readonly prose: string;
+  readonly artifact: ContentBlock;
+  readonly defaultAnchor?: string;
+}
 
 export interface RendererContext<TData = unknown> {
   readonly block: ContentBlock<TData>;
   readonly isCompact?: boolean;
-  readonly onInspect?: (blockId: string) => void;
+  readonly focusAnchor?: string | null;
+  readonly anchorPulse?: number;
+  readonly siblingArtifactId?: string | null;
+  readonly onInspect?: (blockId: string, anchor?: string) => void;
 }
 
 export interface LoadedRenderer<TView, TData = unknown> {
@@ -14,8 +23,13 @@ export interface RendererPlugin<TView, TData = unknown> {
   readonly id: string;
   readonly label: string;
   readonly badge: string;
+  readonly accent?: BadgeAccent;
+  readonly ctaLabel?: string;
   readonly placement: RenderPlacement;
   readonly priority?: number;
+  readonly promptPattern?: RegExp;
+  readonly sampleMenuLabel?: string;
+  readonly createSample?: (nextId: (prefix: string) => string) => Promise<SampleTurnPayload>;
   readonly matches: (block: ContentBlock) => boolean;
   readonly load: () => Promise<LoadedRenderer<TView, TData>>;
 }
@@ -23,15 +37,18 @@ export interface RendererPlugin<TView, TData = unknown> {
 export interface RendererRegistry<TView> {
   register: <TData>(plugin: RendererPlugin<TView, TData>) => () => void;
   resolve: (block: ContentBlock) => RendererPlugin<TView>;
+  matchPromptPlugin: (prompt: string) => RendererPlugin<TView> | undefined;
   loadRenderer: (block: ContentBlock) => Promise<LoadedRenderer<TView>>;
   getCachedRenderer: (pluginId: string) => LoadedRenderer<TView> | undefined;
   listPlugins: () => ReadonlyArray<RendererPlugin<TView>>;
 }
 
 /**
- * Capability-based renderer registry.
- * Heavy viewers (Excel workbooks, code diffs, charts, PDFs) register lightweight
- * match predicates upfront while deferring parser + UI code via dynamic `load()`.
+ * Self-describing plug-and-play renderer registry.
+ * Dropping a plugin descriptor into the registry automatically enables:
+ * 1. Block matching & lazy chunk loading (with flaky-network retry)
+ * 2. Zero-download inline summary cards for `stage` placement
+ * 3. Optional prompt routing & `+` menu sample launching
  */
 export function createRendererRegistry<TView>(
   fallbackPlugin: RendererPlugin<TView>
@@ -48,6 +65,10 @@ export function createRendererRegistry<TView>(
     return sortedPlugins().find((plugin) => plugin.matches(block)) ?? fallbackPlugin;
   }
 
+  function matchPromptPlugin(prompt: string): RendererPlugin<TView> | undefined {
+    return sortedPlugins().find((plugin) => plugin.promptPattern?.test(prompt));
+  }
+
   async function loadPluginWithRetry(plugin: RendererPlugin<TView>): Promise<LoadedRenderer<TView>> {
     const cached = resolvedCache.get(plugin.id);
     if (cached) return cached;
@@ -58,7 +79,6 @@ export function createRendererRegistry<TView>(
     const loadAttempt = plugin
       .load()
       .catch(async () => {
-        // Single calm retry helps flaky/slow mobile connections recover seamlessly
         await new Promise((r) => setTimeout(r, 250));
         return plugin.load();
       })
@@ -86,6 +106,7 @@ export function createRendererRegistry<TView>(
     },
 
     resolve,
+    matchPromptPlugin,
 
     loadRenderer(block) {
       return loadPluginWithRetry(resolve(block));

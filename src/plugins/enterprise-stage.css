@@ -1,0 +1,376 @@
+/* Shared ultra-lean styles for lazy-loaded Enterprise Stage Plugins */
+.stage-plugin-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 12.5px;
+}
+
+.stage-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: #111114;
+  flex-shrink: 0;
+}
+
+.stage-subbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.stage-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.seg-tabs {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 7px;
+  background: #0a0a0c;
+  border: 1px solid var(--border-subtle);
+}
+
+.seg-tab {
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.seg-tab.is-active {
+  background: #202026;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* 1. Cited Contract / PDF Inspector */
+.contract-clause-nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.clause-jump-pill {
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.clause-jump-pill.is-focused {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fcd34d;
+  font-weight: 600;
+}
+
+.contract-page-sheet {
+  background: #131317;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.contract-page-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.contract-clause-box {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  margin-bottom: 10px;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.contract-clause-box:last-child {
+  margin-bottom: 0;
+}
+
+.contract-clause-box.is-grounded {
+  background: rgba(245, 158, 11, 0.11);
+  border-color: rgba(245, 158, 11, 0.48);
+}
+
+.clause-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.clause-sec-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: #fcd34d;
+  margin-right: 6px;
+}
+
+.clause-body-text {
+  margin: 0;
+  line-height: 1.58;
+  color: #e4e4e7;
+}
+
+.clause-footnote {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: #a1a1aa;
+}
+
+/* 2. Semantic Redline & Diff Viewer */
+.redline-hunk-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: #121216;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.redline-hunk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #17171c;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.redline-rationale {
+  padding: 6px 12px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.redline-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.redline-col {
+  padding: 10px 12px;
+  line-height: 1.55;
+}
+
+.redline-col.is-before {
+  background: rgba(239, 68, 68, 0.07);
+  border-right: 1px solid var(--border-subtle);
+  color: #fca5a5;
+  text-decoration: line-through;
+  text-decoration-color: rgba(248, 113, 113, 0.55);
+}
+
+.redline-col.is-after {
+  background: rgba(34, 197, 94, 0.08);
+  color: #bbf7d0;
+}
+
+.decision-btn {
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.decision-btn.is-accept-active {
+  background: rgba(34, 197, 94, 0.22);
+  border-color: rgba(74, 222, 128, 0.5);
+  color: #86efac;
+}
+
+.decision-btn.is-reject-active {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+}
+
+/* 3. SQL + Linked Chart + Virtualized Data Grid */
+.sql-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.kpi-tile {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #141418;
+  border: 1px solid var(--border-subtle);
+}
+
+.kpi-tile-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.kpi-tile-value {
+  margin-top: 3px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.vgrid-viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+}
+
+.vgrid-header,
+.vgrid-row {
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.vgrid-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #16161b;
+  font-weight: 600;
+  height: 30px;
+}
+
+.vgrid-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30px;
+}
+
+.vgrid-cell {
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vgrid-cell.is-num {
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* 4. Interactive Lineage & Topology Graph */
+.topology-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 1px, transparent 0);
+  background-size: 20px 20px;
+  cursor: grab;
+}
+
+.topology-canvas-wrap:active {
+  cursor: grabbing;
+}
+
+.topology-inspector {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: #121216;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 5. Executive Brief / Slide Deck */
+.slide-stage-center {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+
+.slide-card-frame {
+  background: linear-gradient(155deg, #17171d 0%, #101014 100%);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.slide-card-frame.is-widescreen {
+  aspect-ratio: 16 / 9;
+}
+
+.slide-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #a78bfa;
+}
+
+.slide-headline {
+  margin: 6px 0 0;
+  font-size: 18px;
+  line-height: 1.32;
+  font-weight: 600;
+  color: #f4f4f6;
+}
+
+.slide-takeaway {
+  margin: 0;
+  padding: 8px 11px;
+  border-left: 2.5px solid #a78bfa;
+  background: rgba(167, 139, 250, 0.08);
+  border-radius: 0 6px 6px 0;
+  color: #e4e4e7;
+}
+
+.slide-filmstrip {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.filmstrip-dot {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  background: #151519;
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
+}
+
+.filmstrip-dot.is-active {
+  border-color: #a78bfa;
+  color: #e9d5ff;
+}

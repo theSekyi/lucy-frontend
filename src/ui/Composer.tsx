@@ -1,5 +1,6 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { SAMPLE_FINANCIAL_WORKBOOK } from '../core/seed';
+import type { RendererRegistry } from '../core/renderers';
 import type { ComposerMode, ContentBlock, ModelChoice } from '../core/types';
 import { AgentLoopIcon, SendArrowIcon } from './icons';
 
@@ -12,6 +13,7 @@ interface ComposerProps {
   readonly selectedModeId: string;
   readonly models: ReadonlyArray<ModelChoice>;
   readonly selectedModelId: string;
+  readonly registry?: RendererRegistry<ComponentChildren>;
   readonly placeholder?: string;
   readonly compact?: boolean;
   readonly onDraftChange: (value: string) => void;
@@ -19,6 +21,7 @@ interface ComposerProps {
   readonly onModelChange: (modelId: string) => void;
   readonly onAttach: (block: ContentBlock) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
+  readonly onLaunchPluginSample?: (pluginId: string) => void;
   readonly onSubmit: () => void;
 }
 
@@ -29,6 +32,7 @@ export function Composer({
   selectedModeId,
   models,
   selectedModelId,
+  registry,
   placeholder = 'Ask, create, or start a task',
   compact = false,
   onDraftChange,
@@ -36,6 +40,7 @@ export function Composer({
   onModelChange,
   onAttach,
   onRemoveAttachment,
+  onLaunchPluginSample,
   onSubmit,
 }: ComposerProps) {
   const [openMenu, setOpenMenu] = useState<OpenComposerMenu>(null);
@@ -45,6 +50,7 @@ export function Composer({
 
   const activeMode = modes.find((m) => m.id === selectedModeId) ?? modes[0]!;
   const activeModel = models.find((m) => m.id === selectedModelId) ?? models[0]!;
+  const samplePlugins = (registry?.listPlugins() ?? []).filter((p) => p.sampleMenuLabel);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -87,19 +93,6 @@ export function Composer({
     setOpenMenu(null);
   }
 
-  function attachSampleExcel() {
-    onAttach({
-      id: `sample-xlsx-${Date.now()}`,
-      kind: 'spreadsheet',
-      title: 'Q4 Revenue & Regional Model',
-      filename: 'Q4_Revenue_Model.xlsx',
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      summary: '2 sheets · Q4 Forecast ($1.64M net) & Region Breakdown',
-      data: SAMPLE_FINANCIAL_WORKBOOK,
-    });
-    setOpenMenu(null);
-  }
-
   function toggleMenu(target: Exclude<OpenComposerMenu, null>) {
     setOpenMenu((current) => (current === target ? null : target));
   }
@@ -124,7 +117,7 @@ export function Composer({
         <div class="composer-attachments">
           {attachments.map((item) => (
             <span key={item.id} class="attachment-chip">
-              <span class="artifact-badge badge-xlsx">XLSX</span>
+              <span class="artifact-badge accent-emerald">XLSX</span>
               <span>{item.filename ?? item.title}</span>
               <button
                 type="button"
@@ -170,7 +163,11 @@ export function Composer({
             </button>
 
             {openMenu === 'mode' && (
-              <div class={`dropdown-popover align-left ${compact ? 'opens-up' : 'opens-down'}`} role="listbox" aria-label="Assistant mode">
+              <div
+                class={`dropdown-popover align-left ${compact ? 'opens-up' : 'opens-down'}`}
+                role="listbox"
+                aria-label="Assistant mode"
+              >
                 {modes.map((mode) => {
                   const selected = mode.id === activeMode.id;
                   return (
@@ -198,7 +195,7 @@ export function Composer({
             <button
               type="button"
               class="composer-plus-btn"
-              aria-label="Attach spreadsheet or file"
+              aria-label="Attach file or open enterprise artifact"
               aria-haspopup="menu"
               aria-expanded={openMenu === 'attach'}
               onClick={() => toggleMenu('attach')}
@@ -207,23 +204,39 @@ export function Composer({
             </button>
 
             {openMenu === 'attach' && (
-              <div class={`dropdown-popover align-left is-wide ${compact ? 'opens-up' : 'opens-down'}`} role="menu">
+              <div
+                class={`dropdown-popover align-left is-enterprise-menu ${compact ? 'opens-up' : 'opens-down'}`}
+                role="menu"
+              >
                 <button
                   type="button"
                   role="menuitem"
                   class="popover-item"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <span>Upload Excel / CSV (.xlsx, .csv)</span>
+                  <span>Upload local .xlsx / .csv…</span>
+                  <span class="popover-tier-badge">File</span>
                 </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="popover-item"
-                  onClick={attachSampleExcel}
-                >
-                  <span>Attach sample Q4 Excel model</span>
-                </button>
+
+                {samplePlugins.length > 0 && <div class="popover-divider" />}
+
+                {samplePlugins.map((plugin) => (
+                  <button
+                    key={plugin.id}
+                    type="button"
+                    role="menuitem"
+                    class="popover-item"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      onLaunchPluginSample?.(plugin.id);
+                    }}
+                  >
+                    <span>{plugin.sampleMenuLabel}</span>
+                    <span class={`artifact-badge accent-${plugin.accent ?? 'neutral'}`}>
+                      {plugin.badge}
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
 
@@ -256,7 +269,11 @@ export function Composer({
             </button>
 
             {openMenu === 'model' && (
-              <div class={`dropdown-popover align-right is-model-list ${compact ? 'opens-up' : 'opens-down'}`} role="listbox" aria-label="Select model">
+              <div
+                class={`dropdown-popover align-right is-model-list ${compact ? 'opens-up' : 'opens-down'}`}
+                role="listbox"
+                aria-label="Select model"
+              >
                 {models.map((model) => {
                   const selected = model.id === activeModel.id;
                   return (

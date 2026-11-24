@@ -1,4 +1,5 @@
-import { SAMPLE_FINANCIAL_WORKBOOK, createInitialWorkspaceState } from './seed';
+import type { RendererRegistry } from './renderers';
+import { createInitialWorkspaceState } from './seed';
 import { createStore, type ReadableStore } from './store';
 import type {
   ContentBlock,
@@ -9,9 +10,10 @@ import type {
   WorkspaceState,
 } from './types';
 
-export interface WorkspaceOptions {
+export interface WorkspaceOptions<TView = unknown> {
   readonly initialState?: WorkspaceState;
   readonly responseDelayMs?: number;
+  readonly registry?: RendererRegistry<TView>;
 }
 
 export interface WorkspaceController extends ReadableStore<WorkspaceState> {
@@ -29,85 +31,90 @@ export interface WorkspaceController extends ReadableStore<WorkspaceState> {
   setModel: (modelId: string) => void;
   attachContent: (block: ContentBlock) => void;
   removeAttachment: (blockId: string) => void;
-  inspectArtifact: (blockId: string | null) => void;
+  inspectArtifact: (blockId: string | null, anchor?: string | null) => void;
   toggleStageMaximize: () => void;
   setNetworkStatus: (status: NetworkStatus) => void;
+  launchPluginSample: (pluginId: string) => Promise<string | null>;
   submitPrompt: (overridePrompt?: string) => string | null;
 }
 
 let idSequence = 100;
-function nextId(prefix: string): string {
+export function nextWorkspaceId(prefix: string): string {
   idSequence += 1;
   return `${prefix}-${idSequence}`;
 }
 
-function asksForSpreadsheet(prompt: string, attachments: ReadonlyArray<ContentBlock>): boolean {
-  if (attachments.some((item) => item.kind === 'spreadsheet')) return true;
-  return /\b(excel|xlsx|csv|spreadsheet|sheet|table|budget|forecast|revenue|metrics|financial)\b/i.test(
-    prompt
-  );
-}
-
-function buildAssistantBlocks(
-  prompt: string,
-  userAttachments: ReadonlyArray<ContentBlock>
-): ReadonlyArray<ContentBlock> {
-  const uploadedSheet = userAttachments.find((item) => item.kind === 'spreadsheet');
-
-  if (uploadedSheet) {
-    return [
-      {
-        id: nextId('block'),
-        kind: 'prose',
-        data: `I parsed **${uploadedSheet.filename ?? uploadedSheet.title ?? 'your workbook'}** and opened it in the side-by-side stage so you can sort columns, inspect cell formulas, or switch sheets while we discuss it.`,
-      },
-      uploadedSheet,
-    ];
-  }
-
-  if (asksForSpreadsheet(prompt, userAttachments)) {
-    return [
-      {
-        id: nextId('block'),
-        kind: 'prose',
-        data: 'Here is the structured Q4 financial & regional latency workbook. Key takeaway: **Net Contribution grew +31.0% YoY ($1.64M)** while APAC low-bandwidth retention led all regions at **127%**.\n\nClick the workbook card or use the side stage to inspect formulas and sort rows.',
-      },
-      {
-        id: nextId('block'),
-        kind: 'spreadsheet',
-        title: 'Q4 Revenue & Regional Model',
-        filename: 'Q4_Revenue_Model.xlsx',
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        summary: '2 sheets · Q4 Forecast ($1.64M net, +31% YoY) & Region Breakdown',
-        data: SAMPLE_FINANCIAL_WORKBOOK,
-      },
-    ];
-  }
-
-  return [
-    {
-      id: nextId('block'),
-      kind: 'prose',
-      data: `Understood — working on **"${prompt}"**.\n\n• Scope isolated into clear steps so everything stays verifiable.\n• You can continue refining right here, press Esc to return Home, or attach an Excel (.xlsx / .csv) file anytime with the + button.`,
-    },
-  ];
-}
-
-export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceController {
+export function createWorkspace<TView = unknown>(
+  options: WorkspaceOptions<TView> = {}
+): WorkspaceController {
   const store = createStore<WorkspaceState>(options.initialState ?? createInitialWorkspaceState());
-  const delayMs = options.responseDelayMs ?? 140;
+  const delayMs = options.responseDelayMs ?? 90;
+  const registry = options.registry;
+
+  function isStageBlock(block: ContentBlock): boolean {
+    if (registry) return registry.resolve(block).placement === 'stage';
+    return block.kind !== 'prose' && block.kind !== 'code';
+  }
 
   function findFirstStageArtifact(blocks: ReadonlyArray<ContentBlock>): string | null {
-    return blocks.find((b) => b.kind === 'spreadsheet')?.id ?? null;
+    return blocks.find(isStageBlock)?.id ?? null;
   }
 
-  function deliverAssistantTurn(topicId: string, assistantTurnId: string, prompt: string, attachments: ReadonlyArray<ContentBlock>) {
-    const generatedBlocks = buildAssistantBlocks(prompt, attachments);
+  async function resolveAssistantOutput(
+    prompt: string,
+    userAttachments: ReadonlyArray<ContentBlock>
+  ): Promise<{ blocks: ReadonlyArray<ContentBlock>; defaultAnchor?: string }> {
+    const attachedStage = userAttachments.find(isStageBlock);
+    if (attachedStage) {
+      return {
+        blocks: [
+          {
+            id: nextWorkspaceId('block'),
+            kind: 'prose',
+            data: `Opened **${attachedStage.filename ?? attachedStage.title ?? 'your artifact'}** in the side-by-side stage so you can inspect, filter, or verify details directly alongside our thread.`,
+          },
+          attachedStage,
+        ],
+      };
+    }
+
+    const matchedPlugin = registry?.matchPromptPlugin(prompt);
+    if (matchedPlugin?.createSample) {
+      const sample = await matchedPlugin.createSample(nextWorkspaceId);
+      return {
+        defaultAnchor: sample.defaultAnchor,
+        blocks: [{ id: nextWorkspaceId('block'), kind: 'prose', data: sample.prose }, sample.artifact],
+      };
+    }
+
+    return {
+      blocks: [
+        {
+          id: nextWorkspaceId('block'),
+          kind: 'prose',
+          data: `Understood — working on **"${prompt}"**.\n\n• Ask for a **contract review**, **redline diff**, **SQL cohort chart**, **incident lineage graph**, **QBR slide deck**, or **Excel forecast** anytime (or launch any renderer from the **+** button).`,
+        },
+      ],
+    };
+  }
+
+  async function deliverAssistantTurn(
+    topicId: string,
+    assistantTurnId: string,
+    prompt: string,
+    attachments: ReadonlyArray<ContentBlock>
+  ) {
+    const { blocks: generatedBlocks, defaultAnchor } = await resolveAssistantOutput(
+      prompt,
+      attachments
+    );
     const stageArtifactId = findFirstStageArtifact(generatedBlocks);
 
     store.update((state) => ({
       ...state,
       inspectedBlockId: stageArtifactId ?? state.inspectedBlockId,
+      inspectedAnchor: defaultAnchor ?? null,
+      anchorPulse: defaultAnchor ? state.anchorPulse + 1 : state.anchorPulse,
       queuedTurnIds: state.queuedTurnIds.filter((id) => id !== assistantTurnId),
       topics: state.topics.map((topic) => {
         if (topic.id !== topicId) return topic;
@@ -135,7 +142,7 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
     { topicId: string; prompt: string; attachments: ReadonlyArray<ContentBlock> }
   >();
 
-  return {
+  const controller: WorkspaceController = {
     getState: store.getState,
     subscribe: store.subscribe,
 
@@ -145,6 +152,7 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
         activeSection: section,
         activeTopicId: section === 'home' ? null : state.activeTopicId,
         inspectedBlockId: section === 'home' ? null : state.inspectedBlockId,
+        inspectedAnchor: null,
       }));
     },
 
@@ -161,6 +169,7 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
           activeSection: 'home',
           activeTopicId: topicId,
           inspectedBlockId: defaultArtifact,
+          inspectedAnchor: null,
           isSearchOpen: false,
         };
       });
@@ -172,6 +181,7 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
         activeSection: 'home',
         activeTopicId: null,
         inspectedBlockId: null,
+        inspectedAnchor: null,
         isStageMaximized: false,
       }));
     },
@@ -237,10 +247,12 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
       }));
     },
 
-    inspectArtifact(blockId) {
+    inspectArtifact(blockId, anchor = null) {
       store.update((state) => ({
         ...state,
         inspectedBlockId: blockId,
+        inspectedAnchor: anchor,
+        anchorPulse: anchor ? state.anchorPulse + 1 : state.anchorPulse,
         isStageMaximized: blockId === null ? false : state.isStageMaximized,
       }));
     },
@@ -257,9 +269,76 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
       if (status !== 'offline' && pendingOfflinePayloads.size > 0) {
         for (const [turnId, item] of pendingOfflinePayloads.entries()) {
           pendingOfflinePayloads.delete(turnId);
-          deliverAssistantTurn(item.topicId, turnId, item.prompt, item.attachments);
+          void deliverAssistantTurn(item.topicId, turnId, item.prompt, item.attachments);
         }
       }
+    },
+
+    async launchPluginSample(pluginId) {
+      const plugin = registry?.listPlugins().find((p) => p.id === pluginId);
+      if (!plugin?.createSample) return null;
+      const sample = await plugin.createSample(nextWorkspaceId);
+
+      const userTurn: ConversationTurn = {
+        id: nextWorkspaceId('turn-user'),
+        role: 'user',
+        createdAt: 'Just now',
+        status: 'complete',
+        blocks: [
+          {
+            id: nextWorkspaceId('block'),
+            kind: 'prose',
+            data: `Open ${plugin.sampleMenuLabel ?? plugin.label}`,
+          },
+        ],
+      };
+
+      const assistantTurn: ConversationTurn = {
+        id: nextWorkspaceId('turn-assistant'),
+        role: 'assistant',
+        createdAt: 'Just now',
+        status: 'complete',
+        blocks: [{ id: nextWorkspaceId('block'), kind: 'prose', data: sample.prose }, sample.artifact],
+      };
+
+      const current = store.getState();
+      const targetTopicId = current.activeTopicId ?? nextWorkspaceId('topic');
+      const titleText = sample.artifact.title ?? plugin.label;
+
+      store.update((state) => {
+        const existing = state.topics.find((t) => t.id === targetTopicId);
+        const topics = existing
+          ? state.topics.map((t) =>
+              t.id === targetTopicId
+                ? { ...t, dateLabel: 'Just now', turns: [...t.turns, userTurn, assistantTurn] }
+                : t
+            )
+          : [
+              {
+                id: targetTopicId,
+                title: titleText,
+                preview: sample.prose.replace(/\s+/g, ' ').slice(0, 140),
+                dateLabel: 'Just now',
+                sidebarIcon: 'bot' as const,
+                pinnedInSidebar: true,
+                listedOnHome: true,
+                turns: [userTurn, assistantTurn],
+              },
+              ...state.topics,
+            ];
+
+        return {
+          ...state,
+          activeSection: 'home',
+          activeTopicId: targetTopicId,
+          inspectedBlockId: sample.artifact.id,
+          inspectedAnchor: sample.defaultAnchor ?? null,
+          anchorPulse: sample.defaultAnchor ? state.anchorPulse + 1 : state.anchorPulse,
+          topics,
+        };
+      });
+
+      return targetTopicId;
     },
 
     submitPrompt(overridePrompt) {
@@ -270,18 +349,18 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
       if (!rawPrompt && attached.length === 0) return null;
 
       const effectivePrompt =
-        rawPrompt || `Inspect ${attached.map((a) => a.filename ?? a.title ?? 'file').join(', ')}`;
+        rawPrompt || `Inspect ${attached.map((a) => a.filename ?? a.title ?? 'artifact').join(', ')}`;
 
       const userBlocks: ContentBlock[] = [];
       if (rawPrompt) {
-        userBlocks.push({ id: nextId('block'), kind: 'prose', data: rawPrompt });
+        userBlocks.push({ id: nextWorkspaceId('block'), kind: 'prose', data: rawPrompt });
       }
       for (const item of attached) {
         userBlocks.push(item);
       }
 
       const userTurn: ConversationTurn = {
-        id: nextId('turn-user'),
+        id: nextWorkspaceId('turn-user'),
         role: 'user',
         createdAt: 'Just now',
         status: 'complete',
@@ -289,7 +368,7 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
       };
 
       const isOffline = current.networkStatus === 'offline';
-      const assistantTurnId = nextId('turn-assistant');
+      const assistantTurnId = nextWorkspaceId('turn-assistant');
       const assistantTurn: ConversationTurn = {
         id: assistantTurnId,
         role: 'assistant',
@@ -297,7 +376,7 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
         status: isOffline ? 'queued-offline' : 'streaming',
         blocks: [
           {
-            id: nextId('block'),
+            id: nextWorkspaceId('block'),
             kind: 'prose',
             data: isOffline
               ? 'Connection offline — your request is safely queued and will run automatically as soon as connectivity returns.'
@@ -306,7 +385,7 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
         ],
       };
 
-      const targetTopicId = current.activeTopicId ?? nextId('topic');
+      const targetTopicId = current.activeTopicId ?? nextWorkspaceId('topic');
 
       store.update((state) => {
         const existingTopic = state.topics.find((t) => t.id === targetTopicId);
@@ -354,17 +433,19 @@ export function createWorkspace(options: WorkspaceOptions = {}): WorkspaceContro
           attachments: attached,
         });
       } else if (delayMs <= 0) {
-        deliverAssistantTurn(targetTopicId, assistantTurnId, effectivePrompt, attached);
+        void deliverAssistantTurn(targetTopicId, assistantTurnId, effectivePrompt, attached);
       } else {
         const effectiveDelay = current.networkStatus === 'slow' ? delayMs * 2 : delayMs;
         setTimeout(() => {
-          deliverAssistantTurn(targetTopicId, assistantTurnId, effectivePrompt, attached);
+          void deliverAssistantTurn(targetTopicId, assistantTurnId, effectivePrompt, attached);
         }, effectiveDelay);
       }
 
       return targetTopicId;
     },
   };
+
+  return controller;
 }
 
 export function selectHomeRecentTopics(state: WorkspaceState): ReadonlyArray<TopicThread> {
@@ -372,7 +453,6 @@ export function selectHomeRecentTopics(state: WorkspaceState): ReadonlyArray<Top
 }
 
 export function selectHomeRecentTotalCount(state: WorkspaceState): number {
-  // Matches the 8-topic count in the reference workspace plus any newly started threads
   return Math.max(0, state.topics.length - 1);
 }
 
