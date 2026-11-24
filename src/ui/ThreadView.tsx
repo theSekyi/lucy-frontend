@@ -196,6 +196,7 @@ export function ThreadView({
 
             <div class="artifact-stage-body">
               <BlockSlot
+                key={activeStageBlock.id}
                 block={activeStageBlock}
                 registry={registry}
                 isCompact={false}

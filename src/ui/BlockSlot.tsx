@@ -24,7 +24,7 @@ export function BlockSlot({
 }: BlockSlotProps) {
   const plugin = registry.resolve(block);
 
-  // Zero-download compact summary card for stage artifacts inside conversation stream!
+  // Zero-download compact summary card for stage artifacts inside conversation stream
   if (isCompact && plugin.placement === 'stage') {
     const accentClass = `accent-${plugin.accent ?? 'emerald'}`;
     return (
@@ -47,20 +47,31 @@ export function BlockSlot({
     );
   }
 
-  const [renderer, setRenderer] = useState<LoadedRenderer<ComponentChildren> | undefined>(() =>
-    registry.getCachedRenderer(plugin.id)
-  );
+  const [loadedEntry, setLoadedEntry] = useState<{
+    readonly pluginId: string;
+    readonly renderer: LoadedRenderer<ComponentChildren>;
+  } | null>(() => {
+    const cached = registry.getCachedRenderer(plugin.id);
+    return cached ? { pluginId: plugin.id, renderer: cached } : null;
+  });
+
+  // Guard against stale renderer invocation when hot-swapping between different stage plugins
+  const activeRenderer =
+    registry.getCachedRenderer(plugin.id) ??
+    (loadedEntry?.pluginId === plugin.id ? loadedEntry.renderer : undefined);
 
   useEffect(() => {
     let cancelled = false;
     const cached = registry.getCachedRenderer(plugin.id);
     if (cached) {
-      setRenderer(cached);
+      setLoadedEntry({ pluginId: plugin.id, renderer: cached });
       return;
     }
 
     registry.loadRenderer(block).then((loaded) => {
-      if (!cancelled) setRenderer(loaded);
+      if (!cancelled) {
+        setLoadedEntry({ pluginId: plugin.id, renderer: loaded });
+      }
     });
 
     return () => {
@@ -68,7 +79,7 @@ export function BlockSlot({
     };
   }, [block, plugin.id, registry]);
 
-  if (!renderer) {
+  if (!activeRenderer) {
     return (
       <div class="renderer-skeleton" role="status" aria-live="polite">
         <span class={`artifact-badge accent-${plugin.accent ?? 'neutral'}`}>{plugin.badge}</span>
@@ -79,7 +90,7 @@ export function BlockSlot({
 
   return (
     <>
-      {renderer.render({
+      {activeRenderer.render({
         block,
         isCompact,
         focusAnchor,
