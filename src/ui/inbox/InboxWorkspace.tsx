@@ -1,9 +1,17 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { INITIAL_MAIL_THREADS, type MailThreadItem } from '../../core/inbox';
+import {
+  generateMailReplyDraft,
+  INITIAL_MAIL_THREADS,
+  queryMailTerminal,
+  type MailTerminalExchange,
+  type MailThreadItem,
+  type ReplyDraftTone,
+} from '../../core/inbox';
 import type { RendererRegistry } from '../../core/renderers';
 import type { InboxProvider } from '../../core/types';
 import type { GmailInboxRenderer as GmailComp } from './GmailInboxRenderer';
+import type { DeepLinkTarget } from './MailIntelligencePanel';
 import type { OutlookInboxRenderer as OutlookComp } from './OutlookInboxRenderer';
 import './inbox.css';
 
@@ -14,7 +22,7 @@ interface InboxWorkspaceProps {
   readonly senderName: string;
   readonly onSwitchProvider: (provider: InboxProvider) => void;
   readonly onUnreadCountChange: (count: number) => void;
-  readonly onOpenFullStage: (pluginRoute: string) => void;
+  readonly onNavigateSource: (target: DeepLinkTarget) => void;
 }
 
 export function InboxWorkspace({
@@ -24,7 +32,7 @@ export function InboxWorkspace({
   senderName,
   onSwitchProvider,
   onUnreadCountChange,
-  onOpenFullStage,
+  onNavigateSource,
 }: InboxWorkspaceProps) {
   const [threads, setThreads] = useState<MailThreadItem[]>(() => [...INITIAL_MAIL_THREADS]);
   const [GmailView, setGmailView] = useState<typeof GmailComp | null>(null);
@@ -33,7 +41,10 @@ export function InboxWorkspace({
     to: string;
     subject: string;
     body: string;
+    contextThread?: MailThreadItem;
   } | null>(null);
+  const [replyTermInput, setReplyTermInput] = useState('');
+  const [replyTermHistory, setReplyTermHistory] = useState<MailTerminalExchange[]>([]);
 
   useEffect(() => {
     if (provider === 'gmail' && !GmailView) {
@@ -77,9 +88,8 @@ export function InboxWorkspace({
     );
   }
 
-  function sendComposedMail(e: Event) {
-    e.preventDefault();
-    if (!composeDraft?.subject.trim()) return;
+  function appendSentMessage(to: string, subject: string, body: string) {
+    if (!subject.trim() && !body.trim()) return;
     const initials = senderName
       .split(/\s+/)
       .slice(0, 2)
@@ -93,10 +103,10 @@ export function InboxWorkspace({
       senderInitials: initials || 'EC',
       senderEmail,
       avatarColor: '#374151',
-      toList: composeDraft.to || 'client@acmeholdings.com',
-      subject: composeDraft.subject,
-      snippet: composeDraft.body.slice(0, 120),
-      bodyParagraphs: composeDraft.body.split('\n\n'),
+      toList: to || 'client@acmeholdings.com',
+      subject: subject || '(No subject)',
+      snippet: body.replace(/\s+/g, ' ').slice(0, 120),
+      bodyParagraphs: body.split('\n\n'),
       timeShort: 'Just now',
       fullTimestamp: 'Just now',
       dateGroup: 'Today',
@@ -108,7 +118,50 @@ export function InboxWorkspace({
       attachments: [],
     };
     setThreads((prev) => [sentItem, ...prev]);
+  }
+
+  function sendComposedMail(e: Event) {
+    e.preventDefault();
+    if (!composeDraft) return;
+    appendSentMessage(composeDraft.to, composeDraft.subject, composeDraft.body);
     setComposeDraft(null);
+    setReplyTermHistory([]);
+    setReplyTermInput('');
+  }
+
+  function openComposeModal(
+    subject = '',
+    to = '',
+    prefilledBody = '',
+    contextThread?: MailThreadItem
+  ) {
+    setComposeDraft({ to, subject, body: prefilledBody, contextThread });
+    setReplyTermHistory([]);
+    setReplyTermInput('');
+  }
+
+  function applyDraftInReply(tone: ReplyDraftTone) {
+    if (!composeDraft) return;
+    if (composeDraft.contextThread) {
+      const generated = generateMailReplyDraft(composeDraft.contextThread, tone);
+      setComposeDraft((prev) => (prev ? { ...prev, body: generated } : prev));
+      return;
+    }
+    const fallback =
+      tone === 'concise'
+        ? 'Confirmed — we have verified the underlying schedules and cleared this item.\n\nElena'
+        : 'Hi,\n\nPlease find our confirmation following review of the underlying ledger and supporting schedules.\n\nBest regards,\nElena Carter';
+    setComposeDraft((prev) => (prev ? { ...prev, body: fallback } : prev));
+  }
+
+  function runReplyTerminal(e: Event) {
+    e.preventDefault();
+    const q = replyTermInput.trim();
+    if (!q || !composeDraft) return;
+    const baseThread = composeDraft.contextThread ?? threads[0]!;
+    const res = queryMailTerminal(baseThread, q);
+    setReplyTermHistory((prev) => [...prev, res]);
+    setReplyTermInput('');
   }
 
   const ActiveRenderer = provider === 'gmail' ? GmailView : OutlookView;
@@ -125,10 +178,9 @@ export function InboxWorkspace({
           onToggleFlag={toggleFlag}
           onMarkRead={markRead}
           onArchive={archiveThread}
-          onOpenCompose={(subject = '', to = '') =>
-            setComposeDraft({ to, subject, body: '' })
-          }
-          onOpenFullStage={onOpenFullStage}
+          onOpenCompose={openComposeModal}
+          onSendQuickReply={appendSentMessage}
+          onNavigateSource={onNavigateSource}
         />
       ) : (
         <div class="launchpad-scroll">
@@ -137,59 +189,157 @@ export function InboxWorkspace({
       )}
 
       {composeDraft && (
-        <form class="compose-modal-card" onSubmit={sendComposedMail}>
+        <div class="compose-modal-card" role="dialog" aria-label="Compose message">
           <div class="inline-control-header">
-            <strong>New Message ({provider === 'gmail' ? 'Gmail' : 'Outlook'})</strong>
+            <strong>
+              {composeDraft.subject.startsWith('Re:') ? 'Reply' : 'New Message'} (
+              {provider === 'gmail' ? 'Gmail' : 'Outlook'})
+            </strong>
             <button
               type="button"
               class="icon-action-btn"
+              aria-label="Close composer"
               onClick={() => setComposeDraft(null)}
             >
               ×
             </button>
           </div>
-          <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <input
-              type="text"
-              class="profile-input"
-              placeholder="To"
-              value={composeDraft.to}
-              onInput={(e) =>
-                setComposeDraft((d) =>
-                  d ? { ...d, to: (e.currentTarget as HTMLInputElement).value } : d
-                )
-              }
-            />
-            <input
-              type="text"
-              class="profile-input"
-              placeholder="Subject"
-              value={composeDraft.subject}
-              onInput={(e) =>
-                setComposeDraft((d) =>
-                  d ? { ...d, subject: (e.currentTarget as HTMLInputElement).value } : d
-                )
-              }
-            />
-            <textarea
-              rows={4}
-              class="profile-input"
-              placeholder="Write message…"
-              value={composeDraft.body}
-              onInput={(e) =>
-                setComposeDraft((d) =>
-                  d ? { ...d, body: (e.currentTarget as HTMLTextAreaElement).value } : d
-                )
-              }
-            />
-          </div>
-          <div class="inline-control-footer">
-            <span class="sheet-meta-count">From {senderEmail}</span>
-            <button type="submit" class="primary-action-pill is-sm">
-              Send
+
+          <div class="compose-draft-assist-bar">
+            <span class="mail-sources-label">Draft</span>
+            <button
+              type="button"
+              class="mail-tone-btn"
+              onClick={() => applyDraftInReply('standard')}
+            >
+              Generate response
+            </button>
+            <button
+              type="button"
+              class="mail-tone-btn"
+              onClick={() => applyDraftInReply('concise')}
+            >
+              Concise
+            </button>
+            <button
+              type="button"
+              class="mail-tone-btn"
+              onClick={() => applyDraftInReply('pushback')}
+            >
+              Request backup
             </button>
           </div>
-        </form>
+
+          <form onSubmit={sendComposedMail}>
+            <div class="compose-fields-stack">
+              <input
+                type="text"
+                class="profile-input"
+                placeholder="To"
+                value={composeDraft.to}
+                onInput={(e) =>
+                  setComposeDraft((d) =>
+                    d ? { ...d, to: (e.currentTarget as HTMLInputElement).value } : d
+                  )
+                }
+              />
+              <input
+                type="text"
+                class="profile-input"
+                placeholder="Subject"
+                value={composeDraft.subject}
+                onInput={(e) =>
+                  setComposeDraft((d) =>
+                    d ? { ...d, subject: (e.currentTarget as HTMLInputElement).value } : d
+                  )
+                }
+              />
+              <textarea
+                rows={5}
+                class="profile-input compose-body-area"
+                placeholder="Write message or click 'Generate response'…"
+                value={composeDraft.body}
+                onInput={(e) =>
+                  setComposeDraft((d) =>
+                    d ? { ...d, body: (e.currentTarget as HTMLTextAreaElement).value } : d
+                  )
+                }
+              />
+            </div>
+
+            <div class="inline-control-footer">
+              <span class="sheet-meta-count">From {senderEmail}</span>
+              <button type="submit" class="primary-action-pill is-sm">
+                Send
+              </button>
+            </div>
+          </form>
+
+          <div class="compose-terminal-footer">
+            {replyTermHistory.map((ex) => (
+              <div key={ex.id} class="mail-terminal-entry is-compact">
+                <div class="mail-term-q">
+                  <span class="mail-term-prompt">›</span>
+                  <span>{ex.question}</span>
+                </div>
+                <div class="mail-term-a">{ex.answer}</div>
+                <div class="mail-term-actions">
+                  {ex.citations.map((cit) => (
+                    <button
+                      key={cit.id}
+                      type="button"
+                      class="mail-deeplink-chip"
+                      onClick={() =>
+                        onNavigateSource({
+                          pluginRoute: cit.pluginRoute,
+                          anchor: cit.anchor,
+                          connectorId: cit.connectorId,
+                        })
+                      }
+                    >
+                      <span class="mail-deeplink-kind">{cit.kindLabel}</span>
+                      <span>{cit.label} ↗</span>
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    class="mail-term-insert-btn"
+                    onClick={() =>
+                      setComposeDraft((d) =>
+                        d
+                          ? {
+                              ...d,
+                              body: d.body.trim()
+                                ? `${d.body.trim()}\n\n${ex.answer}`
+                                : ex.answer,
+                            }
+                          : d
+                      )
+                    }
+                  >
+                    Insert ↵
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <form class="mail-terminal-form" onSubmit={runReplyTerminal}>
+              <span class="mail-term-prompt" aria-hidden="true">
+                ›
+              </span>
+              <input
+                type="text"
+                class="mail-terminal-input"
+                placeholder="Ask terminal while replying (e.g. 'check variance' or 'cite §4.2')…"
+                value={replyTermInput}
+                onInput={(e) => setReplyTermInput((e.currentTarget as HTMLInputElement).value)}
+              />
+              <button type="submit" class="mail-term-run-btn">
+                Ask ↵
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

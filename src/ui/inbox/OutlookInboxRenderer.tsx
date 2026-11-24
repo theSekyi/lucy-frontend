@@ -6,6 +6,7 @@ import { BlockSlot } from '../BlockSlot';
 import { GmailLogo, OutlookLogo } from '../connectors/connectorLogos';
 import { PanelToggleIcon, SearchIcon } from '../icons';
 import type { MailProviderViewProps } from './GmailInboxRenderer';
+import { MailIntelligencePanel } from './MailIntelligencePanel';
 
 const DATE_GROUPS = ['Today', 'Yesterday', 'Last Week'] as const;
 
@@ -56,7 +57,8 @@ export function OutlookInboxRenderer({
   onMarkRead,
   onArchive,
   onOpenCompose,
-  onOpenFullStage,
+  onSendQuickReply,
+  onNavigateSource,
 }: MailProviderViewProps) {
   const [folder, setFolder] = useState<MailFolder | 'flagged'>('inbox');
   const [isFolderPaneOpen, setIsFolderPaneOpen] = useState(true);
@@ -213,7 +215,12 @@ export function OutlookInboxRenderer({
               type="button"
               class="outlook-cmd-btn"
               onClick={() =>
-                onOpenCompose(`Re: ${activeMail.subject}`, activeMail.senderEmail)
+                onOpenCompose(
+                  `Re: ${activeMail.subject}`,
+                  activeMail.senderEmail,
+                  '',
+                  activeMail
+                )
               }
             >
               ↩ Reply
@@ -497,7 +504,12 @@ export function OutlookInboxRenderer({
                     type="button"
                     class="ghost-pill"
                     onClick={() =>
-                      onOpenCompose(`Re: ${activeMail.subject}`, activeMail.senderEmail)
+                      onOpenCompose(
+                        `Re: ${activeMail.subject}`,
+                        activeMail.senderEmail,
+                        '',
+                        activeMail
+                      )
                     }
                   >
                     ↩ Reply
@@ -554,7 +566,9 @@ export function OutlookInboxRenderer({
                       <button
                         type="button"
                         class="ghost-pill"
-                        onClick={() => onOpenFullStage(previewBlock.att.pluginRoute)}
+                        onClick={() =>
+                          onNavigateSource({ pluginRoute: previewBlock.att.pluginRoute })
+                        }
                       >
                         Open in Split Stage ↗
                       </button>
@@ -575,6 +589,27 @@ export function OutlookInboxRenderer({
                   />
                 </div>
               )}
+
+              <MailIntelligencePanel
+                thread={activeMail}
+                onNavigateSource={onNavigateSource}
+                onPreviewInlineRoute={(route) => {
+                  const matchedAtt = activeMail.attachments.find(
+                    (a) => a.pluginRoute === route
+                  );
+                  if (matchedAtt) void inspectAttachment(matchedAtt);
+                  else onNavigateSource({ pluginRoute: route });
+                }}
+                onSendQuickReply={onSendQuickReply}
+                onOpenInReplyComposer={(body) =>
+                  onOpenCompose(
+                    `Re: ${activeMail.subject}`,
+                    activeMail.senderEmail,
+                    body,
+                    activeMail
+                  )
+                }
+              />
             </>
           ) : (
             <div class="daily-brief-body">Select a message to read.</div>

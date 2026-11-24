@@ -11,6 +11,7 @@ import type { ContentBlock, InboxProvider } from '../../core/types';
 import { BlockSlot } from '../BlockSlot';
 import { GmailLogo, OutlookLogo } from '../connectors/connectorLogos';
 import { SearchIcon } from '../icons';
+import { MailIntelligencePanel, type DeepLinkTarget } from './MailIntelligencePanel';
 
 export interface MailProviderViewProps {
   readonly threads: ReadonlyArray<MailThreadItem>;
@@ -21,8 +22,14 @@ export interface MailProviderViewProps {
   readonly onToggleFlag: (id: string) => void;
   readonly onMarkRead: (id: string, unread: boolean) => void;
   readonly onArchive: (id: string) => void;
-  readonly onOpenCompose: (replySubject?: string, replyTo?: string) => void;
-  readonly onOpenFullStage: (pluginRoute: string) => void;
+  readonly onOpenCompose: (
+    replySubject?: string,
+    replyTo?: string,
+    prefilledBody?: string,
+    contextThread?: MailThreadItem
+  ) => void;
+  readonly onSendQuickReply: (to: string, subject: string, body: string) => void;
+  readonly onNavigateSource: (target: DeepLinkTarget) => void;
 }
 
 const GMAIL_LABELS: ReadonlyArray<{ text: string; color: string }> = [
@@ -40,7 +47,8 @@ export function GmailInboxRenderer({
   onMarkRead,
   onArchive,
   onOpenCompose,
-  onOpenFullStage,
+  onSendQuickReply,
+  onNavigateSource,
 }: MailProviderViewProps) {
   const [folder, setFolder] = useState<MailFolder>('inbox');
   const [category, setCategory] = useState<GmailCategory>('primary');
@@ -395,7 +403,12 @@ export function GmailInboxRenderer({
                     type="button"
                     class="ghost-pill"
                     onClick={() =>
-                      onOpenCompose(`Re: ${openedThread.subject}`, openedThread.senderEmail)
+                      onOpenCompose(
+                        `Re: ${openedThread.subject}`,
+                        openedThread.senderEmail,
+                        '',
+                        openedThread
+                      )
                     }
                   >
                     ↩ Reply
@@ -451,7 +464,9 @@ export function GmailInboxRenderer({
                         <button
                           type="button"
                           class="ghost-pill"
-                          onClick={() => onOpenFullStage(previewBlock.att.pluginRoute)}
+                          onClick={() =>
+                            onNavigateSource({ pluginRoute: previewBlock.att.pluginRoute })
+                          }
                         >
                           Open in Split Stage ↗
                         </button>
@@ -472,6 +487,27 @@ export function GmailInboxRenderer({
                     />
                   </div>
                 )}
+
+                <MailIntelligencePanel
+                  thread={openedThread}
+                  onNavigateSource={onNavigateSource}
+                  onPreviewInlineRoute={(route) => {
+                    const matchedAtt = openedThread.attachments.find(
+                      (a) => a.pluginRoute === route
+                    );
+                    if (matchedAtt) void inspectAttachmentInline(matchedAtt);
+                    else onNavigateSource({ pluginRoute: route });
+                  }}
+                  onSendQuickReply={onSendQuickReply}
+                  onOpenInReplyComposer={(body) =>
+                    onOpenCompose(
+                      `Re: ${openedThread.subject}`,
+                      openedThread.senderEmail,
+                      body,
+                      openedThread
+                    )
+                  }
+                />
               </div>
             </>
           ) : (

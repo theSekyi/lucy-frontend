@@ -8,184 +8,137 @@ interface ConnectorDefinition {
   readonly id: string;
   readonly name: string;
   readonly category: ConnectorCategory;
-  readonly summary: string;
-  readonly scopeLabel: string;
+  readonly tag: string;
   readonly inboxTarget?: InboxProvider;
 }
 
 const CATEGORY_GROUPS: ReadonlyArray<{
   readonly id: ConnectorCategory;
-  readonly shortTab: string;
-  readonly title: string;
-  readonly subtitle: string;
+  readonly label: string;
 }> = [
-  {
-    id: 'email',
-    shortTab: 'Email',
-    title: 'Email & Client Communications',
-    subtitle: 'Sync client threads, PBC attachments, HMRC notices, and engagement approvals.',
-  },
-  {
-    id: 'ledgers',
-    shortTab: 'Ledgers & ERP',
-    title: 'General Ledgers & ERP',
-    subtitle: 'Pull unadjusted trial balances, GL drill-downs, and stage balanced AJEs.',
-  },
-  {
-    id: 'tax',
-    shortTab: 'HMRC & Tax',
-    title: 'HMRC, Tax & Statutory Authorities',
-    subtitle: 'Making Tax Digital (VAT / ITSA / CT600), statutory accounts, and tax prep bridges.',
-  },
-  {
-    id: 'practice',
-    shortTab: 'Practice & Audit',
-    title: 'Practice Management & Audit Workpapers',
-    subtitle: 'Client workflows, engagement letters, OCR invoice capture, and audit binders.',
-  },
-  {
-    id: 'banking',
-    shortTab: 'Banking & Payroll',
-    title: 'Open Banking, Payroll & Billing Feeds',
-    subtitle: 'Direct bank statement cutoff feeds, merchant settlements, and payroll registers.',
-  },
+  { id: 'email', label: 'Email' },
+  { id: 'ledgers', label: 'Ledgers & ERP' },
+  { id: 'tax', label: 'Tax & HMRC' },
+  { id: 'practice', label: 'Practice & Audit' },
+  { id: 'banking', label: 'Banking & Payroll' },
 ];
 
 const CONNECTORS: ReadonlyArray<ConnectorDefinition> = [
   {
     id: 'gmail',
-    name: 'Google Workspace (Gmail)',
+    name: 'Google Workspace',
     category: 'email',
-    summary: 'Client mail threads, labels, and attachment ingestion.',
-    scopeLabel: 'OAuth 2.0 · Read / Draft',
+    tag: 'Gmail · Labels · Attachments',
     inboxTarget: 'gmail',
   },
   {
     id: 'outlook',
-    name: 'Microsoft Outlook (365)',
+    name: 'Microsoft 365 Outlook',
     category: 'email',
-    summary: 'Focused/Other mail, categories, flags, and Teams filing deadlines.',
-    scopeLabel: 'MS Graph · Mail & Calendar',
+    tag: 'Mail · Categories · Teams',
     inboxTarget: 'outlook',
   },
   {
     id: 'xero',
     name: 'Xero',
     category: 'ledgers',
-    summary: 'Multi-currency ledger, VAT returns, bank feeds, and manual journals.',
-    scopeLabel: 'Advisor API · Live Sync',
+    tag: 'GL · VAT · Manual journals',
   },
   {
     id: 'quickbooks',
-    name: 'Intuit QuickBooks Online',
+    name: 'QuickBooks Online',
     category: 'ledgers',
-    summary: 'Chart of accounts, class tracking, subledgers, and AJE posting.',
-    scopeLabel: 'QBO Accounting API',
+    tag: 'Chart of accounts · AJEs',
   },
   {
     id: 'sage',
-    name: 'Sage Intacct & Sage 50',
+    name: 'Sage Intacct & 50',
     category: 'ledgers',
-    summary: 'Multi-entity dimensional GL, consolidations, and UK VAT.',
-    scopeLabel: 'REST / XML Gateway',
+    tag: 'Multi-entity GL · UK VAT',
   },
   {
     id: 'netsuite',
     name: 'Oracle NetSuite',
     category: 'ledgers',
-    summary: 'OneWorld subsidiaries, ASC 606 revenue schedules, and close checklists.',
-    scopeLabel: 'SuiteTalk · US & UK Subs',
+    tag: 'OneWorld · ASC 606 · Close',
   },
   {
     id: 'freeagent',
     name: 'FreeAgent',
     category: 'ledgers',
-    summary: 'UK contractor & SMB bookkeeping, CIS, and self-assessment feeds.',
-    scopeLabel: 'Practice Partner API',
+    tag: 'SMB ledger · CIS',
   },
   {
     id: 'hmrc-mtd',
     name: 'HMRC Making Tax Digital',
     category: 'tax',
-    summary: 'Direct MTD VAT obligations, Corporation Tax (CT600), and ITSA status.',
-    scopeLabel: 'Gov.uk OAuth · Agent ASA',
+    tag: 'VAT · CT600 · ITSA',
   },
   {
     id: 'companies-house',
-    name: 'Companies House (UK)',
+    name: 'Companies House',
     category: 'tax',
-    summary: 'Confirmation statements (CS01), iXBRL accounts filing dates, and PSCs.',
-    scopeLabel: 'CHS Streaming API',
+    tag: 'iXBRL accounts · CS01',
   },
   {
     id: 'cch-axcess',
     name: 'Wolters Kluwer CCH Axcess',
     category: 'tax',
-    summary: 'Corporate 1120 / partnership 1065 trial-balance import & M-1/K-1 export.',
-    scopeLabel: 'Open Integration Kit',
+    tag: '1120 / 1065 · Schedule M-1',
   },
   {
     id: 'ultratax',
     name: 'Thomson Reuters UltraTax CS',
     category: 'tax',
-    summary: 'Multi-state apportionment workpapers and federal tax bridges.',
-    scopeLabel: 'CS Connect Bridge',
+    tag: 'Federal & state bridges',
   },
   {
     id: 'iris-tax',
-    name: 'IRIS Elements Tax & Accounts',
+    name: 'IRIS Elements',
     category: 'tax',
-    summary: 'FRS 102 / 105 accounts production and UK personal/corporate tax.',
-    scopeLabel: 'IRIS OpenAPI',
+    tag: 'FRS 102 / 105 · UK tax',
   },
   {
     id: 'karbon',
     name: 'Karbon',
     category: 'practice',
-    summary: 'Practice worklists, client tasks, PBC chasers, and partner sign-off.',
-    scopeLabel: 'Webhooks + REST',
+    tag: 'Workflows · PBC tasks',
   },
   {
     id: 'caseware',
     name: 'Caseware Cloud',
     category: 'practice',
-    summary: 'Audit engagement binders, lead schedules, materiality, and tickmarks.',
-    scopeLabel: 'Working Papers Sync',
+    tag: 'Audit binders · Lead schedules',
   },
   {
     id: 'dext',
     name: 'Dext Prepare',
     category: 'practice',
-    summary: 'Optical supplier invoice & expense receipt extraction for vouching.',
-    scopeLabel: 'Receipt Image + OCR',
+    tag: 'Invoice & receipt capture',
   },
   {
     id: 'ignition',
     name: 'Ignition',
     category: 'practice',
-    summary: 'Signed engagement letters, scope verification, and recurring billing.',
-    scopeLabel: 'Engagement Scope API',
+    tag: 'Engagement letters · Scope',
   },
   {
     id: 'open-banking',
     name: 'Open Banking UK / Plaid',
     category: 'banking',
-    summary: 'Direct Barclays, HSBC, NatWest, Lloyds & Chase cutoff bank statements.',
-    scopeLabel: 'FCA AIS · Read-Only',
+    tag: 'Direct bank statement feeds',
   },
   {
     id: 'stripe',
     name: 'Stripe',
     category: 'banking',
-    summary: 'Gross-to-net payout batches, processing fees, and ASC 606 billing.',
-    scopeLabel: 'Read-Only Balance API',
+    tag: 'Payouts · Fees · Billing',
   },
   {
     id: 'gusto',
-    name: 'Gusto Payroll',
+    name: 'Gusto',
     category: 'banking',
-    summary: 'Payroll registers, employer tax liabilities, and accrued PTO.',
-    scopeLabel: 'Payroll Journal API',
+    tag: 'Payroll registers · Liabilities',
   },
 ];
 
@@ -193,158 +146,136 @@ interface ConnectorsPageProps {
   readonly connectedIds: ReadonlyArray<string>;
   readonly onToggleConnector: (id: string) => void;
   readonly onOpenInboxProvider: (provider: InboxProvider) => void;
-  readonly onNavigate: (section: NavSection) => void;
+  readonly onNavigate?: (section: NavSection) => void;
 }
 
 export function ConnectorsPage({
   connectedIds,
   onToggleConnector,
   onOpenInboxProvider,
-  onNavigate,
 }: ConnectorsPageProps) {
-  const [filterCat, setFilterCat] = useState<'all' | 'connected' | ConnectorCategory>('all');
+  const [filterCat, setFilterCat] = useState<'all' | 'active' | ConnectorCategory>('all');
   const [query, setQuery] = useState('');
 
   const q = query.trim().toLowerCase();
 
   return (
     <div class="launchpad-scroll">
-      <div class="connectors-container">
-        <header class="connectors-page-header">
-          <div>
+      <div class="connectors-sleek-wrap">
+        <header class="connectors-sleek-header">
+          <div class="connectors-title-row">
             <h1 class="hero-title">Connectors</h1>
-            <p class="daily-brief-body" style={{ marginTop: '6px' }}>
-              Connect client ledgers, HMRC gateways, practice tools, and firm mailboxes.
-            </p>
+            <span class="connectors-active-tally">
+              {connectedIds.length} of {CONNECTORS.length} active
+            </span>
           </div>
 
-          <div class="stage-subbar-group">
-            <span class="cell-pill tone-good">{connectedIds.length} Connected</span>
-            <input
-              type="search"
-              class="connectors-search-input"
-              placeholder="Filter software…"
-              value={query}
-              onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-            />
-          </div>
+          <input
+            type="search"
+            class="connectors-minimal-search"
+            placeholder="Filter…"
+            value={query}
+            onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+          />
         </header>
 
-        <div class="connectors-filter-bar" role="tablist">
+        <nav class="connectors-tab-strip" aria-label="Filter integrations">
           <button
             type="button"
-            class={`metric-chip ${filterCat === 'all' ? 'is-active' : ''}`}
+            class={`conn-tab-btn ${filterCat === 'all' ? 'is-active' : ''}`}
             onClick={() => setFilterCat('all')}
           >
-            All ({CONNECTORS.length})
+            All
           </button>
           <button
             type="button"
-            class={`metric-chip ${filterCat === 'connected' ? 'is-active' : ''}`}
-            onClick={() => setFilterCat('connected')}
+            class={`conn-tab-btn ${filterCat === 'active' ? 'is-active' : ''}`}
+            onClick={() => setFilterCat('active')}
           >
-            Connected ({connectedIds.length})
+            Active ({connectedIds.length})
           </button>
           {CATEGORY_GROUPS.map((g) => (
             <button
               key={g.id}
               type="button"
-              class={`metric-chip ${filterCat === g.id ? 'is-active' : ''}`}
+              class={`conn-tab-btn ${filterCat === g.id ? 'is-active' : ''}`}
               onClick={() => setFilterCat(g.id)}
             >
-              {g.shortTab}
+              {g.label}
             </button>
           ))}
-          <button
-            type="button"
-            class="ghost-pill"
-            style={{ marginLeft: 'auto' }}
-            onClick={() => onNavigate('profile')}
-          >
-            Firm Profile →
-          </button>
-        </div>
+        </nav>
 
-        {CATEGORY_GROUPS.map((group) => {
-          if (filterCat !== 'all' && filterCat !== 'connected' && filterCat !== group.id) {
-            return null;
-          }
-
-          const items = CONNECTORS.filter((item) => {
-            if (item.category !== group.id) return false;
-            if (filterCat === 'connected' && !connectedIds.includes(item.id)) return false;
-            if (
-              q &&
-              !item.name.toLowerCase().includes(q) &&
-              !item.summary.toLowerCase().includes(q)
-            ) {
-              return false;
+        <div class="connectors-groups-stack">
+          {CATEGORY_GROUPS.map((group) => {
+            if (filterCat !== 'all' && filterCat !== 'active' && filterCat !== group.id) {
+              return null;
             }
-            return true;
-          });
 
-          if (items.length === 0) return null;
+            const items = CONNECTORS.filter((item) => {
+              if (item.category !== group.id) return false;
+              if (filterCat === 'active' && !connectedIds.includes(item.id)) return false;
+              if (
+                q &&
+                !item.name.toLowerCase().includes(q) &&
+                !item.tag.toLowerCase().includes(q)
+              ) {
+                return false;
+              }
+              return true;
+            });
 
-          return (
-            <section key={group.id} class="connector-group-section">
-              <div class="connector-group-heading">
-                <h2 class="connector-group-title">{group.title}</h2>
-                <span class="connector-group-sub">{group.subtitle}</span>
-              </div>
+            if (items.length === 0) return null;
 
-              <div class="connector-cards-grid">
-                {items.map((item) => {
-                  const isConnected = connectedIds.includes(item.id);
-                  const Logo = CONNECTOR_LOGOS[item.id];
+            return (
+              <section key={group.id} class="conn-group">
+                <h2 class="conn-group-label">{group.label}</h2>
 
-                  return (
-                    <article
-                      key={item.id}
-                      class={`connector-card ${isConnected ? 'is-connected' : ''}`}
-                    >
-                      <div class="connector-card-top">
-                        <div class="connector-logo-box">
-                          {Logo && <Logo size={24} />}
+                <div class="conn-list-box">
+                  {items.map((item) => {
+                    const isOn = connectedIds.includes(item.id);
+                    const Logo = CONNECTOR_LOGOS[item.id];
+
+                    return (
+                      <div key={item.id} class="conn-row">
+                        <div class="conn-row-left">
+                          <span class="conn-row-logo">
+                            {Logo && <Logo size={18} />}
+                          </span>
+                          <span class="conn-row-name">{item.name}</span>
+                          <span class="conn-row-tag">{item.tag}</span>
                         </div>
-                        <div class="connector-title-wrap">
-                          <strong class="connector-name">{item.name}</strong>
-                          <span class="connector-scope">{item.scopeLabel}</span>
-                        </div>
-                        <span class={`conn-status-dot ${isConnected ? 'is-on' : ''}`} />
-                      </div>
 
-                      <p class="connector-desc">{item.summary}</p>
+                        <div class="conn-row-right">
+                          {item.inboxTarget && isOn && (
+                            <button
+                              type="button"
+                              class="conn-open-link"
+                              onClick={() => onOpenInboxProvider(item.inboxTarget!)}
+                            >
+                              Inbox ↗
+                            </button>
+                          )}
 
-                      <div class="connector-card-footer">
-                        {item.inboxTarget && isConnected ? (
                           <button
                             type="button"
-                            class="ghost-pill"
-                            onClick={() => onOpenInboxProvider(item.inboxTarget!)}
+                            role="switch"
+                            aria-checked={isOn}
+                            aria-label={`Toggle ${item.name}`}
+                            class={`conn-switch ${isOn ? 'is-on' : ''}`}
+                            onClick={() => onToggleConnector(item.id)}
                           >
-                            Open Inbox →
+                            <span class="conn-switch-thumb" />
                           </button>
-                        ) : (
-                          <span class="sheet-meta-count">
-                            {isConnected ? 'Synced · Read-only safe' : 'Not connected'}
-                          </span>
-                        )}
-
-                        <button
-                          type="button"
-                          class={isConnected ? 'ghost-pill' : 'primary-action-pill is-sm'}
-                          onClick={() => onToggleConnector(item.id)}
-                        >
-                          {isConnected ? 'Disconnect' : 'Connect'}
-                        </button>
+                        </div>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -9,8 +9,10 @@ import {
   selectSidebarRecentTopics,
   type WorkspaceController,
 } from '../core/workspace';
+import type { FirmAdminPage as FirmAdminPageComponent } from './admin/FirmAdminPage';
 import type { ConnectorsPage as ConnectorsPageComponent } from './connectors/ConnectorsPage';
 import type { InboxWorkspace as InboxWorkspaceComponent } from './inbox/InboxWorkspace';
+import type { DeepLinkTarget } from './inbox/MailIntelligencePanel';
 import { Launchpad } from './Launchpad';
 import type { ProfilePage as ProfilePageComponent } from './ProfilePage';
 import { Sidebar } from './Sidebar';
@@ -29,6 +31,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
   const [ConnectorsLoaded, setConnectorsLoaded] =
     useState<typeof ConnectorsPageComponent | null>(null);
   const [InboxLoaded, setInboxLoaded] = useState<typeof InboxWorkspaceComponent | null>(null);
+  const [AdminLoaded, setAdminLoaded] = useState<typeof FirmAdminPageComponent | null>(null);
 
   useEffect(() => workspace.subscribe(setState), [workspace]);
 
@@ -44,6 +47,10 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       }
       if (rawPage === 'connectors') {
         workspace.selectSection('connectors');
+        return;
+      }
+      if (rawPage === 'admin') {
+        workspace.selectSection('admin');
         return;
       }
       if (rawPage === 'inbox' || rawProvider === 'gmail' || rawProvider === 'outlook') {
@@ -111,6 +118,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     } else if (
       state.activeSection === 'profile' ||
       state.activeSection === 'connectors' ||
+      state.activeSection === 'admin' ||
       state.activeSection === 'tasks'
     ) {
       nextUrl.searchParams.set('page', state.activeSection);
@@ -154,6 +162,12 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       );
       return;
     }
+    if (state.activeSection === 'admin' && !AdminLoaded) {
+      void import('./admin/FirmAdminPage').then((mod) =>
+        setAdminLoaded(() => mod.FirmAdminPage)
+      );
+      return;
+    }
     if (state.networkStatus === 'online' && !ThreadViewLoaded && state.activeSection === 'home') {
       const timer = setTimeout(() => {
         void import('./ThreadView').then((mod) => setThreadViewLoaded(() => mod.ThreadView));
@@ -168,6 +182,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     ProfileLoaded,
     ConnectorsLoaded,
     InboxLoaded,
+    AdminLoaded,
   ]);
 
   useEffect(() => {
@@ -221,10 +236,20 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     ? selectFilteredTopics(state)
     : selectHomeRecentTopics(state);
 
-  async function handleOpenFullStageFromMail(pluginRoute: string) {
-    const matched = registry.findByRoute(pluginRoute);
-    if (matched) {
-      await workspace.launchPluginSample(matched.id);
+  async function handleNavigateDeepLink(target: DeepLinkTarget) {
+    if (target.pluginRoute) {
+      const matched = registry.findByRoute(target.pluginRoute);
+      if (matched) {
+        const topicId = await workspace.launchPluginSample(matched.id);
+        if (topicId && target.anchor) {
+          const blockId = workspace.getState().inspectedBlockId;
+          if (blockId) workspace.inspectArtifact(blockId, target.anchor);
+        }
+        return;
+      }
+    }
+    if (target.connectorId) {
+      workspace.selectSection('connectors');
     }
   }
 
@@ -294,7 +319,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
               senderName={state.userProfile.fullName}
               onSwitchProvider={(provider) => workspace.setInboxProvider(provider)}
               onUnreadCountChange={(count) => workspace.setUnreadInboxCount(count)}
-              onOpenFullStage={(route) => void handleOpenFullStageFromMail(route)}
+              onNavigateSource={(target) => void handleNavigateDeepLink(target)}
             />
           ) : (
             <div class="launchpad-scroll">
@@ -312,6 +337,14 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
           ) : (
             <div class="launchpad-scroll">
               <div class="renderer-skeleton">Loading connectors…</div>
+            </div>
+          )
+        ) : state.activeSection === 'admin' ? (
+          AdminLoaded ? (
+            <AdminLoaded onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)} />
+          ) : (
+            <div class="launchpad-scroll">
+              <div class="renderer-skeleton">Loading firm admin…</div>
             </div>
           )
         ) : state.activeSection === 'profile' ? (

@@ -6,6 +6,7 @@ import type {
   UserProfile,
 } from '../core/types';
 import {
+  AdminIcon,
   BellIcon,
   BotItemIcon,
   ConnectorsIcon,
@@ -87,6 +88,7 @@ export function Sidebar({
   const isHomeActive = activeSection === 'home' && activeTopicId === null;
   const isInboxActive = activeSection === 'inbox' && activeTopicId === null;
   const isConnectorsActive = activeSection === 'connectors' && activeTopicId === null;
+  const isAdminActive = activeSection === 'admin' && activeTopicId === null;
   const isTasksActive = activeSection === 'tasks' && activeTopicId === null;
   const isProfileActive = activeSection === 'profile' && activeTopicId === null;
 
@@ -169,6 +171,15 @@ export function Sidebar({
           <ConnectorsIcon />
           <span>Connectors</span>
           <span class="nav-count-badge">{connectedCount}</span>
+        </button>
+
+        <button
+          type="button"
+          class={`nav-row ${isAdminActive ? 'is-active' : ''}`}
+          onClick={() => onSelectSection('admin')}
+        >
+          <AdminIcon />
+          <span>Firm Admin</span>
         </button>
 
         <button

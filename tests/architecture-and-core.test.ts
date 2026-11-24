@@ -1,7 +1,12 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { INITIAL_MAIL_THREADS } from '../src/core/inbox';
+import { createFirmAdminController } from '../src/core/admin';
+import {
+  generateMailReplyDraft,
+  INITIAL_MAIL_THREADS,
+  queryMailTerminal,
+} from '../src/core/inbox';
 import { createRendererRegistry } from '../src/core/renderers';
 import {
   createWorkspace,
@@ -92,7 +97,7 @@ describe('Separation of logic from presentation and strict plugin modularity', (
       const source = readFileSync(join(coreDir, file), 'utf8');
       expect(source).not.toMatch(/from\s+['"]preact/);
       expect(source).not.toMatch(/from\s+['"]\.\.\/(ui|plugins)/);
-      expect(source).not.toMatch(/\b(document\.|window\.|HTMLElement)/);
+      expect(source).not.toMatch(/\b(document|window)\.[A-Za-z_$]|\bHTMLElement\b/);
     }
   });
 
@@ -283,13 +288,61 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(notifyCount).toBe(0);
     unsub();
 
-    // Every attachment across Gmail & Outlook mail threads resolves to a registered modular plugin
+    // Every attachment & intelligence source pluginRoute across Gmail & Outlook resolves cleanly
     for (const thread of INITIAL_MAIL_THREADS) {
+      expect(thread.intelligence).toBeDefined();
+      expect(generateMailReplyDraft(thread, 'standard').length).toBeGreaterThan(20);
+      expect(generateMailReplyDraft(thread, 'concise').length).toBeGreaterThan(15);
+
       for (const att of thread.attachments) {
         const plugin = registry.findByRoute(att.pluginRoute);
         expect(plugin, `Missing plugin route "${att.pluginRoute}" on ${att.filename}`).toBeDefined();
       }
+      for (const src of thread.intelligence?.sources ?? []) {
+        if (src.pluginRoute) {
+          const plugin = registry.findByRoute(src.pluginRoute);
+          expect(plugin, `Missing source plugin route "${src.pluginRoute}" on ${src.label}`).toBeDefined();
+        }
+      }
     }
+
+    // Verify terminal Q&A answers grounded questions with deep-link citations
+    const msaThread = INITIAL_MAIL_THREADS.find((t) => t.id === 'mail-legal-msa')!;
+    const termRes = queryMailTerminal(msaThread, 'What is our liability cap in §4.2?');
+    expect(termRes.answer).toContain('3x trailing twelve-month');
+    expect(termRes.citations.some((c) => c.anchor === '§4.2')).toBe(true);
+  });
+
+  it('manages Firm Admin staff roster, safe engagement reassignment on removal, and governance controls', () => {
+    const admin = createFirmAdminController();
+    const initialCount = admin.getState().members.length;
+
+    const newId = admin.addMember({
+      fullName: 'Sophie Grant',
+      email: 's.grant@cartervance.co.uk',
+      title: 'Audit Associate',
+      department: 'Audit',
+      authority: 'Associate · Preparer',
+    });
+    expect(newId).toBeTruthy();
+    expect(admin.getState().members).toHaveLength(initialCount + 1);
+
+    // Assign an engagement to the new member, then remove her and verify automatic reassignment to Partner
+    const firstEngId = admin.getState().engagements[0]!.id;
+    admin.reassignEngagement(firstEngId, newId!);
+    expect(admin.getState().engagements[0]?.ownerId).toBe(newId);
+
+    admin.removeMember(newId!);
+    expect(admin.getState().members).toHaveLength(initialCount);
+    const reassignedOwnerId = admin.getState().engagements[0]!.ownerId;
+    expect(reassignedOwnerId).not.toBe(newId);
+    expect(admin.getState().members.some((m) => m.id === reassignedOwnerId)).toBe(true);
+
+    // Governance toggle flips cleanly
+    const polId = admin.getState().policies[0]!.id;
+    const beforePol = admin.getState().policies[0]!.enabled;
+    admin.togglePolicy(polId);
+    expect(admin.getState().policies[0]!.enabled).toBe(!beforePol);
   });
 });
 

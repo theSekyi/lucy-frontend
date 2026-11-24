@@ -81,6 +81,17 @@ export function ConnectorsIcon() {
   );
 }
 
+export function AdminIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+      <circle cx="6.2" cy="5.2" r="2.2" />
+      <path d="M2.4 13.2a3.8 3.8 0 0 1 7.6 0" stroke-linecap="round" />
+      <circle cx="11.4" cy="5.8" r="1.6" />
+      <path d="M11.2 9.8a3.1 3.1 0 0 1 2.6 3.1" stroke-linecap="round" />
+    </svg>
+  );
+}
+
 export function TasksIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
