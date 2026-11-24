@@ -141,13 +141,11 @@ export function App({ workspace, registry }: AppProps) {
               <div class="renderer-skeleton">Loading conversation…</div>
             </div>
           )
-        ) : state.activeSection === 'tasks' || state.activeSection === 'pages' ? (
+        ) : state.activeSection === 'tasks' ? (
           <div class="launchpad-scroll">
             <div class="launchpad-column section-overview">
               <div class="section-header-row">
-                <h1 class="hero-title">
-                  {state.activeSection === 'tasks' ? 'Tasks' : 'Pages'}
-                </h1>
+                <h1 class="hero-title">Tasks</h1>
                 <button
                   type="button"
                   class="ghost-pill"
@@ -157,15 +155,11 @@ export function App({ workspace, registry }: AppProps) {
                 </button>
               </div>
               <p class="daily-brief-body">
-                {state.activeSection === 'tasks'
-                  ? 'Active engineering issues and automated workflows.'
-                  : 'Structured workspace documents and exported spreadsheet briefs.'}
+                Active engineering issues and automated workflows.
               </p>
               <div class="recent-topics-list">
                 {state.topics
-                  .filter((t) =>
-                    state.activeSection === 'tasks' ? t.pinnedInSidebar : Boolean(t.turns.length)
-                  )
+                  .filter((t) => t.pinnedInSidebar)
                   .map((topic) => (
                     <button
                       key={topic.id}

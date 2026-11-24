@@ -1,4 +1,4 @@
-export type NavSection = 'home' | 'tasks' | 'pages';
+export type NavSection = 'home' | 'tasks';
 
 export type SidebarIconKind = 'hash' | 'bot' | 'spinner';
 

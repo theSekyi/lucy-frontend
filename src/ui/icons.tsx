@@ -74,17 +74,6 @@ export function TasksIcon() {
   );
 }
 
-export function PagesIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
-      <path d="M4 2.2h5.5L12.8 5.5v8.3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3.2a1 1 0 0 1 1-1Z" stroke-linejoin="round" />
-      <path d="M9.2 2.2v3.5h3.5" stroke-linejoin="round" />
-      <line x1="5.3" y1="8.5" x2="10.4" y2="8.5" stroke-linecap="round" />
-      <line x1="5.3" y1="11" x2="9" y2="11" stroke-linecap="round" />
-    </svg>
-  );
-}
-
 export function BotItemIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">

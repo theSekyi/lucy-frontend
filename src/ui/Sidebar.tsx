@@ -4,7 +4,6 @@ import {
   BotItemIcon,
   HomeIcon,
   LucyBrandMark,
-  PagesIcon,
   PanelToggleIcon,
   SearchIcon,
   SpinnerItemIcon,
@@ -139,15 +138,6 @@ export function Sidebar({
         >
           <TasksIcon />
           <span>Tasks</span>
-        </button>
-
-        <button
-          type="button"
-          class={`nav-row ${activeSection === 'pages' ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('pages')}
-        >
-          <PagesIcon />
-          <span>Pages</span>
         </button>
       </nav>
 
