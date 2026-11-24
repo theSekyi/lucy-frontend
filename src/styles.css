@@ -501,7 +501,9 @@ button {
 }
 
 .dropdown-popover.is-enterprise-menu {
-  width: 292px;
+  width: 304px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .popover-divider {

@@ -400,7 +400,7 @@ export function createWorkspace<TView = unknown>(
           ...state,
           activeSection: 'home',
           activeTopicId: targetTopicId,
-          inspectedBlockId: sample.artifact.id,
+          inspectedBlockId: plugin.placement === 'stage' ? sample.artifact.id : null,
           inspectedAnchor: sample.defaultAnchor ?? null,
           anchorPulse: sample.defaultAnchor ? state.anchorPulse + 1 : state.anchorPulse,
           topics,

@@ -135,17 +135,23 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(thread.turns[1]?.blocks.some((b) => b.kind === 'spreadsheet')).toBe(true);
   });
 
-  it('dynamically routes and launches all 6 plug-and-play enterprise stage renderers + citation anchors', async () => {
+  it('dynamically routes and launches all 13 stage & inline enterprise/accounting plugins + citation anchors', async () => {
     const registry = createDefaultRendererRegistry();
     const workspace = createWorkspace({ responseDelayMs: 0, registry });
 
     const stagePluginIds = [
+      'vouching',
+      'trial-balance',
+      'reconciliation',
+      'tax-bridge',
+      'rollforward',
       'spreadsheet',
       'cited-document',
       'redline',
       'sql-canvas',
       'topology',
       'slide-deck',
+      'code-workspace',
     ];
 
     for (const pluginId of stagePluginIds) {
@@ -160,12 +166,28 @@ describe('Headless Workspace state and offline resilience', () => {
         .find((b) => b.id === current.inspectedBlockId)!;
       expect(registry.resolve(block).id).toBe(pluginId);
 
-      // Verify lazy chunk loads and renders cleanly
       const loaded = await registry.loadRenderer(block);
       expect(typeof loaded.render).toBe('function');
     }
 
-    // Verify citation anchor deep-linking increments pulse even on repeated clause clicks
+    // Verify inline control plugins (AJE Gate & PBC Tracker) render inline without opening the side stage
+    for (const inlineId of ['journal-entry', 'pbc-tracker']) {
+      const topicId = await workspace.launchPluginSample(inlineId);
+      expect(topicId).toBeTruthy();
+      expect(workspace.getState().inspectedBlockId).toBeNull();
+
+      const activeTopic = workspace.getState().topics.find((t) => t.id === topicId)!;
+      const lastTurn = activeTopic.turns[activeTopic.turns.length - 1]!;
+      const inlineBlock = lastTurn.blocks[lastTurn.blocks.length - 1]!;
+      expect(registry.resolve(inlineBlock).id).toBe(inlineId);
+      expect(registry.resolve(inlineBlock).placement).toBe('inline');
+
+      const loaded = await registry.loadRenderer(inlineBlock);
+      expect(typeof loaded.render).toBe('function');
+    }
+
+    // Launch a stage plugin again to verify citation anchor & revision commits
+    await workspace.launchPluginSample('cited-document');
     const docId = workspace.getState().inspectedBlockId!;
     const initialPulse = workspace.getState().anchorPulse;
     workspace.inspectArtifact(docId, '§4.2');

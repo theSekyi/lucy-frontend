@@ -7,11 +7,18 @@ import {
 import { codeSnippetPlugin, codeWorkspacePlugin } from './code';
 import { contractPlugin } from './contract';
 import { slideDeckPlugin } from './deck';
+import { journalEntryPlugin } from './journal-entry';
+import { pbcTrackerPlugin } from './pbc-tracker';
 import { prosePlugin } from './prose';
+import { reconciliationPlugin } from './reconciliation';
 import { redlinePlugin } from './redline';
+import { rollforwardPlugin } from './rollforward';
 import { spreadsheetPlugin } from './spreadsheet';
 import { sqlCanvasPlugin } from './sql-canvas';
+import { taxBridgePlugin } from './tax-bridge';
 import { topologyPlugin } from './topology';
+import { trialBalancePlugin } from './trial-balance';
+import { vouchingPlugin } from './vouching';
 
 const fallbackPlugin: RendererPlugin<ComponentChildren> = {
   id: 'fallback-inspector',
@@ -41,14 +48,23 @@ const fallbackPlugin: RendererPlugin<ComponentChildren> = {
  */
 export const BUILTIN_PLUGINS: ReadonlyArray<RendererPlugin<ComponentChildren, any>> = [
   prosePlugin,
-  codeWorkspacePlugin,
-  codeSnippetPlugin,
-  spreadsheetPlugin,
+  // Accounting & Audit Suite (5 Stage Workpapers + 2 Inline ERP Controls)
+  vouchingPlugin,
+  trialBalancePlugin,
+  reconciliationPlugin,
+  taxBridgePlugin,
+  rollforwardPlugin,
+  journalEntryPlugin,
+  pbcTrackerPlugin,
+  // Enterprise General Suite
   contractPlugin,
   redlinePlugin,
   sqlCanvasPlugin,
   topologyPlugin,
   slideDeckPlugin,
+  spreadsheetPlugin,
+  codeWorkspacePlugin,
+  codeSnippetPlugin,
 ];
 
 export function createDefaultRendererRegistry(): RendererRegistry<ComponentChildren> {

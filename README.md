@@ -1,6 +1,6 @@
-# Lucy — Extensible Low-Latency TypeScript Workspace
+# Lucy Frontend (`lucy-frontend`)
 
-A minimal, strict-TypeScript workspace for **Lucy** engineered for **single-round-trip boot payloads (`18.62 KB` Brotli)**, **slow/offline network resilience**, **strict separation of headless logic from UI presentation**, and **zero-touch capability extensibility** (including lazy-loaded `.xlsx` and `.csv` spreadsheet rendering).
+A minimal, strict-TypeScript enterprise & accounting workspace engineered for **single-round-trip boot payloads (`~20 KB` Brotli)**, **slow/offline network resilience**, **strict separation of headless logic from UI presentation**, and **plug-and-play renderer modularity** (`src/plugins/<name>/index.ts`).
 
 ## Quick Start
 

@@ -1,0 +1,203 @@
+/* Shared ultra-lean styles for modular Accounting Workpaper & Inline Control Plugins */
+.acct-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.acct-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #15151a;
+  color: #a1a1aa;
+  font-weight: 600;
+  font-size: 11px;
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.acct-table th.is-num,
+.acct-table td.is-num {
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.acct-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: #e4e4e7;
+}
+
+.acct-row-clickable {
+  cursor: pointer;
+}
+
+.acct-row-clickable:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.acct-row-clickable.is-selected {
+  background: rgba(245, 158, 11, 0.09);
+}
+
+.acct-inline-num-input {
+  width: 86px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: right;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #f4f4f6;
+  outline: none;
+}
+
+.acct-inline-num-input:focus {
+  border-style: solid;
+  border-color: #f4f4f6;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Vouching Source Invoice Sheet */
+.vouch-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vouch-ledger-pane {
+  max-height: 42%;
+  overflow: auto;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.vouch-doc-pane {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 20px;
+  background: #0a0a0d;
+}
+
+.vouch-invoice-paper {
+  max-width: 620px;
+  margin: 0 auto;
+  background: #fbfaf7;
+  color: #1c1917;
+  border-radius: 6px;
+  padding: 22px 26px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  font-size: 12.5px;
+}
+
+.vouch-bbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1.5px solid #d97706;
+  background: rgba(251, 191, 36, 0.22);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  color: #1c1917;
+}
+
+.vouch-bbox.is-mismatch {
+  border-color: #dc2626;
+  background: rgba(239, 68, 68, 0.18);
+  color: #7f1d1d;
+}
+
+.tickmark-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tick-tied {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+.tick-exception {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.tick-pbc {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+/* Trial Balance Group & Drilldown */
+.tb-group-row td {
+  background: #121217;
+  font-weight: 600;
+  color: #d4d4d8;
+  cursor: pointer;
+}
+
+.tb-drilldown-row td {
+  background: #0d0d11;
+  padding: 10px 16px;
+}
+
+/* Reconciliation Cards */
+.recon-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: #131318;
+  padding: 11px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Tax Bridge Waterfall */
+.tax-waterfall-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* Inline Accounting Control Cards (AJE & PBC) */
+.inline-control-card {
+  border-radius: 11px;
+  border: 1px solid var(--border-strong);
+  background: #121217;
+  overflow: hidden;
+}
+
+.inline-control-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #17171d;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inline-control-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  background: #0f0f13;
+  border-top: 1px solid var(--border-subtle);
+}
