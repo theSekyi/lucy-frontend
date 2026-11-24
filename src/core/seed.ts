@@ -103,10 +103,10 @@ const INITIAL_MODELS: ReadonlyArray<ModelChoice> = [
 const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
   {
     id: 'topic-slack-bug-rule',
-    title: 'If "bug" is mentioned, tag <mention name="Issue Agent"> in channel',
-    sidebarTitle: 'If "bug" is mentioned, tag <mention n...',
+    title: 'Slack bug-routing rule for #engineering-bugs',
+    sidebarTitle: 'Slack bug-routing rule for #engineer...',
     preview:
-      "Here's what I've discovered and the situation: ⚠️ Setup Blockers No Discord bot is configured. Your agent only has a Slack bot connected (botId: 57878d5...",
+      'Slack webhook active (id: 57878d5f); Discord connector remains unconfigured.',
     dateLabel: 'May 12',
     sidebarIcon: 'hash',
     pinnedInSidebar: true,
@@ -121,7 +121,7 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
           {
             id: 'b-t1-u',
             kind: 'prose',
-            data: 'If "bug" is mentioned, tag <mention name="Issue Agent"> automatically and post a triage summary.',
+            data: 'Route messages mentioning "bug" to the issue triage queue and post a summary.',
           },
         ],
       },
@@ -134,7 +134,7 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
           {
             id: 'b-t1-a',
             kind: 'prose',
-            data: "Here's what I've discovered and the situation:\n\n⚠️ Setup Blockers\nNo Discord bot is configured. Your workspace currently has a Slack bot connected (botId: 57878d5f-92a1).\n\n• Slack trigger rule is ready to activate on #engineering-bugs.\n• Keyword matcher filters out automated test logs to keep noise low.",
+            data: '**Configuration status**\nSlack connector is active (id: `57878d5f-92a1`); no Discord connector is configured.\n\n• Trigger rule staged on `#engineering-bugs`.\n• Automated test-log noise excluded from matching.',
           },
         ],
       },
@@ -142,9 +142,9 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
   },
   {
     id: 'topic-github-triage',
-    title: 'I need to analyze GitHub issues from the lucy/workspace repository',
-     preview:
-      "All tasks are created and assigned. Here's the complete summary: ✅ Weekly Issue Triage Plan Created I analyzed 26 open issues from lucy/workspace (...",
+    title: 'Weekly issue triage — lucy/workspace (26 open)',
+    preview:
+      'Grouped 26 open repository issues across Runtime, Media Core, and Identity (28.5 est. hours).',
     dateLabel: 'May 12',
     listedOnHome: true,
     turns: [
@@ -157,7 +157,7 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
           {
             id: 'b-t2-u',
             kind: 'prose',
-            data: 'I need to analyze GitHub issues from the lucy/workspace repository and organize a weekly triage sheet.',
+            data: 'Organize the 26 open issues from lucy/workspace into a weekly triage workbook.',
           },
         ],
       },
@@ -170,7 +170,7 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
           {
             id: 'b-t2-a1',
             kind: 'prose',
-            data: "All tasks are created and assigned. Here's the complete summary:\n\n✅ Weekly Issue Triage Plan Created\nI analyzed 26 open issues from lucy/workspace and grouped the highest-leverage items into an interactive workbook so you can sort by severity or owner without cluttering this thread.",
+            data: 'Grouped 26 open issues from `lucy/workspace` by severity, squad capacity, and estimated clearance hours.',
           },
           {
             id: 'b-t2-sheet',
@@ -178,7 +178,7 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
             title: 'Weekly Issue Triage Plan',
             filename: 'Weekly_Issue_Triage_26_Issues.xlsx',
             mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            summary: '2 sheets · 6 priority issues mapped across Runtime, Media Core, and Identity (28.5 est. hours)',
+            summary: '2 sheets · 6 priority issues mapped across Runtime, Media Core, and Identity',
             data: SAMPLE_TRIAGE_WORKBOOK,
           },
         ],
@@ -208,42 +208,37 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
           },
           {
             id: 'b-t3-code',
-            kind: 'code',
-            title: 'normalizeReferenceFrame.ts',
-            summary: 'TypeScript · Clamps non-even dimensions before encoder handoff',
+            kind: 'code-workspace',
+            title: 'Media Frame Alignment Patch',
+            filename: 'media-frame-patch (4 files)',
+            summary: 'TS · PY · SQL · YAML — Keyframe aspect normalizer, validator & canary config',
             data: {
-              language: 'typescript',
-              code: `// Clamp frame buffers to even codec macroblocks\nexport function clampEvenDimensions(width: number, height: number) {\n  return {\n    width: Math.max(2, width - (width % 2)),\n    height: Math.max(2, height - (height % 2)),\n  };\n}`,
-            },
-          },
-          {
-            id: 'b-t3-code-py',
-            kind: 'code',
-            title: 'verify_keyframes.py',
-            summary: 'Python · Validates uploaded stream aspect headers',
-            data: {
-              language: 'python',
-              code: `# Verify stream aspect metadata across edge buckets\ndef validate_aspect(width: int, height: int) -> bool:\n    if width <= 0 or height <= 0:\n        return False\n    return (width % 2 == 0) and (height % 2 == 0)`,
-            },
-          },
-          {
-            id: 'b-t3-code-sql',
-            kind: 'code',
-            title: 'frame_upload_failures.sql',
-            summary: 'SQL · Counts 24h transcode retries by codec',
-            data: {
-              language: 'sql',
-              code: `-- Check post-deploy failure rate\nSELECT codec, COUNT(*) AS retries\nFROM media_telemetry.upload_events\nWHERE status = 'RETRY' AND hours_ago <= 24\nGROUP BY 1 ORDER BY 2 DESC;`,
-            },
-          },
-          {
-            id: 'b-t3-code-yaml',
-            kind: 'code',
-            title: 'transcoder-rollout.yaml',
-            summary: 'YAML · Canary rollout thresholds',
-            data: {
-              language: 'yaml',
-              code: `# Progressive canary gate\nrollout:\n  stage: "canary-25"\n  maxErrorPct: 0.05\n  autoRollback: true`,
+              files: [
+                {
+                  filename: 'normalizeReferenceFrame.ts',
+                  filepath: 'packages/media-core/src/normalizeReferenceFrame.ts',
+                  language: 'typescript',
+                  code: `// Clamp frame buffers to even codec macroblocks\nexport interface FrameSize {\n  readonly width: number;\n  readonly height: number;\n}\n\nexport function clampEvenDimensions(width: number, height: number): FrameSize {\n  return {\n    width: Math.max(2, width - (width % 2)),\n    height: Math.max(2, height - (height % 2)),\n  };\n}`,
+                },
+                {
+                  filename: 'verify_keyframes.py',
+                  filepath: 'scripts/qa/verify_keyframes.py',
+                  language: 'python',
+                  code: `# Verify stream aspect metadata across edge buckets\ndef validate_aspect(width: int, height: int) -> bool:\n    if width <= 0 or height <= 0:\n        return False\n    return (width % 2 == 0) and (height % 2 == 0)\n\ndef summarize_batch(frames: list) -> dict:\n    valid = sum(1 for w, h in frames if validate_aspect(w, h))\n    return {"checked": len(frames), "valid": valid}`,
+                },
+                {
+                  filename: 'frame_upload_failures.sql',
+                  filepath: 'analytics/queries/frame_upload_failures.sql',
+                  language: 'sql',
+                  code: `-- Post-deploy 24h retry rate across regional POPs\nSELECT\n  codec,\n  region,\n  COUNT(*) AS retry_events\nFROM media_telemetry.upload_events\nWHERE status = 'RETRY' AND hours_ago <= 24\nGROUP BY 1, 2\nORDER BY 3 DESC\nLIMIT 25;`,
+                },
+                {
+                  filename: 'transcoder-rollout.yaml',
+                  filepath: 'deploy/canary/transcoder-rollout.yaml',
+                  language: 'yaml',
+                  code: `# Progressive canary rollout gate\nservice: media-transcoder\nrollout:\n  stage: "canary-25"\n  maxErrorPct: 0.05\n  healthProbeMs: 1500\n  autoRollback: true`,
+                },
+              ],
             },
           },
         ],
@@ -301,25 +296,40 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
     ],
   },
   {
-    id: 'topic-greeting-1',
-    title: 'Lucy bot greeting',
-    preview: 'Hi! 👋 How can I help you today?',
-    dateLabel: 'May 2',
+    id: 'topic-q4-forecast',
+    title: 'Q4 revenue & regional latency forecast',
+    preview: 'Net contribution +31.0% YoY ($1.64M) across North America, Europe, and APAC.',
+    dateLabel: 'May 6',
     listedOnHome: true,
     turns: [
       {
         id: 't6-a',
         role: 'assistant',
-        createdAt: 'May 2 · 10:00',
+        createdAt: 'May 6 · 10:00',
         status: 'complete',
-        blocks: [{ id: 'b-t6-a', kind: 'prose', data: 'Hi! 👋 How can I help you today?' }],
+        blocks: [
+          {
+            id: 'b-t6-a',
+            kind: 'prose',
+            data: 'Q4 revenue and regional retention workbook. Net contribution reached **$1.64M (+31.0% YoY)**.',
+          },
+          {
+            id: 'b-t6-sheet',
+            kind: 'spreadsheet',
+            title: 'Q4 Revenue & Regional Model',
+            filename: 'Q4_Revenue_Model.xlsx',
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            summary: '2 sheets · Q4 Forecast ($1.64M net) & Region Breakdown',
+            data: SAMPLE_FINANCIAL_WORKBOOK,
+          },
+        ],
       },
     ],
   },
   {
-    id: 'topic-greeting-2',
-    title: 'Local Hello from Lucy Bot',
-    preview: 'Hi! 👋 How can I help you today?',
+    id: 'topic-msa-summary',
+    title: 'Acme Global MSA — subprocessor & liability notes',
+    preview: '3x TTM super-cap on data protection (§4.2); 14-day subprocessor notice flagged for 30-day redline.',
     dateLabel: 'May 2',
     listedOnHome: true,
     turns: [
@@ -328,14 +338,20 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
         role: 'assistant',
         createdAt: 'May 2 · 09:42',
         status: 'complete',
-        blocks: [{ id: 'b-t7-a', kind: 'prose', data: 'Hi! 👋 How can I help you today?' }],
+        blocks: [
+          {
+            id: 'b-t7-a',
+            kind: 'prose',
+            data: 'Summary of open negotiation items on `Acme_Global_MSA_FY27.pdf`: extend subprocessor notice from 14 to 30 days and cap §4.2 at 3× TTM fees.',
+          },
+        ],
       },
     ],
   },
   {
-    id: 'topic-greeting-3',
-    title: 'Greeting from Lucy bot',
-    preview: 'Hi! 👋 Ready whenever you want to start a task or inspect a file.',
+    id: 'topic-arr-reconciliation',
+    title: 'FY26 enterprise ARR cohort tie-out',
+    preview: 'Ending Q4 ARR reconciled at $5.64M with 128.2% net dollar retention across 2,400 accounts.',
     dateLabel: 'Apr 29',
     listedOnHome: true,
     turns: [
@@ -348,7 +364,7 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
           {
             id: 'b-t8-a',
             kind: 'prose',
-            data: 'Hi! 👋 Ready whenever you want to start a task or inspect a file.',
+            data: 'Reconciled `PROD_FINANCE.MART_ARR` against billing subledger: ending Q4 ARR tied out to **$5.64M** (`128.2%` NDR).',
           },
         ],
       },

@@ -300,7 +300,7 @@ export function createWorkspace<TView = unknown>(
             {
               id: nextWorkspaceId('block'),
               kind: 'prose',
-              data: `Synced your ${changeSummary.length} revision${changeSummary.length === 1 ? '' : 's'} from **${artifactLabel}** into the active context. All subsequent drafts, calculations, and exports in this thread will reflect your updated values.`,
+              data: `Saved ${changeSummary.length} revision${changeSummary.length === 1 ? '' : 's'} to **${artifactLabel}**. Thread state updated.`,
             },
           ],
         };

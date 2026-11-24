@@ -36,9 +36,18 @@ export interface SpreadsheetWorkbook {
   readonly sourceFormat: 'xlsx' | 'csv' | 'workbook';
 }
 
-export interface CodeSnippetData {
+export interface CodeFileEntry {
+  readonly filename: string;
+  readonly filepath?: string;
   readonly language: string;
   readonly code: string;
+}
+
+export interface CodeSnippetData {
+  readonly language?: string;
+  readonly code?: string;
+  readonly filepath?: string;
+  readonly files?: ReadonlyArray<CodeFileEntry>;
 }
 
 export interface ContractClause {

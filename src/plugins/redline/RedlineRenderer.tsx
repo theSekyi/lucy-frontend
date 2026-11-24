@@ -4,17 +4,13 @@ import type { RedlineDocumentData } from '../../core/types';
 import '../enterprise-stage.css';
 
 type Decision = 'pending' | 'accepted' | 'rejected';
-type DiffMode = 'inline' | 'split' | 'clean';
+type DiffMode = 'split' | 'inline' | 'clean';
 
 interface DiffToken {
   readonly kind: 'same' | 'del' | 'ins';
   readonly text: string;
 }
 
-/**
- * Word-level Longest Common Subsequence diff so unchanged legal clauses remain
- * calm and legible while only the exact altered words are highlighted.
- */
 function computeWordDiff(before: string, after: string): DiffToken[] {
   const a = before.split(/(\s+)/).filter(Boolean);
   const b = after.split(/(\s+)/).filter(Boolean);
@@ -50,7 +46,6 @@ function computeWordDiff(before: string, after: string): DiffToken[] {
   while (i < a.length) out.push({ kind: 'del', text: a[i++]! });
   while (j < b.length) out.push({ kind: 'ins', text: b[j++]! });
 
-  // Merge adjacent runs of identical diff kind so multi-word phrases highlight as one clean span
   const merged: DiffToken[] = [];
   for (const token of out) {
     const prev = merged[merged.length - 1];
@@ -67,26 +62,42 @@ function computeWordDiff(before: string, after: string): DiffToken[] {
 
 function RedlineDiffView({ context }: { context: RendererContext<RedlineDocumentData> }) {
   const doc = context.block.data;
-  const [mode, setMode] = useState<DiffMode>('inline');
+  const [mode, setMode] = useState<DiffMode>('split');
   const [decisions, setDecisions] = useState<Record<string, Decision>>(() =>
     Object.fromEntries(doc.hunks.map((h) => [h.id, h.initialDecision ?? 'pending']))
   );
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [syncedFlag, setSyncedFlag] = useState(false);
+  const [draftAfter, setDraftAfter] = useState<Record<string, string>>(() =>
+    Object.fromEntries(doc.hunks.map((h) => [h.id, h.after]))
+  );
+  const [savedFlag, setSavedFlag] = useState(false);
 
   const wordDiffByHunk = useMemo(
     () =>
-      Object.fromEntries(doc.hunks.map((h) => [h.id, computeWordDiff(h.before, h.after)])),
-    [doc.hunks]
+      Object.fromEntries(
+        doc.hunks.map((h) => [h.id, computeWordDiff(h.before, draftAfter[h.id] ?? h.after)])
+      ),
+    [doc.hunks, draftAfter]
   );
 
   const acceptedCount = doc.hunks.filter((h) => decisions[h.id] === 'accepted').length;
   const rejectedCount = doc.hunks.filter((h) => decisions[h.id] === 'rejected').length;
   const pendingCount = doc.hunks.length - acceptedCount - rejectedCount;
 
+  const hasChanges = doc.hunks.some(
+    (h) =>
+      (draftAfter[h.id] ?? h.after) !== h.after ||
+      (decisions[h.id] ?? 'pending') !== (h.initialDecision ?? 'pending')
+  );
+
   function setHunkDecision(id: string, next: Decision) {
     setDecisions((prev) => ({ ...prev, [id]: next }));
-    setSyncedFlag(false);
+    setSavedFlag(false);
+  }
+
+  function updateProposedText(id: string, nextText: string) {
+    setDraftAfter((prev) => ({ ...prev, [id]: nextText }));
+    setDecisions((prev) => ({ ...prev, [id]: 'accepted' }));
+    setSavedFlag(false);
   }
 
   function acceptAllPending() {
@@ -97,21 +108,27 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
       }
       return updated;
     });
-    setSyncedFlag(false);
+    setSavedFlag(false);
   }
 
-  function syncRedlineToLucy() {
+  function commitRedlines() {
     const summary = doc.hunks.map((h) => {
       const status = (decisions[h.id] ?? 'pending').toUpperCase();
-      const note = notes[h.id]?.trim();
-      return `${h.section}: ${status}${note ? ` (Note: "${note}")` : ''}`;
+      const currentAfter = draftAfter[h.id] ?? h.after;
+      const wasEdited = currentAfter !== h.after;
+      return `${h.section}: ${status}${wasEdited ? ` — "${currentAfter}"` : ''}`;
     });
+
     const updatedDoc: RedlineDocumentData = {
       ...doc,
-      hunks: doc.hunks.map((h) => ({ ...h, initialDecision: decisions[h.id] ?? 'pending' })),
+      hunks: doc.hunks.map((h) => ({
+        ...h,
+        after: draftAfter[h.id] ?? h.after,
+        initialDecision: decisions[h.id] ?? 'pending',
+      })),
     };
     context.onCommitRevision?.(updatedDoc, summary);
-    setSyncedFlag(true);
+    setSavedFlag(true);
   }
 
   return (
@@ -121,13 +138,6 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
           <div class="seg-tabs" role="tablist">
             <button
               type="button"
-              class={`seg-tab ${mode === 'inline' ? 'is-active' : ''}`}
-              onClick={() => setMode('inline')}
-            >
-              Word Redline
-            </button>
-            <button
-              type="button"
               class={`seg-tab ${mode === 'split' ? 'is-active' : ''}`}
               onClick={() => setMode('split')}
             >
@@ -135,10 +145,17 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
             </button>
             <button
               type="button"
+              class={`seg-tab ${mode === 'inline' ? 'is-active' : ''}`}
+              onClick={() => setMode('inline')}
+            >
+              Word Redline
+            </button>
+            <button
+              type="button"
               class={`seg-tab ${mode === 'clean' ? 'is-active' : ''}`}
               onClick={() => setMode('clean')}
             >
-              Clean Preview
+              Final Text
             </button>
           </div>
 
@@ -153,9 +170,11 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
               Accept remaining
             </button>
           )}
-          <button type="button" class="sync-llm-btn" onClick={syncRedlineToLucy}>
-            {syncedFlag ? '✓ Synced to Lucy' : 'Send Decisions to Lucy →'}
-          </button>
+          {(hasChanges || !savedFlag) && (
+            <button type="button" class="primary-stage-btn" onClick={commitRedlines}>
+              {savedFlag ? '✓ Saved' : 'Apply redlines'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -164,22 +183,39 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
           <div>
             <strong>{doc.documentName}</strong>
             <div class="clause-footnote" style={{ marginTop: '2px' }}>
-              {doc.author}
+              {doc.author} · Click inside Proposed Redline to edit directly
             </div>
           </div>
-          <span class="sheet-meta-count">{doc.hunks.length} Tracked Clauses</span>
+          <span class="sheet-meta-count">{doc.hunks.length} Clauses</span>
         </div>
 
         {doc.hunks.map((hunk) => {
           const status = decisions[hunk.id] ?? 'pending';
+          const currentAfter = draftAfter[hunk.id] ?? hunk.after;
+          const isEdited = currentAfter !== hunk.after;
           const tokens = wordDiffByHunk[hunk.id] ?? [];
-          const resolvedClean = status === 'rejected' ? hunk.before : hunk.after;
+          const resolvedClean = status === 'rejected' ? hunk.before : currentAfter;
 
           return (
             <article key={hunk.id} class={`redline-hunk-card status-${status}`}>
               <div class="redline-hunk-header">
-                <strong>{hunk.section}</strong>
                 <div class="stage-subbar-group">
+                  <strong>{hunk.section}</strong>
+                  {isEdited && <span class="cell-pill tone-neutral">Edited</span>}
+                </div>
+
+                <div class="stage-subbar-group">
+                  {isEdited && (
+                    <button
+                      type="button"
+                      class="ghost-pill"
+                      onClick={() =>
+                        setDraftAfter((prev) => ({ ...prev, [hunk.id]: hunk.after }))
+                      }
+                    >
+                      Reset
+                    </button>
+                  )}
                   <button
                     type="button"
                     class={`decision-btn ${status === 'accepted' ? 'is-accept-active' : ''}`}
@@ -197,7 +233,31 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
                 </div>
               </div>
 
-              <div class="redline-rationale">Counsel rationale: {hunk.rationale}</div>
+              <div class="redline-rationale">{hunk.rationale}</div>
+
+              {mode === 'split' && (
+                <div class="redline-columns">
+                  <div class="redline-col is-before">
+                    <div class="redline-col-label">Prior Draft</div>
+                    <div>{hunk.before}</div>
+                  </div>
+                  <div class="redline-col is-after">
+                    <div class="redline-col-label">Proposed Redline (Editable)</div>
+                    <textarea
+                      rows={4}
+                      class="redline-editable-prose"
+                      value={currentAfter}
+                      aria-label={`Proposed redline for ${hunk.section}`}
+                      onInput={(e) =>
+                        updateProposedText(
+                          hunk.id,
+                          (e.currentTarget as HTMLTextAreaElement).value
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              )}
 
               {mode === 'inline' && (
                 <div class="redline-unified-prose">
@@ -221,39 +281,22 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
                 </div>
               )}
 
-              {mode === 'split' && (
-                <div class="redline-columns">
-                  <div class="redline-col is-before">
-                    <div class="redline-col-label">Prior Draft</div>
-                    {hunk.before}
-                  </div>
-                  <div class="redline-col is-after">
-                    <div class="redline-col-label">Proposed Redline</div>
-                    {hunk.after}
-                  </div>
+              {mode === 'clean' && (
+                <div class="redline-col is-clean-edit">
+                  <textarea
+                    rows={3}
+                    class="redline-editable-prose"
+                    value={resolvedClean}
+                    aria-label={`Final text for ${hunk.section}`}
+                    onInput={(e) =>
+                      updateProposedText(
+                        hunk.id,
+                        (e.currentTarget as HTMLTextAreaElement).value
+                      )
+                    }
+                  />
                 </div>
               )}
-
-              {mode === 'clean' && (
-                <div class="redline-unified-prose">{resolvedClean}</div>
-              )}
-
-              <div class="redline-note-bar">
-                <span class="sheet-meta-count">Counter-edit / Note:</span>
-                <input
-                  type="text"
-                  class="redline-note-input"
-                  placeholder="Add instruction for Lucy (e.g., 'Cap at 2x TTM instead')…"
-                  value={notes[hunk.id] ?? ''}
-                  onInput={(e) => {
-                    setNotes((prev) => ({
-                      ...prev,
-                      [hunk.id]: (e.currentTarget as HTMLInputElement).value,
-                    }));
-                    setSyncedFlag(false);
-                  }}
-                />
-              </div>
             </article>
           );
         })}

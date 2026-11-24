@@ -1,25 +1,22 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { RendererRegistry } from '../core/renderers';
-import type { ComposerMode, ContentBlock, ModelChoice } from '../core/types';
-import { AgentLoopIcon, SendArrowIcon } from './icons';
+import type { ContentBlock, ModelChoice } from '../core/types';
+import { SendArrowIcon } from './icons';
 
-type OpenComposerMenu = 'mode' | 'attach' | 'model' | null;
+type OpenComposerMenu = 'attach' | 'model' | null;
 
 interface ComposerProps {
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
-  readonly modes: ReadonlyArray<ComposerMode>;
-  readonly selectedModeId: string;
   readonly models: ReadonlyArray<ModelChoice>;
   readonly selectedModelId: string;
   readonly registry?: RendererRegistry<ComponentChildren>;
   readonly placeholder?: string;
   readonly compact?: boolean;
   readonly onDraftChange: (value: string) => void;
-  readonly onModeChange: (modeId: string) => void;
   readonly onModelChange: (modelId: string) => void;
-  readonly onAttach: (block: ContentBlock) => void;
+  readonly onIngestFile?: (file: File) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample?: (pluginId: string) => void;
   readonly onSubmit: () => void;
@@ -28,17 +25,14 @@ interface ComposerProps {
 export function Composer({
   draft,
   attachments,
-  modes,
-  selectedModeId,
   models,
   selectedModelId,
   registry,
-  placeholder = 'Ask, create, or start a task',
+  placeholder = 'Ask, create, or open a file',
   compact = false,
   onDraftChange,
-  onModeChange,
   onModelChange,
-  onAttach,
+  onIngestFile,
   onRemoveAttachment,
   onLaunchPluginSample,
   onSubmit,
@@ -48,7 +42,6 @@ export function Composer({
   const rootRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeMode = modes.find((m) => m.id === selectedModeId) ?? modes[0]!;
   const activeModel = models.find((m) => m.id === selectedModelId) ?? models[0]!;
   const samplePlugins = (registry?.listPlugins() ?? []).filter((p) => p.sampleMenuLabel);
 
@@ -76,21 +69,9 @@ export function Composer({
     };
   }, [openMenu]);
 
-  async function ingestFile(file: File) {
-    const { parseSpreadsheetFile } = await import('../plugins/spreadsheet/parser');
-    const workbook = await parseSpreadsheetFile(file);
-    const totalRows = workbook.sheets.reduce((sum, s) => sum + s.rows.length, 0);
-
-    onAttach({
-      id: `upload-${Date.now()}`,
-      kind: 'spreadsheet',
-      title: file.name.replace(/\.[^.]+$/, ''),
-      filename: file.name,
-      mimeType: file.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      summary: `${workbook.sheets.length} sheet${workbook.sheets.length === 1 ? '' : 's'} · ${totalRows} rows imported locally`,
-      data: workbook,
-    });
+  function handleFileChosen(file: File) {
     setOpenMenu(null);
+    onIngestFile?.(file);
   }
 
   function toggleMenu(target: Exclude<OpenComposerMenu, null>) {
@@ -110,14 +91,14 @@ export function Composer({
         e.preventDefault();
         setIsDraggingFile(false);
         const file = e.dataTransfer?.files?.[0];
-        if (file) void ingestFile(file);
+        if (file) handleFileChosen(file);
       }}
     >
       {attachments.length > 0 && (
         <div class="composer-attachments">
           {attachments.map((item) => (
             <span key={item.id} class="attachment-chip">
-              <span class="artifact-badge accent-emerald">XLSX</span>
+              <span class="artifact-badge accent-emerald">FILE</span>
               <span>{item.filename ?? item.title}</span>
               <button
                 type="button"
@@ -152,50 +133,8 @@ export function Composer({
           <div class="menu-anchor">
             <button
               type="button"
-              class="composer-chip-btn"
-              aria-haspopup="listbox"
-              aria-expanded={openMenu === 'mode'}
-              onClick={() => toggleMenu('mode')}
-            >
-              <AgentLoopIcon />
-              <span>{activeMode.label}</span>
-              <span class="chevron-glyph">⌄</span>
-            </button>
-
-            {openMenu === 'mode' && (
-              <div
-                class={`dropdown-popover align-left ${compact ? 'opens-up' : 'opens-down'}`}
-                role="listbox"
-                aria-label="Assistant mode"
-              >
-                {modes.map((mode) => {
-                  const selected = mode.id === activeMode.id;
-                  return (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      class={`popover-item ${selected ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        onModeChange(mode.id);
-                        setOpenMenu(null);
-                      }}
-                    >
-                      <span>{mode.label}</span>
-                      {selected && <span class="popover-check">✓</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div class="menu-anchor">
-            <button
-              type="button"
               class="composer-plus-btn"
-              aria-label="Attach file or open enterprise artifact"
+              aria-label="Upload file or open workspace view"
               aria-haspopup="menu"
               aria-expanded={openMenu === 'attach'}
               onClick={() => toggleMenu('attach')}
@@ -214,8 +153,8 @@ export function Composer({
                   class="popover-item"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <span>Upload local .xlsx / .csv…</span>
-                  <span class="popover-tier-badge">File</span>
+                  <span>Import .xlsx / .csv file…</span>
+                  <span class="popover-tier-badge">Local</span>
                 </button>
 
                 {samplePlugins.length > 0 && <div class="popover-divider" />}
@@ -247,7 +186,7 @@ export function Composer({
               hidden
               onChange={(e) => {
                 const file = (e.currentTarget as HTMLInputElement).files?.[0];
-                if (file) void ingestFile(file);
+                if (file) handleFileChosen(file);
                 (e.currentTarget as HTMLInputElement).value = '';
               }}
             />
@@ -303,7 +242,7 @@ export function Composer({
           <button
             type="button"
             class="composer-send-btn"
-            aria-label="Send message"
+            aria-label="Submit"
             onClick={onSubmit}
           >
             <SendArrowIcon />

@@ -144,16 +144,16 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
               </button>
               <button
                 type="button"
-                class="sync-llm-btn"
+                class="primary-stage-btn"
                 onClick={commitEditsToLucy}
               >
-                Sync {pendingChanges.length} Edit{pendingChanges.length === 1 ? '' : 's'} to Lucy →
+                Apply {pendingChanges.length} edit{pendingChanges.length === 1 ? '' : 's'}
               </button>
             </>
           ) : justSynced ? (
-            <span class="cell-pill tone-good">✓ Synced with Lucy</span>
+            <span class="cell-pill tone-good">✓ Saved</span>
           ) : (
-            <span class="sheet-meta-count">Click any text or KPI on slide to edit</span>
+            <span class="sheet-meta-count">Click any text or KPI to edit</span>
           )}
 
           <button type="button" class="ghost-pill" onClick={exportMarkdownBrief}>

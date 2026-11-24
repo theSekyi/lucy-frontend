@@ -16,28 +16,15 @@ import type { ThreadView as ThreadViewComponent } from './ThreadView';
 interface AppProps {
   readonly workspace: WorkspaceController;
   readonly registry: RendererRegistry<ComponentChildren>;
+  readonly onIngestFile: (file: File) => void;
 }
 
-const STAGE_URL_ALIASES: Readonly<Record<string, string>> = {
-  excel: 'spreadsheet',
-  xlsx: 'spreadsheet',
-  pdf: 'cited-document',
-  contract: 'cited-document',
-  diff: 'redline',
-  sql: 'sql-canvas',
-  dag: 'topology',
-  lineage: 'topology',
-  deck: 'slide-deck',
-  slides: 'slide-deck',
-};
-
-export function App({ workspace, registry }: AppProps) {
+export function App({ workspace, registry, onIngestFile }: AppProps) {
   const [state, setState] = useState<WorkspaceState>(() => workspace.getState());
   const [ThreadViewLoaded, setThreadViewLoaded] = useState<typeof ThreadViewComponent | null>(null);
 
   useEffect(() => workspace.subscribe(setState), [workspace]);
 
-  // Deep-link URL routing (?stage=pdf&anchor=§4.2, ?stage=sql, ?stage=diff, etc.)
   useEffect(() => {
     async function applyUrlParams() {
       const params = new URLSearchParams(window.location.search);
@@ -45,13 +32,10 @@ export function App({ workspace, registry }: AppProps) {
       const anchor = params.get('anchor');
       if (!rawStage) return;
 
-      if (rawStage === 'code') {
-        workspace.openTopic('topic-seedance-14652');
-        return;
-      }
+      const matchedPlugin = registry.findByRoute(rawStage);
+      if (!matchedPlugin) return;
 
-      const pluginId = STAGE_URL_ALIASES[rawStage] ?? rawStage;
-      const topicId = await workspace.launchPluginSample(pluginId);
+      const topicId = await workspace.launchPluginSample(matchedPlugin.id);
       if (topicId && anchor) {
         const blockId = workspace.getState().inspectedBlockId;
         if (blockId) workspace.inspectArtifact(blockId, anchor);
@@ -61,9 +45,8 @@ export function App({ workspace, registry }: AppProps) {
     void applyUrlParams();
     window.addEventListener('popstate', applyUrlParams);
     return () => window.removeEventListener('popstate', applyUrlParams);
-  }, [workspace]);
+  }, [registry, workspace]);
 
-  // Keep address bar synchronized with active stage or Home
   useEffect(() => {
     const topic = state.topics.find((t) => t.id === state.activeTopicId);
     if (!topic) {
@@ -87,7 +70,6 @@ export function App({ workspace, registry }: AppProps) {
       void import('./ThreadView').then((mod) => setThreadViewLoaded(() => mod.ThreadView));
       return;
     }
-    // Only warm thread chunk in background when connection is fast; conserve bytes on 2G/3G/offline
     if (state.networkStatus === 'online' && !ThreadViewLoaded) {
       const timer = setTimeout(() => {
         void import('./ThreadView').then((mod) => setThreadViewLoaded(() => mod.ThreadView));
@@ -179,8 +161,6 @@ export function App({ workspace, registry }: AppProps) {
               isStageMaximized={state.isStageMaximized}
               draft={state.composerDraft}
               attachments={state.attachments}
-              modes={state.modes}
-              selectedModeId={state.selectedModeId}
               models={state.models}
               selectedModelId={state.selectedModelId}
               onReturnHome={() => workspace.returnHome()}
@@ -190,16 +170,15 @@ export function App({ workspace, registry }: AppProps) {
               }
               onToggleMaximizeStage={() => workspace.toggleStageMaximize()}
               onDraftChange={(text) => workspace.updateDraft(text)}
-              onModeChange={(id) => workspace.setMode(id)}
               onModelChange={(id) => workspace.setModel(id)}
-              onAttach={(block) => workspace.attachContent(block)}
+              onIngestFile={onIngestFile}
               onRemoveAttachment={(id) => workspace.removeAttachment(id)}
               onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
               onSubmit={() => workspace.submitPrompt()}
             />
           ) : (
             <div class="launchpad-scroll">
-              <div class="renderer-skeleton">Loading conversation…</div>
+              <div class="renderer-skeleton">Loading view…</div>
             </div>
           )
         ) : state.activeSection === 'tasks' ? (
@@ -247,16 +226,13 @@ export function App({ workspace, registry }: AppProps) {
             totalRecentCount={selectHomeRecentTotalCount(state)}
             draft={state.composerDraft}
             attachments={state.attachments}
-            modes={state.modes}
-            selectedModeId={state.selectedModeId}
             models={state.models}
             selectedModelId={state.selectedModelId}
             registry={registry}
             searchQuery={state.searchQuery}
             onDraftChange={(text) => workspace.updateDraft(text)}
-            onModeChange={(id) => workspace.setMode(id)}
             onModelChange={(id) => workspace.setModel(id)}
-            onAttach={(block) => workspace.attachContent(block)}
+            onIngestFile={onIngestFile}
             onRemoveAttachment={(id) => workspace.removeAttachment(id)}
             onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
             onSubmit={() => workspace.submitPrompt()}

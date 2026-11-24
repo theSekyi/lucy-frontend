@@ -375,10 +375,10 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
               </button>
               <button
                 type="button"
-                class="sync-llm-btn"
+                class="primary-stage-btn"
                 onClick={sendIncidentBriefToLucy}
               >
-                {syncedIncident ? '✓ Sent to Lucy' : 'Send Blast Radius to Lucy →'}
+                {syncedIncident ? '✓ Logged' : 'Log incident state'}
               </button>
             </div>
           </div>

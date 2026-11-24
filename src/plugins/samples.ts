@@ -14,7 +14,8 @@ export type EnterpriseArtifactPreset =
   | 'redline'
   | 'sql-canvas'
   | 'topology'
-  | 'slide-deck';
+  | 'slide-deck'
+  | 'code-workspace';
 
 export interface GeneratedEnterpriseTurn {
   readonly prose: string;
@@ -347,6 +348,47 @@ export function createEnterprisePresetTurn(
           filename: 'Q4_Enterprise_Board_Deck.pptx',
           summary: '3 slides · 16:9 Executive QBR ($5.64M ARR, 128.2% NDR, FY27 Plan)',
           data: SLIDE_DECK_SAMPLE,
+        },
+      };
+
+    case 'code-workspace':
+      return {
+        prose:
+          'Prepared the **4-file media frame alignment patch** across TypeScript, Python QA validation, SQL telemetry, and canary rollout config.',
+        artifact: {
+          id: idFactory('block-code-ws'),
+          kind: 'code-workspace',
+          title: 'Media Frame Alignment Patch',
+          filename: 'media-frame-patch (4 files)',
+          summary: 'TS · PY · SQL · YAML — Keyframe normalizer, validator & canary config',
+          data: {
+            files: [
+              {
+                filename: 'normalizeReferenceFrame.ts',
+                filepath: 'packages/media-core/src/normalizeReferenceFrame.ts',
+                language: 'typescript',
+                code: `// Clamp frame buffers to even codec macroblocks\nexport interface FrameSize {\n  readonly width: number;\n  readonly height: number;\n}\n\nexport function clampEvenDimensions(width: number, height: number): FrameSize {\n  return {\n    width: Math.max(2, width - (width % 2)),\n    height: Math.max(2, height - (height % 2)),\n  };\n}`,
+              },
+              {
+                filename: 'verify_keyframes.py',
+                filepath: 'scripts/qa/verify_keyframes.py',
+                language: 'python',
+                code: `# Verify stream aspect metadata across edge buckets\ndef validate_aspect(width: int, height: int) -> bool:\n    if width <= 0 or height <= 0:\n        return False\n    return (width % 2 == 0) and (height % 2 == 0)\n\ndef summarize_batch(frames: list) -> dict:\n    valid = sum(1 for w, h in frames if validate_aspect(w, h))\n    return {"checked": len(frames), "valid": valid}`,
+              },
+              {
+                filename: 'frame_upload_failures.sql',
+                filepath: 'analytics/queries/frame_upload_failures.sql',
+                language: 'sql',
+                code: `-- Post-deploy 24h retry rate across regional POPs\nSELECT\n  codec,\n  region,\n  COUNT(*) AS retry_events\nFROM media_telemetry.upload_events\nWHERE status = 'RETRY' AND hours_ago <= 24\nGROUP BY 1, 2\nORDER BY 3 DESC\nLIMIT 25;`,
+              },
+              {
+                filename: 'transcoder-rollout.yaml',
+                filepath: 'deploy/canary/transcoder-rollout.yaml',
+                language: 'yaml',
+                code: `# Progressive canary rollout gate\nservice: media-transcoder\nrollout:\n  stage: "canary-25"\n  maxErrorPct: 0.05\n  healthProbeMs: 1500\n  autoRollback: true`,
+              },
+            ],
+          },
         },
       };
 

@@ -81,8 +81,8 @@ async function buildMinimalXlsxZip(files: Record<string, string>): Promise<Array
   return archive.buffer;
 }
 
-describe('Separation of logic from presentation', () => {
-  it('keeps src/core completely free of UI framework and DOM imports', () => {
+describe('Separation of logic from presentation and strict plugin modularity', () => {
+  it('keeps src/core completely free of UI framework, plugin, and DOM imports', () => {
     const coreDir = join(process.cwd(), 'src/core');
     const files = readdirSync(coreDir).filter((f) => f.endsWith('.ts'));
     expect(files.length).toBeGreaterThanOrEqual(4);
@@ -92,6 +92,18 @@ describe('Separation of logic from presentation', () => {
       expect(source).not.toMatch(/from\s+['"]preact/);
       expect(source).not.toMatch(/from\s+['"]\.\.\/(ui|plugins)/);
       expect(source).not.toMatch(/\b(document\.|window\.|HTMLElement)/);
+    }
+  });
+
+  it('keeps src/ui completely decoupled from concrete plugin implementations', () => {
+    const uiDir = join(process.cwd(), 'src/ui');
+    const files = readdirSync(uiDir).filter((f) => /\.(ts|tsx)$/.test(f));
+    expect(files.length).toBeGreaterThanOrEqual(5);
+
+    for (const file of files) {
+      const source = readFileSync(join(uiDir, file), 'utf8');
+      expect(source).not.toMatch(/from\s+['"]\.\.\/plugins/);
+      expect(source).not.toMatch(/import\(['"]\.\.\/plugins/);
     }
   });
 });

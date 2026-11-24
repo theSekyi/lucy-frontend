@@ -1,14 +1,12 @@
 import type { ComponentChildren } from 'preact';
 import type { RendererRegistry } from '../core/renderers';
 import type {
-  ComposerMode,
   ContentBlock,
   ModelChoice,
   TopicThread,
 } from '../core/types';
 import { BlockSlot } from './BlockSlot';
 import { Composer } from './Composer';
-import { LucyMark } from './icons';
 
 interface ThreadViewProps {
   readonly topic: TopicThread;
@@ -19,8 +17,6 @@ interface ThreadViewProps {
   readonly isStageMaximized: boolean;
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
-  readonly modes: ReadonlyArray<ComposerMode>;
-  readonly selectedModeId: string;
   readonly models: ReadonlyArray<ModelChoice>;
   readonly selectedModelId: string;
   readonly onReturnHome: () => void;
@@ -32,9 +28,8 @@ interface ThreadViewProps {
   ) => void;
   readonly onToggleMaximizeStage: () => void;
   readonly onDraftChange: (value: string) => void;
-  readonly onModeChange: (modeId: string) => void;
   readonly onModelChange: (modelId: string) => void;
-  readonly onAttach: (block: ContentBlock) => void;
+  readonly onIngestFile: (file: File) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample: (pluginId: string) => void;
   readonly onSubmit: () => void;
@@ -49,8 +44,6 @@ export function ThreadView({
   isStageMaximized,
   draft,
   attachments,
-  modes,
-  selectedModeId,
   models,
   selectedModelId,
   onReturnHome,
@@ -58,9 +51,8 @@ export function ThreadView({
   onCommitRevision,
   onToggleMaximizeStage,
   onDraftChange,
-  onModeChange,
   onModelChange,
-  onAttach,
+  onIngestFile,
   onRemoveAttachment,
   onLaunchPluginSample,
   onSubmit,
@@ -89,7 +81,7 @@ export function ThreadView({
               class="ghost-pill"
               onClick={() => onInspectBlock(stageBlocks[stageBlocks.length - 1]!.id)}
             >
-              Open {stageBlocks[stageBlocks.length - 1]!.filename ?? 'Artifact'}
+              Open {stageBlocks[stageBlocks.length - 1]!.filename ?? 'stage'}
             </button>
           )}
         </div>
@@ -97,7 +89,7 @@ export function ThreadView({
 
       <div class={`thread-split-layout ${activeStageBlock ? 'has-stage' : ''}`}>
         {!isStageMaximized && (
-          <section class="thread-conversation-pane" aria-label="Conversation">
+          <section class="thread-conversation-pane" aria-label="Workspace thread">
             <div class="thread-turns-scroll">
               <div class="thread-turns-column">
                 {topic.turns.map((turn) => {
@@ -111,14 +103,9 @@ export function ThreadView({
                       key={turn.id}
                       class={`turn-item is-${turn.role} status-${turn.status}`}
                     >
-                      {turn.role === 'assistant' && (
+                      {turn.role === 'assistant' && turn.status === 'queued-offline' && (
                         <div class="turn-author-row">
-                          <LucyMark size={18} />
-                          <span class="turn-author-name">Lucy</span>
-                          <span class="turn-time">{turn.createdAt}</span>
-                          {turn.status === 'queued-offline' && (
-                            <span class="turn-status-pill">Queued offline</span>
-                          )}
+                          <span class="turn-status-pill">Queued offline</span>
                         </div>
                       )}
 
@@ -148,18 +135,15 @@ export function ThreadView({
               <div class="thread-turns-column">
                 <Composer
                   compact
-                  placeholder="Reply, ask a follow-up, or click + for enterprise stages…"
+                  placeholder="Follow up, refine, or click + to switch views…"
                   draft={draft}
                   attachments={attachments}
-                  modes={modes}
-                  selectedModeId={selectedModeId}
                   models={models}
                   selectedModelId={selectedModelId}
                   registry={registry}
                   onDraftChange={onDraftChange}
-                  onModeChange={onModeChange}
                   onModelChange={onModelChange}
-                  onAttach={onAttach}
+                  onIngestFile={onIngestFile}
                   onRemoveAttachment={onRemoveAttachment}
                   onLaunchPluginSample={onLaunchPluginSample}
                   onSubmit={onSubmit}
@@ -170,7 +154,7 @@ export function ThreadView({
         )}
 
         {activeStageBlock && activeStagePlugin && (
-          <aside class="artifact-stage-pane" aria-label="Artifact inspector">
+          <aside class="artifact-stage-pane" aria-label="Document stage">
             <div class="artifact-stage-header">
               <div class="artifact-stage-title-group">
                 <span class={`artifact-badge accent-${activeStagePlugin.accent ?? 'emerald'}`}>
@@ -192,7 +176,7 @@ export function ThreadView({
                 <button
                   type="button"
                   class="icon-action-btn"
-                  aria-label="Close artifact stage"
+                  aria-label="Close stage"
                   onClick={() => onInspectBlock(null)}
                 >
                   ×

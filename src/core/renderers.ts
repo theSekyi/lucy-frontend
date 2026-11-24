@@ -22,6 +22,7 @@ export interface LoadedRenderer<TView, TData = unknown> {
 
 export interface RendererPlugin<TView, TData = unknown> {
   readonly id: string;
+  readonly aliases?: ReadonlyArray<string>;
   readonly label: string;
   readonly badge: string;
   readonly accent?: BadgeAccent;
@@ -38,6 +39,7 @@ export interface RendererPlugin<TView, TData = unknown> {
 export interface RendererRegistry<TView> {
   register: <TData>(plugin: RendererPlugin<TView, TData>) => () => void;
   resolve: (block: ContentBlock) => RendererPlugin<TView>;
+  findByRoute: (routeKey: string) => RendererPlugin<TView> | undefined;
   matchPromptPlugin: (prompt: string) => RendererPlugin<TView> | undefined;
   loadRenderer: (block: ContentBlock) => Promise<LoadedRenderer<TView>>;
   getCachedRenderer: (pluginId: string) => LoadedRenderer<TView> | undefined;
@@ -64,6 +66,13 @@ export function createRendererRegistry<TView>(
 
   function resolve(block: ContentBlock): RendererPlugin<TView> {
     return sortedPlugins().find((plugin) => plugin.matches(block)) ?? fallbackPlugin;
+  }
+
+  function findByRoute(routeKey: string): RendererPlugin<TView> | undefined {
+    const key = routeKey.trim().toLowerCase();
+    return sortedPlugins().find(
+      (p) => p.id === key || (p.aliases?.some((a) => a.toLowerCase() === key) ?? false)
+    );
   }
 
   function matchPromptPlugin(prompt: string): RendererPlugin<TView> | undefined {
@@ -107,6 +116,7 @@ export function createRendererRegistry<TView>(
     },
 
     resolve,
+    findByRoute,
     matchPromptPlugin,
 
     loadRenderer(block) {

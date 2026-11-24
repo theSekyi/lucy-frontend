@@ -1,14 +1,13 @@
 import type { ComponentChildren } from 'preact';
 import type { RendererRegistry } from '../core/renderers';
 import type {
-  ComposerMode,
   ContentBlock,
   DailyBriefSlide,
   ModelChoice,
   TopicThread,
 } from '../core/types';
 import { Composer } from './Composer';
-import { LucyMark } from './icons';
+import { ThreadItemIcon } from './icons';
 
 interface LaunchpadProps {
   readonly brief: DailyBriefSlide;
@@ -16,16 +15,13 @@ interface LaunchpadProps {
   readonly totalRecentCount: number;
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
-  readonly modes: ReadonlyArray<ComposerMode>;
-  readonly selectedModeId: string;
   readonly models: ReadonlyArray<ModelChoice>;
   readonly selectedModelId: string;
   readonly registry: RendererRegistry<ComponentChildren>;
   readonly searchQuery: string;
   readonly onDraftChange: (value: string) => void;
-  readonly onModeChange: (modeId: string) => void;
   readonly onModelChange: (modelId: string) => void;
-  readonly onAttach: (block: ContentBlock) => void;
+  readonly onIngestFile: (file: File) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample: (pluginId: string) => void;
   readonly onSubmit: () => void;
@@ -39,16 +35,13 @@ export function Launchpad({
   totalRecentCount,
   draft,
   attachments,
-  modes,
-  selectedModeId,
   models,
   selectedModelId,
   registry,
   searchQuery,
   onDraftChange,
-  onModeChange,
   onModelChange,
-  onAttach,
+  onIngestFile,
   onRemoveAttachment,
   onLaunchPluginSample,
   onSubmit,
@@ -65,15 +58,12 @@ export function Launchpad({
         <Composer
           draft={draft}
           attachments={attachments}
-          modes={modes}
-          selectedModeId={selectedModeId}
           models={models}
           selectedModelId={selectedModelId}
           registry={registry}
           onDraftChange={onDraftChange}
-          onModeChange={onModeChange}
           onModelChange={onModelChange}
-          onAttach={onAttach}
+          onIngestFile={onIngestFile}
           onRemoveAttachment={onRemoveAttachment}
           onLaunchPluginSample={onLaunchPluginSample}
           onSubmit={onSubmit}
@@ -110,10 +100,10 @@ export function Launchpad({
           <p class="daily-brief-body">{brief.body}</p>
         </section>
 
-        <section class="recent-topics-section" aria-label="Recent topics">
+        <section class="recent-topics-section" aria-label="Recent items">
           <div class="recent-topics-header">
             <h2 class="recent-topics-title">
-              {searchQuery.trim() ? `Matching topics` : 'Recent topics'}
+              {searchQuery.trim() ? 'Matching items' : 'Recent'}
             </h2>
             <span class="recent-count-badge">
               {searchQuery.trim() ? recentTopics.length : totalRecentCount}
@@ -129,7 +119,7 @@ export function Launchpad({
                 onClick={() => onOpenTopic(topic.id)}
               >
                 <div class="topic-row-avatar">
-                  <LucyMark size={20} />
+                  <ThreadItemIcon size={18} />
                 </div>
 
                 <div class="topic-row-content">
