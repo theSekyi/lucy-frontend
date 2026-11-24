@@ -260,16 +260,16 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
             )}
 
             <div class="deck-takeaway-box">
-              <input
-                type="text"
+              <textarea
+                rows={2}
                 class="editable-field"
-                style={{ color: '#f4f4f6', fontWeight: 500 }}
+                style={{ color: '#f4f4f6', fontWeight: 500, resize: 'none', lineHeight: 1.45 }}
                 value={activeSlide.takeaway}
                 aria-label="Executive takeaway"
                 onInput={(e) =>
                   updateSlide(index, (s) => ({
                     ...s,
-                    takeaway: (e.currentTarget as HTMLInputElement).value,
+                    takeaway: (e.currentTarget as HTMLTextAreaElement).value,
                   }))
                 }
               />
@@ -277,19 +277,19 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
 
             <div class="deck-bullets-list">
               {activeSlide.bullets.map((bullet, bIdx) => (
-                <div key={bIdx} class="deck-bullet-row">
-                  <span class="deck-bullet-dot">•</span>
-                  <input
-                    type="text"
+                <div key={bIdx} class="deck-bullet-row" style={{ alignItems: 'flex-start' }}>
+                  <span class="deck-bullet-dot" style={{ paddingTop: '2px' }}>•</span>
+                  <textarea
+                    rows={2}
                     class="editable-field"
-                    style={{ color: '#d4d4d8' }}
+                    style={{ color: '#d4d4d8', resize: 'none', lineHeight: 1.42 }}
                     value={bullet}
                     aria-label={`Bullet ${bIdx + 1}`}
                     onInput={(e) =>
                       updateSlide(index, (s) => ({
                         ...s,
                         bullets: s.bullets.map((item, k) =>
-                          k === bIdx ? (e.currentTarget as HTMLInputElement).value : item
+                          k === bIdx ? (e.currentTarget as HTMLTextAreaElement).value : item
                         ),
                       }))
                     }

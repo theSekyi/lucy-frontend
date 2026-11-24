@@ -49,7 +49,20 @@ function computeWordDiff(before: string, after: string): DiffToken[] {
   }
   while (i < a.length) out.push({ kind: 'del', text: a[i++]! });
   while (j < b.length) out.push({ kind: 'ins', text: b[j++]! });
-  return out;
+
+  // Merge adjacent runs of identical diff kind so multi-word phrases highlight as one clean span
+  const merged: DiffToken[] = [];
+  for (const token of out) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.kind === token.kind) {
+      merged[merged.length - 1] = { kind: prev.kind, text: prev.text + token.text };
+    } else if (token.kind !== 'same' && /^\s+$/.test(token.text)) {
+      merged.push({ kind: 'same', text: token.text });
+    } else {
+      merged.push(token);
+    }
+  }
+  return merged;
 }
 
 function RedlineDiffView({ context }: { context: RendererContext<RedlineDocumentData> }) {

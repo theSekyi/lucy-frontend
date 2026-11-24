@@ -89,7 +89,7 @@ const REDLINE_SAMPLE: RedlineDocumentData = {
     {
       id: 'hunk-1',
       section: '§2.4 Subprocessor Notice Period',
-      rationale: 'Aligns subprocessor notice window withAcme procurement policy (30 days vs 14 days).',
+      rationale: 'Aligns subprocessor notice period with Acme procurement policy (30 days vs 14 days).',
       before: 'Provider shall provide fourteen (14) calendar days written notice prior to authorizing any new subprocessor.',
       after: 'Provider shall provide thirty (30) calendar days prior written notice and an objection window before authorizing any new subprocessor.',
       initialDecision: 'pending',
