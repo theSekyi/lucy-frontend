@@ -8,7 +8,7 @@ import type {
 } from '../core/types';
 import { BlockSlot } from './BlockSlot';
 import { Composer } from './Composer';
-import { LobeTopicAvatar } from './icons';
+import { LucyMark } from './icons';
 
 interface ThreadViewProps {
   readonly topic: TopicThread;
@@ -107,7 +107,7 @@ export function ThreadView({
                     >
                       {turn.role === 'assistant' && (
                         <div class="turn-author-row">
-                          <LobeTopicAvatar size={20} />
+                          <LucyMark size={18} />
                           <span class="turn-author-name">Lucy</span>
                           <span class="turn-time">{turn.createdAt}</span>
                           {turn.status === 'queued-offline' && (

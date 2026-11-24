@@ -3,7 +3,7 @@ import {
   BellIcon,
   BotItemIcon,
   HomeIcon,
-  LobeBrandAvatar,
+  LucyBrandMark,
   PagesIcon,
   PanelToggleIcon,
   SearchIcon,
@@ -81,7 +81,7 @@ export function Sidebar({
           class="brand-button"
           onClick={() => onSelectSection('home')}
         >
-          <LobeBrandAvatar />
+          <LucyBrandMark />
           <span class="brand-name">Lucy</span>
         </button>
 

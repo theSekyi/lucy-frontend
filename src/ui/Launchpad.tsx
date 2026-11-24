@@ -8,7 +8,7 @@ import type {
   TopicThread,
 } from '../core/types';
 import { Composer } from './Composer';
-import { LobeTopicAvatar, LobeWavingMascot } from './icons';
+import { LucyMark } from './icons';
 
 interface LaunchpadProps {
   readonly brief: DailyBriefSlide;
@@ -59,18 +59,7 @@ export function Launchpad({
     <div class="launchpad-scroll">
       <div class="launchpad-column">
         <header class="hero-header">
-          <div class="hero-greeting-group">
-            <div class="hero-agent-pill">
-              <LobeTopicAvatar size={19} />
-              <span>Lucy</span>
-            </div>
-            <h1 class="hero-title">Good afternoon</h1>
-          </div>
-
-          <div class="hero-mascot-group">
-            <span class="hero-prompt-hint">What would you like to work on?</span>
-            <LobeWavingMascot />
-          </div>
+          <h1 class="hero-title">Good afternoon</h1>
         </header>
 
         <Composer
@@ -140,7 +129,7 @@ export function Launchpad({
                 onClick={() => onOpenTopic(topic.id)}
               >
                 <div class="topic-row-avatar">
-                  <LobeTopicAvatar size={22} />
+                  <LucyMark size={20} />
                 </div>
 
                 <div class="topic-row-content">

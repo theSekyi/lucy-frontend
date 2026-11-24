@@ -290,25 +290,9 @@ button {
 /* Hero Section */
 .hero-header {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: -8px;
-  position: relative;
-  z-index: 2;
-}
-
-.hero-greeting-group {
-  padding-bottom: 18px;
-}
-
-.hero-agent-pill {
-  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: #d4d4d8;
-  margin-bottom: 14px;
+  justify-content: space-between;
+  margin-bottom: 18px;
 }
 
 .hero-title {
@@ -317,24 +301,6 @@ button {
   font-weight: 600;
   letter-spacing: -0.02em;
   color: #f4f4f6;
-}
-
-.hero-mascot-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-right: 12px;
-}
-
-.hero-prompt-hint {
-  font-size: 12.5px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
-}
-
-.mascot-svg {
-  display: block;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
 }
 
 /* Composer Card */
