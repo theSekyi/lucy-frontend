@@ -242,9 +242,9 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
                     <div>{hunk.before}</div>
                   </div>
                   <div class="redline-col is-after">
-                    <div class="redline-col-label">Proposed Redline (Editable)</div>
+                    <div class="redline-col-label">Proposed Redline</div>
                     <textarea
-                      rows={4}
+                      rows={Math.max(4, Math.ceil(currentAfter.length / 30))}
                       class="redline-editable-prose"
                       value={currentAfter}
                       aria-label={`Proposed redline for ${hunk.section}`}

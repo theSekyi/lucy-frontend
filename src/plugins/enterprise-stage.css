@@ -365,12 +365,12 @@
 .redline-editable-prose {
   width: 100%;
   background: transparent;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border: 1px dashed transparent;
   border-radius: 6px;
-  padding: 6px 8px;
-  margin: -4px -8px;
+  padding: 4px 6px;
+  margin: -4px -6px;
   outline: none;
-  resize: vertical;
+  resize: none;
   font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   font-size: 13.5px;
   line-height: 1.65;
