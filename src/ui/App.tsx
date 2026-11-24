@@ -9,7 +9,10 @@ import {
   selectSidebarRecentTopics,
   type WorkspaceController,
 } from '../core/workspace';
+import type { ConnectorsPage as ConnectorsPageComponent } from './connectors/ConnectorsPage';
+import type { InboxWorkspace as InboxWorkspaceComponent } from './inbox/InboxWorkspace';
 import { Launchpad } from './Launchpad';
+import type { ProfilePage as ProfilePageComponent } from './ProfilePage';
 import { Sidebar } from './Sidebar';
 import type { ThreadView as ThreadViewComponent } from './ThreadView';
 
@@ -22,12 +25,36 @@ interface AppProps {
 export function App({ workspace, registry, onIngestFile }: AppProps) {
   const [state, setState] = useState<WorkspaceState>(() => workspace.getState());
   const [ThreadViewLoaded, setThreadViewLoaded] = useState<typeof ThreadViewComponent | null>(null);
+  const [ProfileLoaded, setProfileLoaded] = useState<typeof ProfilePageComponent | null>(null);
+  const [ConnectorsLoaded, setConnectorsLoaded] =
+    useState<typeof ConnectorsPageComponent | null>(null);
+  const [InboxLoaded, setInboxLoaded] = useState<typeof InboxWorkspaceComponent | null>(null);
 
   useEffect(() => workspace.subscribe(setState), [workspace]);
 
   useEffect(() => {
     async function applyUrlParams() {
       const params = new URLSearchParams(window.location.search);
+      const rawPage = params.get('page')?.trim().toLowerCase();
+      const rawProvider = (params.get('provider') ?? params.get('inbox'))?.trim().toLowerCase();
+
+      if (rawPage === 'profile') {
+        workspace.selectSection('profile');
+        return;
+      }
+      if (rawPage === 'connectors') {
+        workspace.selectSection('connectors');
+        return;
+      }
+      if (rawPage === 'inbox' || rawProvider === 'gmail' || rawProvider === 'outlook') {
+        workspace.setInboxProvider(rawProvider === 'outlook' ? 'outlook' : 'gmail');
+        return;
+      }
+      if (rawPage === 'tasks') {
+        workspace.selectSection('tasks');
+        return;
+      }
+
       const rawStage = params.get('stage')?.trim().toLowerCase();
       const anchor = params.get('anchor');
       if (!rawStage) return;
@@ -49,34 +76,99 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
 
   useEffect(() => {
     const topic = state.topics.find((t) => t.id === state.activeTopicId);
-    if (!topic) {
-      if (window.location.search.includes('stage=')) {
-        window.history.replaceState(null, '', window.location.pathname);
-      }
+    if (topic) {
+      const block = topic.turns
+        .flatMap((t) => t.blocks)
+        .find((b) => b.id === state.inspectedBlockId);
+      if (!block) return;
+      const pluginId = registry.resolve(block).id;
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete('page');
+      nextUrl.searchParams.delete('provider');
+      nextUrl.searchParams.set('stage', pluginId);
+      if (state.inspectedAnchor) nextUrl.searchParams.set('anchor', state.inspectedAnchor);
+      else nextUrl.searchParams.delete('anchor');
+      window.history.replaceState(
+        null,
+        '',
+        `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`
+      );
       return;
     }
-    const block = topic.turns.flatMap((t) => t.blocks).find((b) => b.id === state.inspectedBlockId);
-    if (!block) return;
-    const pluginId = registry.resolve(block).id;
+
     const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set('stage', pluginId);
-    if (state.inspectedAnchor) nextUrl.searchParams.set('anchor', state.inspectedAnchor);
-    else nextUrl.searchParams.delete('anchor');
-    window.history.replaceState(null, '', `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`);
-  }, [registry, state.activeTopicId, state.inspectedAnchor, state.inspectedBlockId, state.topics]);
+    nextUrl.searchParams.delete('stage');
+    nextUrl.searchParams.delete('anchor');
+
+    if (state.activeSection === 'inbox') {
+      nextUrl.searchParams.set('page', 'inbox');
+      nextUrl.searchParams.set('provider', state.inboxProvider);
+      window.history.replaceState(
+        null,
+        '',
+        `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`
+      );
+    } else if (
+      state.activeSection === 'profile' ||
+      state.activeSection === 'connectors' ||
+      state.activeSection === 'tasks'
+    ) {
+      nextUrl.searchParams.set('page', state.activeSection);
+      nextUrl.searchParams.delete('provider');
+      window.history.replaceState(
+        null,
+        '',
+        `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`
+      );
+    } else if (window.location.search) {
+      window.history.replaceState(null, '', nextUrl.pathname);
+    }
+  }, [
+    registry,
+    state.activeSection,
+    state.activeTopicId,
+    state.inboxProvider,
+    state.inspectedAnchor,
+    state.inspectedBlockId,
+    state.topics,
+  ]);
 
   useEffect(() => {
     if (state.activeTopicId && !ThreadViewLoaded) {
       void import('./ThreadView').then((mod) => setThreadViewLoaded(() => mod.ThreadView));
       return;
     }
-    if (state.networkStatus === 'online' && !ThreadViewLoaded) {
+    if (state.activeSection === 'profile' && !ProfileLoaded) {
+      void import('./ProfilePage').then((mod) => setProfileLoaded(() => mod.ProfilePage));
+      return;
+    }
+    if (state.activeSection === 'connectors' && !ConnectorsLoaded) {
+      void import('./connectors/ConnectorsPage').then((mod) =>
+        setConnectorsLoaded(() => mod.ConnectorsPage)
+      );
+      return;
+    }
+    if (state.activeSection === 'inbox' && !InboxLoaded) {
+      void import('./inbox/InboxWorkspace').then((mod) =>
+        setInboxLoaded(() => mod.InboxWorkspace)
+      );
+      return;
+    }
+    if (state.networkStatus === 'online' && !ThreadViewLoaded && state.activeSection === 'home') {
       const timer = setTimeout(() => {
         void import('./ThreadView').then((mod) => setThreadViewLoaded(() => mod.ThreadView));
       }, 600);
       return () => clearTimeout(timer);
     }
-  }, [state.activeTopicId, state.networkStatus, ThreadViewLoaded]);
+  }, [
+    state.activeTopicId,
+    state.activeSection,
+    state.networkStatus,
+    ThreadViewLoaded,
+    ProfileLoaded,
+    ConnectorsLoaded,
+    InboxLoaded,
+  ]);
 
   useEffect(() => {
     function syncConnectivity() {
@@ -108,6 +200,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         event.preventDefault();
         workspace.setSearchOpen(!workspace.getState().isSearchOpen);
       } else if (event.key === 'Escape') {
+        const target = event.target as HTMLElement | null;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
         const current = workspace.getState();
         if (current.inspectedBlockId) {
           workspace.inspectArtifact(null);
@@ -127,12 +221,22 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     ? selectFilteredTopics(state)
     : selectHomeRecentTopics(state);
 
+  async function handleOpenFullStageFromMail(pluginRoute: string) {
+    const matched = registry.findByRoute(pluginRoute);
+    if (matched) {
+      await workspace.launchPluginSample(matched.id);
+    }
+  }
+
   return (
     <div class="app-frame">
       <Sidebar
         isOpen={state.isSidebarOpen}
         activeSection={state.activeSection}
         activeTopicId={state.activeTopicId}
+        unreadInboxCount={state.unreadInboxCount}
+        connectedCount={state.connectedAppIds.length}
+        userProfile={state.userProfile}
         isRecentsOpen={state.isRecentsOpen}
         showAllRecents={state.showAllSidebarRecents}
         isSearchOpen={state.isSearchOpen}
@@ -181,6 +285,48 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
               <div class="renderer-skeleton">Loading view…</div>
             </div>
           )
+        ) : state.activeSection === 'inbox' ? (
+          InboxLoaded ? (
+            <InboxLoaded
+              provider={state.inboxProvider}
+              registry={registry}
+              senderEmail={state.userProfile.email}
+              senderName={state.userProfile.fullName}
+              onSwitchProvider={(provider) => workspace.setInboxProvider(provider)}
+              onUnreadCountChange={(count) => workspace.setUnreadInboxCount(count)}
+              onOpenFullStage={(route) => void handleOpenFullStageFromMail(route)}
+            />
+          ) : (
+            <div class="launchpad-scroll">
+              <div class="renderer-skeleton">Loading inbox…</div>
+            </div>
+          )
+        ) : state.activeSection === 'connectors' ? (
+          ConnectorsLoaded ? (
+            <ConnectorsLoaded
+              connectedIds={state.connectedAppIds}
+              onToggleConnector={(id) => workspace.toggleConnector(id)}
+              onOpenInboxProvider={(provider) => workspace.setInboxProvider(provider)}
+              onNavigate={(sec) => workspace.selectSection(sec)}
+            />
+          ) : (
+            <div class="launchpad-scroll">
+              <div class="renderer-skeleton">Loading connectors…</div>
+            </div>
+          )
+        ) : state.activeSection === 'profile' ? (
+          ProfileLoaded ? (
+            <ProfileLoaded
+              profile={state.userProfile}
+              connectedCount={state.connectedAppIds.length}
+              onUpdateProfile={(patch) => workspace.updateUserProfile(patch)}
+              onNavigate={(sec) => workspace.selectSection(sec)}
+            />
+          ) : (
+            <div class="launchpad-scroll">
+              <div class="renderer-skeleton">Loading profile…</div>
+            </div>
+          )
         ) : state.activeSection === 'tasks' ? (
           <div class="launchpad-scroll">
             <div class="launchpad-column section-overview">
@@ -195,7 +341,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
                 </button>
               </div>
               <p class="daily-brief-body">
-                Active engineering issues and automated workflows.
+                Active engagement sign-offs and automated close workflows.
               </p>
               <div class="recent-topics-list">
                 {state.topics
@@ -222,6 +368,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         ) : (
           <Launchpad
             brief={activeBrief}
+            userProfile={state.userProfile}
+            connectedCount={state.connectedAppIds.length}
             recentTopics={homeTopics}
             totalRecentCount={selectHomeRecentTotalCount(state)}
             draft={state.composerDraft}
@@ -238,6 +386,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
             onSubmit={() => workspace.submitPrompt()}
             onStepBrief={(delta) => workspace.stepDailyBrief(delta)}
             onOpenTopic={(id) => workspace.openTopic(id)}
+            onOpenProfile={() => workspace.selectSection('profile')}
+            onOpenConnectors={() => workspace.selectSection('connectors')}
           />
         )}
       </main>

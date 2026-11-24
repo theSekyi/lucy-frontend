@@ -401,6 +401,20 @@ export const EXTRA_SIDEBAR_INVESTIGATION: TopicThread = {
 export function createInitialWorkspaceState(): WorkspaceState {
   return {
     activeSection: 'home',
+    inboxProvider: 'gmail',
+    unreadInboxCount: 5,
+    userProfile: {
+      fullName: 'Elena Carter',
+      initials: 'EC',
+      role: 'Audit & Tax Partner',
+      firm: 'Carter & Vance Chartered Accountants',
+      credentials: 'ACA · CPA · ICAEW #084912 · PTIN P0194821',
+      email: 'e.carter@cartervance.co.uk',
+      jurisdiction: 'UK (FRS 102 / IFRS) & US GAAP',
+      defaultCurrency: 'GBP (£)',
+      materialityBasis: '5.0% Pre-Tax Profit',
+    },
+    connectedAppIds: ['gmail', 'outlook', 'xero', 'netsuite', 'hmrc-mtd', 'karbon', 'dext'],
     activeTopicId: null,
     inspectedBlockId: null,
     inspectedAnchor: null,

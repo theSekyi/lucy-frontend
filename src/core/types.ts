@@ -1,4 +1,18 @@
-export type NavSection = 'home' | 'tasks';
+export type NavSection = 'home' | 'inbox' | 'tasks' | 'connectors' | 'profile';
+
+export type InboxProvider = 'gmail' | 'outlook';
+
+export interface UserProfile {
+  readonly fullName: string;
+  readonly initials: string;
+  readonly role: string;
+  readonly firm: string;
+  readonly credentials: string;
+  readonly email: string;
+  readonly jurisdiction: string;
+  readonly defaultCurrency: 'GBP (£)' | 'USD ($)' | 'EUR (€)';
+  readonly materialityBasis: string;
+}
 
 export type SidebarIconKind = 'hash' | 'bot' | 'spinner';
 
@@ -178,6 +192,10 @@ export interface ComposerMode {
 
 export interface WorkspaceState {
   readonly activeSection: NavSection;
+  readonly inboxProvider: InboxProvider;
+  readonly unreadInboxCount: number;
+  readonly userProfile: UserProfile;
+  readonly connectedAppIds: ReadonlyArray<string>;
   readonly activeTopicId: string | null;
   readonly inspectedBlockId: string | null;
   readonly inspectedAnchor: string | null;

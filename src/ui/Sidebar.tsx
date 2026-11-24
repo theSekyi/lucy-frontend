@@ -1,8 +1,16 @@
-import type { NavSection, NetworkStatus, SidebarIconKind, TopicThread } from '../core/types';
+import type {
+  NavSection,
+  NetworkStatus,
+  SidebarIconKind,
+  TopicThread,
+  UserProfile,
+} from '../core/types';
 import {
   BellIcon,
   BotItemIcon,
+  ConnectorsIcon,
   HomeIcon,
+  InboxIcon,
   LucyBrandMark,
   PanelToggleIcon,
   SearchIcon,
@@ -14,6 +22,9 @@ interface SidebarProps {
   readonly isOpen: boolean;
   readonly activeSection: NavSection;
   readonly activeTopicId: string | null;
+  readonly unreadInboxCount: number;
+  readonly connectedCount: number;
+  readonly userProfile: UserProfile;
   readonly isRecentsOpen: boolean;
   readonly showAllRecents: boolean;
   readonly isSearchOpen: boolean;
@@ -40,6 +51,9 @@ export function Sidebar({
   isOpen,
   activeSection,
   activeTopicId,
+  unreadInboxCount,
+  connectedCount,
+  userProfile,
   isRecentsOpen,
   showAllRecents,
   isSearchOpen,
@@ -71,6 +85,10 @@ export function Sidebar({
   }
 
   const isHomeActive = activeSection === 'home' && activeTopicId === null;
+  const isInboxActive = activeSection === 'inbox' && activeTopicId === null;
+  const isConnectorsActive = activeSection === 'connectors' && activeTopicId === null;
+  const isTasksActive = activeSection === 'tasks' && activeTopicId === null;
+  const isProfileActive = activeSection === 'profile' && activeTopicId === null;
 
   return (
     <aside class="sidebar" aria-label="Workspace navigation">
@@ -133,7 +151,29 @@ export function Sidebar({
 
         <button
           type="button"
-          class={`nav-row ${activeSection === 'tasks' ? 'is-active' : ''}`}
+          class={`nav-row ${isInboxActive ? 'is-active' : ''}`}
+          onClick={() => onSelectSection('inbox')}
+        >
+          <InboxIcon />
+          <span>Inbox</span>
+          {unreadInboxCount > 0 && (
+            <span class="nav-count-badge is-unread">{unreadInboxCount}</span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          class={`nav-row ${isConnectorsActive ? 'is-active' : ''}`}
+          onClick={() => onSelectSection('connectors')}
+        >
+          <ConnectorsIcon />
+          <span>Connectors</span>
+          <span class="nav-count-badge">{connectedCount}</span>
+        </button>
+
+        <button
+          type="button"
+          class={`nav-row ${isTasksActive ? 'is-active' : ''}`}
           onClick={() => onSelectSection('tasks')}
         >
           <TasksIcon />
@@ -141,7 +181,6 @@ export function Sidebar({
         </button>
       </nav>
 
-      {/* Agents section intentionally omitted per architecture brief to reduce cognitive load */}
       <section class="sidebar-section" aria-label="Recent threads">
         <button
           type="button"
@@ -180,16 +219,32 @@ export function Sidebar({
         )}
       </section>
 
-      {networkStatus !== 'online' && (
-        <div class="sidebar-network-pill" role="status">
-          <span class={`net-dot is-${networkStatus}`} />
-          <span>
-            {networkStatus === 'offline'
-              ? `Offline mode${queuedCount > 0 ? ` · ${queuedCount} queued` : ''}`
-              : 'Low-bandwidth mode active'}
+      <div class="sidebar-bottom-stack">
+        {networkStatus !== 'online' && (
+          <div class="sidebar-network-pill" role="status">
+            <span class={`net-dot is-${networkStatus}`} />
+            <span>
+              {networkStatus === 'offline'
+                ? `Offline mode${queuedCount > 0 ? ` · ${queuedCount} queued` : ''}`
+                : 'Low-bandwidth mode active'}
+            </span>
+          </div>
+        )}
+
+        <button
+          type="button"
+          class={`sidebar-profile-footer ${isProfileActive ? 'is-active' : ''}`}
+          onClick={() => onSelectSection('profile')}
+        >
+          <span class="sidebar-avatar-sm" aria-hidden="true">
+            {userProfile.initials}
           </span>
-        </div>
-      )}
+          <span class="sidebar-profile-text">
+            <strong class="sidebar-profile-name">{userProfile.fullName}</strong>
+            <span class="sidebar-profile-role">{userProfile.role}</span>
+          </span>
+        </button>
+      </div>
     </aside>
   );
 }

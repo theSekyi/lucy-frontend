@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { INITIAL_MAIL_THREADS } from '../src/core/inbox';
 import { createRendererRegistry } from '../src/core/renderers';
 import {
   createWorkspace,
@@ -95,15 +96,27 @@ describe('Separation of logic from presentation and strict plugin modularity', (
     }
   });
 
-  it('keeps src/ui completely decoupled from concrete plugin implementations', () => {
-    const uiDir = join(process.cwd(), 'src/ui');
-    const files = readdirSync(uiDir).filter((f) => /\.(ts|tsx)$/.test(f));
-    expect(files.length).toBeGreaterThanOrEqual(5);
+  it('keeps src/ui completely decoupled from concrete plugin implementations across all subfolders', () => {
+    function collectTsFiles(dir: string): string[] {
+      const out: string[] = [];
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        if (statSync(full).isDirectory()) {
+          out.push(...collectTsFiles(full));
+        } else if (/\.(ts|tsx)$/.test(entry)) {
+          out.push(full);
+        }
+      }
+      return out;
+    }
 
-    for (const file of files) {
-      const source = readFileSync(join(uiDir, file), 'utf8');
-      expect(source).not.toMatch(/from\s+['"]\.\.\/plugins/);
-      expect(source).not.toMatch(/import\(['"]\.\.\/plugins/);
+    const uiFiles = collectTsFiles(join(process.cwd(), 'src/ui'));
+    expect(uiFiles.length).toBeGreaterThanOrEqual(10);
+
+    for (const file of uiFiles) {
+      const source = readFileSync(file, 'utf8');
+      expect(source).not.toMatch(/from\s+['"][^'"]*plugins\//);
+      expect(source).not.toMatch(/import\(['"][^'"]*plugins\//);
     }
   });
 });
@@ -122,7 +135,9 @@ describe('Headless Workspace state and offline resilience', () => {
 
     workspace.updateDraft('Build a Q4 revenue Excel forecast');
     const createdTopicId = workspace.submitPrompt();
-    await new Promise((r) => setTimeout(r, 15));
+    await vi.waitFor(() => {
+      expect(workspace.getState().inspectedBlockId).toBeTruthy();
+    });
     const afterSubmit = workspace.getState();
 
     expect(createdTopicId).toBeTruthy();
@@ -226,11 +241,55 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(pendingTopic.turns[1]?.status).toBe('queued-offline');
 
     workspace.setNetworkStatus('online');
-    await new Promise((r) => setTimeout(r, 15));
+    await vi.waitFor(() => {
+      expect(workspace.getState().queuedTurnIds).toHaveLength(0);
+    });
     const recoveredState = workspace.getState();
     expect(recoveredState.queuedTurnIds).toHaveLength(0);
     const completedTopic = recoveredState.topics.find((t) => t.id === topicId)!;
     expect(completedTopic.turns[1]?.status).toBe('complete');
+  });
+
+  it('manages user profile updates, accounting software connectors, and modular inbox attachment routes', async () => {
+    const registry = createDefaultRendererRegistry();
+    const workspace = createWorkspace({ responseDelayMs: 0, registry });
+
+    // Profile update recomputes initials cleanly
+    expect(workspace.getState().userProfile.initials).toBe('EC');
+    workspace.updateUserProfile({ fullName: 'Arthur Pendelton', role: 'Senior Tax Partner' });
+    expect(workspace.getState().userProfile.fullName).toBe('Arthur Pendelton');
+    expect(workspace.getState().userProfile.initials).toBe('AP');
+
+    // Connector toggle adds & removes cleanly
+    const beforeCount = workspace.getState().connectedAppIds.length;
+    workspace.toggleConnector('quickbooks');
+    expect(workspace.getState().connectedAppIds).toContain('quickbooks');
+    expect(workspace.getState().connectedAppIds.length).toBe(beforeCount + 1);
+    workspace.toggleConnector('quickbooks');
+    expect(workspace.getState().connectedAppIds).not.toContain('quickbooks');
+
+    // Inbox provider switching activates inbox section & unread count setter is idempotent
+    workspace.setInboxProvider('outlook');
+    expect(workspace.getState().activeSection).toBe('inbox');
+    expect(workspace.getState().inboxProvider).toBe('outlook');
+
+    let notifyCount = 0;
+    const unsub = workspace.subscribe(() => {
+      notifyCount += 1;
+    });
+    const currentUnread = workspace.getState().unreadInboxCount;
+    workspace.setUnreadInboxCount(currentUnread);
+    workspace.setInboxProvider('outlook');
+    expect(notifyCount).toBe(0);
+    unsub();
+
+    // Every attachment across Gmail & Outlook mail threads resolves to a registered modular plugin
+    for (const thread of INITIAL_MAIL_THREADS) {
+      for (const att of thread.attachments) {
+        const plugin = registry.findByRoute(att.pluginRoute);
+        expect(plugin, `Missing plugin route "${att.pluginRoute}" on ${att.filename}`).toBeDefined();
+      }
+    }
   });
 });
 

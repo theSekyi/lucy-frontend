@@ -1,0 +1,953 @@
+/* Lazy-loaded styles for Gmail Workspace & Microsoft Outlook Inbox Renderers */
+.inbox-host-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.inbox-provider-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 8px;
+  background: #0d0e11;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.inbox-provider-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.inbox-provider-btn.is-active {
+  background: #23252b;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   1. GOOGLE WORKSPACE GMAIL EXACT REPLICA (Material 3 Dark Workspace)
+   ========================================================================== */
+.gmail-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #111315;
+  color: #e3e3e3;
+}
+
+.gmail-topbar {
+  height: 56px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.gmail-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 156px;
+  flex-shrink: 0;
+}
+
+.gmail-wordmark {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #e3e3e3;
+}
+
+.gmail-search-pill {
+  flex: 1;
+  max-width: 620px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #282a2c;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid transparent;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.gmail-search-pill:focus-within {
+  background: #1e1f20;
+  border-color: rgba(168, 199, 250, 0.45);
+}
+
+.gmail-search-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 14px;
+  color: #e3e3e3;
+}
+
+.gmail-search-input::placeholder {
+  color: #9aa0a6;
+}
+
+.gmail-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 0 14px 12px 0;
+}
+
+.gmail-left-rail {
+  width: 164px;
+  flex-shrink: 0;
+  padding: 2px 10px 12px 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gmail-left-rail.is-rail-collapsed {
+  width: 58px;
+  align-items: center;
+  padding: 2px 6px 12px;
+}
+
+.gmail-left-rail.is-rail-collapsed .gmail-compose-btn {
+  padding: 0 14px;
+  margin-left: 0;
+}
+
+.gmail-left-rail.is-rail-collapsed .gmail-folder-row {
+  width: 38px;
+  padding: 0;
+  border-radius: 999px;
+  justify-content: center;
+}
+
+.gmail-compose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  width: fit-content;
+  height: 48px;
+  padding: 0 20px 0 16px;
+  margin: 0 0 14px 6px;
+  border-radius: 16px;
+  background: #c2e7ff;
+  color: #001d35;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: filter 120ms ease;
+}
+
+.gmail-compose-btn:hover {
+  filter: brightness(1.04);
+}
+
+.gmail-folder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 14px 0 16px;
+  border-radius: 0 16px 16px 0;
+  font-size: 13px;
+  color: #c4c7c5;
+}
+
+.gmail-folder-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gmail-folder-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gmail-folder-row.is-active {
+  background: #004a77;
+  color: #c2e7ff;
+  font-weight: 600;
+}
+
+.gmail-labels-header {
+  margin: 18px 0 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8e918f;
+}
+
+.gmail-label-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.gmail-sheet {
+  flex: 1;
+  min-width: 0;
+  background: #1b1b1d;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gmail-action-strip {
+  height: 42px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: #9aa0a6;
+  flex-shrink: 0;
+}
+
+.gmail-category-tabs {
+  display: flex;
+  align-items: stretch;
+  height: 46px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.gmail-cat-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  max-width: 210px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9aa0a6;
+  white-space: nowrap;
+}
+
+.gmail-cat-tab:hover {
+  background: rgba(255, 255, 255, 0.035);
+  color: #e3e3e3;
+}
+
+.gmail-cat-tab.is-active {
+  color: #a8c7fa;
+}
+
+.gmail-cat-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: #a8c7fa;
+}
+
+.gmail-new-pill {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(52, 168, 83, 0.24);
+  color: #81c995;
+}
+
+.gmail-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.gmail-row {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  cursor: pointer;
+  background: #161719;
+  color: #9aa0a6;
+}
+
+.gmail-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  min-width: 0;
+}
+
+.gmail-row-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 0 8px 54px;
+}
+
+.gmail-row.is-unread {
+  background: #202225;
+  color: #f1f3f4;
+}
+
+.gmail-row:hover {
+  box-shadow: inset 1px 0 0 #5f6368, inset -1px 0 0 #5f6368;
+  background: #282a2e;
+}
+
+.gmail-star-btn {
+  font-size: 15px;
+  color: #5f6368;
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.gmail-star-btn.is-starred {
+  color: #fbbc04;
+}
+
+.gmail-sender-col {
+  width: 146px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.gmail-row.is-unread .gmail-sender-col,
+.gmail-row.is-unread .gmail-subject-text {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.gmail-label-chip {
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.gmail-label-chip.tone-hmrc {
+  background: rgba(52, 168, 83, 0.2);
+  color: #81c995;
+}
+.gmail-label-chip.tone-audit {
+  background: rgba(251, 188, 4, 0.2);
+  color: #fdd663;
+}
+.gmail-label-chip.tone-urgent {
+  background: rgba(234, 67, 53, 0.22);
+  color: #f28b82;
+}
+.gmail-label-chip.tone-erp {
+  background: rgba(66, 133, 244, 0.22);
+  color: #8ab4f8;
+}
+
+.gmail-subject-col {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.gmail-snippet-dash {
+  color: #8e918f;
+  font-weight: 400;
+}
+
+.gmail-att-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 25px;
+  padding: 0 10px 0 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11.5px;
+  color: #d2d5d9;
+  flex-shrink: 0;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.gmail-att-pill:hover {
+  background: rgba(168, 199, 250, 0.14);
+  border-color: rgba(168, 199, 250, 0.45);
+  color: #ffffff;
+}
+
+.gmail-att-badge {
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(234, 67, 53, 0.24);
+  color: #f28b82;
+}
+
+.gmail-time-col {
+  width: 56px;
+  text-align: right;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.gmail-thread-detail {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 28px 32px;
+}
+
+.gmail-thread-subject {
+  font-size: 20px;
+  font-weight: 400;
+  color: #f1f3f4;
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   2. MICROSOFT OUTLOOK 365 EXACT REPLICA (Fluent 2 3-Pane Desktop/Web)
+   ========================================================================== */
+.outlook-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #141417;
+  color: #f3f2f1;
+}
+
+.outlook-appbar {
+  height: 46px;
+  padding: 0 16px;
+  background: #0f1722;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.outlook-search-box {
+  flex: 1;
+  max-width: 460px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 4px;
+  background: #1f2733;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1.5px solid #479ef5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.outlook-command-ribbon {
+  height: 40px;
+  padding: 0 14px;
+  background: #1b1a19;
+  border-bottom: 1px solid #292827;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.outlook-newmail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: #0f6cbd;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.outlook-newmail-btn:hover {
+  background: #115ea3;
+}
+
+.outlook-cmd-btn {
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #d2d0ce;
+}
+
+.outlook-cmd-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.outlook-three-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.outlook-folder-pane {
+  width: 136px;
+  flex-shrink: 0;
+  background: #141416;
+  border-right: 1px solid #292827;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.outlook-ribbon-sep {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 2px;
+}
+
+.outlook-folder-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: #c8c6c4;
+}
+
+.outlook-folder-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.outlook-folder-btn.is-active {
+  background: #242428;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.outlook-list-pane {
+  width: 278px;
+  flex-shrink: 0;
+  background: #18181b;
+  border-right: 1px solid #292827;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.outlook-focused-bar {
+  height: 40px;
+  padding: 0 14px;
+  border-bottom: 1px solid #292827;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.outlook-focus-tab {
+  position: relative;
+  height: 40px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #a19f9d;
+}
+
+.outlook-focus-tab.is-active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.outlook-focus-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 2.5px;
+  background: #479ef5;
+}
+
+.outlook-date-divider {
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8a8886;
+  background: #141417;
+  border-bottom: 1px solid #252423;
+}
+
+.outlook-msg-card {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px 10px 15px;
+  border-bottom: 1px solid #252423;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.outlook-msg-card:hover {
+  background: #202024;
+}
+
+.outlook-msg-card.is-selected {
+  background: #1b2838;
+}
+
+.outlook-unread-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #2899f5;
+}
+
+.outlook-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.outlook-card-lines {
+  flex: 1;
+  min-width: 0;
+}
+
+.outlook-card-line1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.outlook-card-sender {
+  font-size: 13px;
+  color: #e1dfdd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outlook-msg-card.is-unread .outlook-card-sender {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.outlook-indicators {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.outlook-card-subject {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: #c8c6c4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outlook-msg-card.is-unread .outlook-card-subject {
+  color: #62abf5;
+  font-weight: 600;
+}
+
+.outlook-card-snippet {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: #8a8886;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outlook-cat-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.outlook-cat-tag.cat-red {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+.outlook-cat-tag.cat-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+.outlook-cat-tag.cat-green {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+.outlook-cat-tag.cat-blue {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+}
+
+.outlook-reading-pane {
+  flex: 1;
+  min-width: 0;
+  background: #121215;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 18px 22px 28px;
+}
+
+.outlook-reading-subject-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.outlook-reading-subject {
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.outlook-sender-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.outlook-sender-left {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.outlook-sender-addresses {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.outlook-sender-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.mail-att-card.is-active {
+  border-color: #60a5fa;
+  background: #202430;
+}
+
+.outlook-info-callout {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  border-left: 3px solid #f59e0b;
+  background: #1b1a17;
+  font-size: 11.5px;
+  color: #e4e4e7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.outlook-meeting-box {
+  padding: 11px 14px;
+  margin-bottom: 14px;
+  border-radius: 6px;
+  background: #181d26;
+  border: 1px solid rgba(71, 158, 245, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mail-attachment-deck {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.mail-att-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  background: #1a1b20;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
+}
+
+.mail-att-card:hover {
+  border-color: #60a5fa;
+  background: #202229;
+}
+
+.embedded-mail-stage {
+  margin-top: 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+}
+
+.compose-modal-card {
+  position: fixed;
+  right: 24px;
+  bottom: 18px;
+  width: 430px;
+  background: #1b1c20;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.65);
+  z-index: 60;
+  overflow: hidden;
+}
+
+.inline-control-header {
+  height: 38px;
+  padding: 0 14px;
+  background: #23252b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #f4f4f6;
+}
+
+.inline-control-footer {
+  height: 40px;
+  padding: 0 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.decision-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #e4e4e7;
+}
+
+.decision-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.decision-btn.is-accept-active {
+  background: rgba(15, 108, 189, 0.35);
+  border-color: #479ef5;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.gmail-row-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1.5px solid #5f6368;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.outlook-folder-group-label {
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8a8886;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.outlook-inline-att-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  font-size: 10.5px;
+  color: #c8c6c4;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

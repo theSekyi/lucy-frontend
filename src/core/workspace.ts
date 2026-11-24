@@ -4,9 +4,11 @@ import { createStore, type ReadableStore } from './store';
 import type {
   ContentBlock,
   ConversationTurn,
+  InboxProvider,
   NavSection,
   NetworkStatus,
   TopicThread,
+  UserProfile,
   WorkspaceState,
 } from './types';
 
@@ -18,6 +20,10 @@ export interface WorkspaceOptions<TView = unknown> {
 
 export interface WorkspaceController extends ReadableStore<WorkspaceState> {
   selectSection: (section: NavSection) => void;
+  setInboxProvider: (provider: InboxProvider) => void;
+  setUnreadInboxCount: (count: number) => void;
+  updateUserProfile: (patch: Partial<UserProfile>) => void;
+  toggleConnector: (connectorId: string) => void;
   openTopic: (topicId: string) => void;
   returnHome: () => void;
   toggleSidebar: () => void;
@@ -155,10 +161,64 @@ export function createWorkspace<TView = unknown>(
       store.update((state) => ({
         ...state,
         activeSection: section,
-        activeTopicId: section === 'home' ? null : state.activeTopicId,
-        inspectedBlockId: section === 'home' ? null : state.inspectedBlockId,
+        activeTopicId: null,
+        inspectedBlockId: null,
         inspectedAnchor: null,
       }));
+    },
+
+    setInboxProvider(provider) {
+      store.update((state) =>
+        state.activeSection === 'inbox' &&
+        state.inboxProvider === provider &&
+        state.activeTopicId === null
+          ? state
+          : {
+              ...state,
+              activeSection: 'inbox',
+              inboxProvider: provider,
+              activeTopicId: null,
+            }
+      );
+    },
+
+    setUnreadInboxCount(count) {
+      const clamped = Math.max(0, count);
+      store.update((state) =>
+        state.unreadInboxCount === clamped ? state : { ...state, unreadInboxCount: clamped }
+      );
+    },
+
+    updateUserProfile(patch) {
+      store.update((state) => {
+        const nextName = patch.fullName ?? state.userProfile.fullName;
+        const computedInitials = nextName
+          .trim()
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((part) => part[0]?.toUpperCase() ?? '')
+          .join('');
+        return {
+          ...state,
+          userProfile: {
+            ...state.userProfile,
+            ...patch,
+            initials: computedInitials || state.userProfile.initials,
+          },
+        };
+      });
+    },
+
+    toggleConnector(connectorId) {
+      store.update((state) => {
+        const exists = state.connectedAppIds.includes(connectorId);
+        return {
+          ...state,
+          connectedAppIds: exists
+            ? state.connectedAppIds.filter((id) => id !== connectorId)
+            : [...state.connectedAppIds, connectorId],
+        };
+      });
     },
 
     openTopic(topicId) {

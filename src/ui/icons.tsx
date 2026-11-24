@@ -58,6 +58,29 @@ export function HomeIcon() {
   );
 }
 
+export function InboxIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+      <path
+        d="M2.3 9.2 4 3.4a1 1 0 0 1 .96-.7h6.08a1 1 0 0 1 .96.7l1.7 5.8v3.1a1 1 0 0 1-1 1H3.3a1 1 0 0 1-1-1V9.2Z"
+        stroke-linejoin="round"
+      />
+      <path d="M2.4 9.3h3.2l.8 1.5h3.2l.8-1.5h3.2" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
+export function ConnectorsIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+      <rect x="2.2" y="2.2" width="4.6" height="4.6" rx="1.1" />
+      <rect x="9.2" y="2.2" width="4.6" height="4.6" rx="1.1" />
+      <rect x="2.2" y="9.2" width="4.6" height="4.6" rx="1.1" />
+      <circle cx="11.5" cy="11.5" r="2.3" />
+    </svg>
+  );
+}
+
 export function TasksIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">

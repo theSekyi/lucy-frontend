@@ -5,12 +5,15 @@ import type {
   DailyBriefSlide,
   ModelChoice,
   TopicThread,
+  UserProfile,
 } from '../core/types';
 import { Composer } from './Composer';
 import { ThreadItemIcon } from './icons';
 
 interface LaunchpadProps {
   readonly brief: DailyBriefSlide;
+  readonly userProfile: UserProfile;
+  readonly connectedCount: number;
   readonly recentTopics: ReadonlyArray<TopicThread>;
   readonly totalRecentCount: number;
   readonly draft: string;
@@ -27,10 +30,14 @@ interface LaunchpadProps {
   readonly onSubmit: () => void;
   readonly onStepBrief: (delta: -1 | 1) => void;
   readonly onOpenTopic: (topicId: string) => void;
+  readonly onOpenProfile: () => void;
+  readonly onOpenConnectors: () => void;
 }
 
 export function Launchpad({
   brief,
+  userProfile,
+  connectedCount,
   recentTopics,
   totalRecentCount,
   draft,
@@ -47,12 +54,43 @@ export function Launchpad({
   onSubmit,
   onStepBrief,
   onOpenTopic,
+  onOpenProfile,
+  onOpenConnectors,
 }: LaunchpadProps) {
+  const firstName = userProfile.fullName.trim().split(/\s+/)[0] ?? 'Partner';
+
   return (
     <div class="launchpad-scroll">
       <div class="launchpad-column">
         <header class="hero-header">
-          <h1 class="hero-title">Good afternoon</h1>
+          <div>
+            <h1 class="hero-title">Good afternoon, {firstName}</h1>
+          </div>
+
+          <div class="dashboard-header-actions">
+            <button
+              type="button"
+              class="ghost-pill"
+              onClick={onOpenConnectors}
+            >
+              {connectedCount} Connected Apps
+            </button>
+
+            <button
+              type="button"
+              class="dashboard-profile-pill"
+              onClick={onOpenProfile}
+              aria-label={`Open user profile for ${userProfile.fullName}`}
+            >
+              <span class="dashboard-avatar-chip" aria-hidden="true">
+                {userProfile.initials}
+              </span>
+              <span class="dashboard-profile-meta">
+                <strong class="dashboard-profile-name">{userProfile.fullName}</strong>
+                <span class="dashboard-profile-sub">Profile →</span>
+              </span>
+            </button>
+          </div>
         </header>
 
         <Composer
