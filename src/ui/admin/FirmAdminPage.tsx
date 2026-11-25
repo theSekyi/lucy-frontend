@@ -11,22 +11,22 @@ import type { DeepLinkTarget } from '../inbox/MailIntelligencePanel';
 import './admin.css';
 
 const STAGES: ReadonlyArray<EngagementStage> = [
-  'PBC & Intake',
+  'Intake',
   'Fieldwork',
-  'Manager Review',
-  'Partner Sign-Off',
-  'Filed / Complete',
+  'Review',
+  'Sign-Off',
+  'Complete',
 ];
 
 const AUTHORITIES: ReadonlyArray<SigningAuthority> = [
-  'Partner · ERP & HMRC Sign-Off',
-  'Director · EQCR & Tax Filing',
-  'Manager · Workpaper Review',
-  'Senior · Preparer',
-  'Associate · Preparer',
+  'Partner',
+  'Director',
+  'Manager',
+  'Senior',
+  'Associate',
 ];
 
-type AdminTab = 'engagements' | 'people' | 'activity';
+type AdminTab = 'engagements' | 'people';
 
 interface FirmAdminPageProps {
   readonly controller?: FirmAdminController;
@@ -46,15 +46,13 @@ export function FirmAdminPage({
   const [newMember, setNewMember] = useState<{
     fullName: string;
     email: string;
-    title: string;
     department: PracticeLine;
     authority: SigningAuthority;
   }>({
     fullName: '',
     email: '',
-    title: '',
     department: 'Audit',
-    authority: 'Senior · Preparer',
+    authority: 'Senior',
   });
 
   const [newEng, setNewEng] = useState<{
@@ -73,18 +71,14 @@ export function FirmAdminPage({
 
   useEffect(() => controller.subscribe(setState), [controller]);
 
-  const openEngagements = state.engagements.filter((e) => e.stage !== 'Filed / Complete');
-  const signOffQueueCount = state.engagements.filter(
-    (e) => e.stage === 'Partner Sign-Off'
-  ).length;
-  const atRiskCount = openEngagements.filter((e) => e.atRisk).length;
+  const openEngagements = state.engagements.filter((e) => e.stage !== 'Complete');
+  const signOffQueueCount = state.engagements.filter((e) => e.stage === 'Sign-Off').length;
   const avgUtil = state.members.length
     ? Math.round(
         state.members.reduce((sum, m) => sum + m.utilizationPct, 0) / state.members.length
       )
     : 0;
   const totalWorkpapers = state.members.reduce((sum, m) => sum + m.workpapersCompleted, 0);
-  const totalAjes = state.members.reduce((sum, m) => sum + m.ajesStaged, 0);
 
   const filteredEngagements = state.engagements.filter(
     (e) => practiceFilter === 'All' || e.practice === practiceFilter
@@ -100,9 +94,8 @@ export function FirmAdminPage({
     setNewMember({
       fullName: '',
       email: '',
-      title: '',
       department: 'Audit',
-      authority: 'Senior · Preparer',
+      authority: 'Senior',
     });
     setShowAddMember(false);
   }
@@ -125,12 +118,7 @@ export function FirmAdminPage({
     <div class="launchpad-scroll">
       <div class="admin-shell">
         <header class="admin-top-header">
-          <div>
-            <h1 class="hero-title">Firm Admin</h1>
-            <p class="admin-subtitle">
-              {state.firmName} · {state.periodLabel}
-            </p>
-          </div>
+          <h1 class="hero-title">Firm Admin</h1>
 
           <div class="admin-dept-pills" role="group" aria-label="Filter practice line">
             {(['All', 'Audit', 'Tax', 'CAS'] as const).map((dept) => (
@@ -150,29 +138,21 @@ export function FirmAdminPage({
           <div class="admin-pulse-card">
             <span class="admin-pulse-label">Active Engagements</span>
             <strong class="admin-pulse-value">{openEngagements.length}</strong>
-            <span class="admin-pulse-sub">
-              {atRiskCount > 0 ? `${atRiskCount} statutory due < 5d` : 'All on schedule'}
-            </span>
           </div>
 
           <div class="admin-pulse-card">
-            <span class="admin-pulse-label">Partner Sign-Off Queue</span>
+            <span class="admin-pulse-label">Awaiting Sign-Off</span>
             <strong class="admin-pulse-value">{signOffQueueCount}</strong>
-            <span class="admin-pulse-sub">Awaiting ERP / HMRC release</span>
           </div>
 
           <div class="admin-pulse-card">
-            <span class="admin-pulse-label">Team Utilization</span>
+            <span class="admin-pulse-label">Utilization</span>
             <strong class="admin-pulse-value">{avgUtil}%</strong>
-            <span class="admin-pulse-sub">{state.members.length} staff across 3 lines</span>
           </div>
 
           <div class="admin-pulse-card">
-            <span class="admin-pulse-label">Completed via Lucy</span>
+            <span class="admin-pulse-label">Workpapers</span>
             <strong class="admin-pulse-value">{totalWorkpapers}</strong>
-            <span class="admin-pulse-sub">
-              workpapers · {totalAjes} balanced AJEs
-            </span>
           </div>
         </section>
 
@@ -185,7 +165,7 @@ export function FirmAdminPage({
               class={`conn-tab-btn ${tab === 'engagements' ? 'is-active' : ''}`}
               onClick={() => setTab('engagements')}
             >
-              Work & Engagements ({filteredEngagements.length})
+              Engagements ({filteredEngagements.length})
             </button>
             <button
               type="button"
@@ -194,20 +174,11 @@ export function FirmAdminPage({
               class={`conn-tab-btn ${tab === 'people' ? 'is-active' : ''}`}
               onClick={() => setTab('people')}
             >
-              People & Access ({filteredMembers.length})
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'activity'}
-              class={`conn-tab-btn ${tab === 'activity' ? 'is-active' : ''}`}
-              onClick={() => setTab('activity')}
-            >
-              Activity & Controls
+              People ({filteredMembers.length})
             </button>
           </nav>
 
-          {tab === 'engagements' && (
+          {tab === 'engagements' ? (
             <button
               type="button"
               class="primary-action-pill is-sm"
@@ -215,9 +186,7 @@ export function FirmAdminPage({
             >
               {showAddEngagement ? 'Cancel' : '+ Assign engagement'}
             </button>
-          )}
-
-          {tab === 'people' && (
+          ) : (
             <button
               type="button"
               class="primary-action-pill is-sm"
@@ -228,14 +197,14 @@ export function FirmAdminPage({
           )}
         </div>
 
-        {tab === 'engagements' && (
+        {tab === 'engagements' ? (
           <>
             {showAddEngagement && (
               <form class="admin-inline-form" onSubmit={submitNewEngagement}>
                 <input
                   type="text"
                   class="profile-input"
-                  placeholder="Client (e.g. Meridian Partners)"
+                  placeholder="Client"
                   value={newEng.clientName}
                   onInput={(e) =>
                     setNewEng((p) => ({
@@ -247,7 +216,7 @@ export function FirmAdminPage({
                 <input
                   type="text"
                   class="profile-input"
-                  placeholder="Deliverable (e.g. FY26 1065 & K-1 Bridge)"
+                  placeholder="Deliverable"
                   value={newEng.deliverable}
                   onInput={(e) =>
                     setNewEng((p) => ({
@@ -289,7 +258,7 @@ export function FirmAdminPage({
                 <input
                   type="text"
                   class="profile-input"
-                  placeholder="Due (e.g. 12 Dec)"
+                  placeholder="Due"
                   value={newEng.dueDateLabel}
                   onInput={(e) =>
                     setNewEng((p) => ({
@@ -308,10 +277,11 @@ export function FirmAdminPage({
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>Client & Deliverable</th>
+                    <th>Client</th>
+                    <th>Deliverable</th>
                     <th>Line</th>
-                    <th>Work Completed</th>
-                    <th>Assigned Owner</th>
+                    <th>Progress</th>
+                    <th>Owner</th>
                     <th>Stage</th>
                     <th class="is-right">Due</th>
                   </tr>
@@ -319,9 +289,9 @@ export function FirmAdminPage({
                 <tbody>
                   {filteredEngagements.map((eng) => (
                     <tr key={eng.id}>
+                      <td class="admin-cell-primary">{eng.clientName}</td>
                       <td>
-                        <div class="admin-cell-primary">{eng.clientName}</div>
-                        <div class="admin-cell-sub-row">
+                        <div class="admin-deliverable-cell">
                           <span>{eng.deliverable}</span>
                           {eng.pluginRoute && (
                             <button
@@ -342,7 +312,17 @@ export function FirmAdminPage({
                       <td>
                         <span class="admin-dept-badge">{eng.practice}</span>
                       </td>
-                      <td class="admin-progress-cell">{eng.lucyProgress}</td>
+                      <td>
+                        <div class="admin-util-wrap">
+                          <div class="admin-util-track">
+                            <span
+                              class="admin-util-fill"
+                              style={{ width: `${eng.progressPct}%` }}
+                            />
+                          </div>
+                          <span class="admin-util-num">{eng.progressPct}%</span>
+                        </div>
+                      </td>
                       <td>
                         <select
                           class="admin-inline-select"
@@ -357,7 +337,7 @@ export function FirmAdminPage({
                         >
                           {state.members.map((m) => (
                             <option key={m.id} value={m.id}>
-                              {m.fullName} ({m.utilizationPct}%)
+                              {m.fullName}
                             </option>
                           ))}
                         </select>
@@ -392,9 +372,7 @@ export function FirmAdminPage({
               </table>
             </div>
           </>
-        )}
-
-        {tab === 'people' && (
+        ) : (
           <>
             {showAddMember && (
               <form class="admin-inline-form" onSubmit={submitNewMember}>
@@ -413,24 +391,12 @@ export function FirmAdminPage({
                 <input
                   type="email"
                   class="profile-input"
-                  placeholder="Work email"
+                  placeholder="Email"
                   value={newMember.email}
                   onInput={(e) =>
                     setNewMember((p) => ({
                       ...p,
                       email: (e.currentTarget as HTMLInputElement).value,
-                    }))
-                  }
-                />
-                <input
-                  type="text"
-                  class="profile-input"
-                  placeholder="Role title (e.g. Tax Senior)"
-                  value={newMember.title}
-                  onInput={(e) =>
-                    setNewMember((p) => ({
-                      ...p,
-                      title: (e.currentTarget as HTMLInputElement).value,
                     }))
                   }
                 />
@@ -474,18 +440,19 @@ export function FirmAdminPage({
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>Member</th>
+                    <th>Name</th>
                     <th>Line</th>
-                    <th>Signing Authority</th>
-                    <th>Output & Load</th>
+                    <th>Role</th>
+                    <th>Engagements</th>
+                    <th>Workpapers</th>
                     <th>Capacity</th>
-                    <th class="is-right">Action</th>
+                    <th class="is-right" />
                   </tr>
                 </thead>
                 <tbody>
                   {filteredMembers.map((member) => {
                     const activeCount = state.engagements.filter(
-                      (e) => e.ownerId === member.id && e.stage !== 'Filed / Complete'
+                      (e) => e.ownerId === member.id && e.stage !== 'Complete'
                     ).length;
 
                     return (
@@ -493,12 +460,7 @@ export function FirmAdminPage({
                         <td>
                           <div class="admin-member-cell">
                             <span class="sidebar-avatar-sm">{member.initials}</span>
-                            <div>
-                              <div class="admin-cell-primary">{member.fullName}</div>
-                              <div class="admin-cell-muted">
-                                {member.title} · {member.lastActiveLabel}
-                              </div>
-                            </div>
+                            <span class="admin-cell-primary">{member.fullName}</span>
                           </div>
                         </td>
                         <td>
@@ -507,7 +469,7 @@ export function FirmAdminPage({
                         <td>
                           <select
                             class="admin-inline-select"
-                            aria-label={`Authority for ${member.fullName}`}
+                            aria-label={`Role for ${member.fullName}`}
                             value={member.authority}
                             onChange={(e) =>
                               controller.updateMemberAuthority(
@@ -523,9 +485,8 @@ export function FirmAdminPage({
                             ))}
                           </select>
                         </td>
-                        <td class="admin-progress-cell">
-                          {activeCount} open · {member.workpapersCompleted} WPs · {member.ajesStaged} AJEs
-                        </td>
+                        <td class="admin-mono-muted">{activeCount}</td>
+                        <td class="admin-mono-muted">{member.workpapersCompleted}</td>
                         <td>
                           <div class="admin-util-wrap">
                             <div class="admin-util-track">
@@ -554,79 +515,6 @@ export function FirmAdminPage({
               </table>
             </div>
           </>
-        )}
-
-        {tab === 'activity' && (
-          <div class="admin-activity-stack">
-            <section>
-              <h2 class="conn-group-label">Firm Governance Guardrails</h2>
-              <div class="conn-list-box">
-                {state.policies.map((pol) => (
-                  <div key={pol.id} class="conn-row is-tall">
-                    <div class="admin-policy-text">
-                      <span class="conn-row-name">{pol.label}</span>
-                      <span class="admin-cell-muted">{pol.detail}</span>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={pol.enabled}
-                      aria-label={pol.label}
-                      class={`conn-switch ${pol.enabled ? 'is-on' : ''}`}
-                      onClick={() => controller.togglePolicy(pol.id)}
-                    >
-                      <span class="conn-switch-thumb" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <h2 class="conn-group-label">Firm-Wide Workpaper & Filing Log</h2>
-              <div class="admin-table-box">
-                <table class="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Member</th>
-                      <th>Client</th>
-                      <th>Action</th>
-                      <th class="is-right">Artifact</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {state.auditLog.map((entry) => (
-                      <tr key={entry.id}>
-                        <td class="admin-mono-muted">{entry.timestamp}</td>
-                        <td class="admin-cell-primary">{entry.actorName}</td>
-                        <td>{entry.clientName}</td>
-                        <td class="admin-progress-cell">{entry.actionSummary}</td>
-                        <td class="is-right">
-                          {entry.pluginRoute ? (
-                            <button
-                              type="button"
-                              class="admin-workpaper-link"
-                              onClick={() =>
-                                onOpenWorkpaper({
-                                  pluginRoute: entry.pluginRoute,
-                                  anchor: entry.anchor,
-                                })
-                              }
-                            >
-                              {entry.sourceLabel} ↗
-                            </button>
-                          ) : (
-                            <span class="admin-cell-muted">{entry.sourceLabel}</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </div>
         )}
       </div>
     </div>

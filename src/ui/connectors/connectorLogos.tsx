@@ -210,9 +210,54 @@ export function GustoLogo({ size = 24 }: { size?: number }) {
   );
 }
 
+export function SharePointLogo({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="14.5" cy="7.5" r="5" fill="#036C70" />
+      <circle cx="16.5" cy="14.5" r="4.2" fill="#1A9BA1" />
+      <circle cx="12" cy="17.5" r="3.4" fill="#37C6D0" />
+      <rect x="2.5" y="6.5" width="11" height="11" rx="2.2" fill="#038387" />
+      <path
+        d="M9.6 10.2c-.4-.3-1-.5-1.6-.5-.9 0-1.5.4-1.5 1 0 .6.5.8 1.5 1.1 1.3.4 2 .9 2 2 0 1.2-1 2-2.5 2-.9 0-1.7-.2-2.2-.6"
+        stroke="#fff"
+        stroke-width="1.5"
+        stroke-linecap="round"
+      />
+    </svg>
+  );
+}
+
+export function OneDriveLogo({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9.8 8.4A5.2 5.2 0 0 1 19.5 10a4 4 0 0 1 1 7.8H6.2a4.3 4.3 0 0 1-.6-8.5 4.6 4.6 0 0 1 4.2-.9Z"
+        fill="#0078D4"
+      />
+      <path
+        d="M6.2 17.8h14.3a4 4 0 0 0 .8-6.4l-8.1 3.2-7-3.2a4.3 4.3 0 0 0 0 6.4Z"
+        fill="#28A8EA"
+      />
+    </svg>
+  );
+}
+
+export function GoogleDriveLogo({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8.8 3.5h6.4l5.8 10-3.2 5.5-5.8-10L8.8 3.5Z" fill="#FBBC04" />
+      <path d="M3 13.5 8.8 3.5l3.2 5.5-5.8 10L3 13.5Z" fill="#0F9D58" />
+      <path d="M6.2 19h11.6l3.2-5.5H9.4L6.2 19Z" fill="#4285F4" />
+    </svg>
+  );
+}
+
 export const CONNECTOR_LOGOS: Readonly<Record<string, (props: { size?: number }) => JSX.Element>> = {
   gmail: GmailLogo,
   outlook: OutlookLogo,
+  sharepoint: SharePointLogo,
+  onedrive: OneDriveLogo,
+  gdrive: GoogleDriveLogo,
   xero: XeroLogo,
   quickbooks: QuickBooksLogo,
   sage: SageLogo,

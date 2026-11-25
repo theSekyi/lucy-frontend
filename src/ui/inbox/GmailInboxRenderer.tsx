@@ -17,18 +17,13 @@ export interface MailProviderViewProps {
   readonly threads: ReadonlyArray<MailThreadItem>;
   readonly registry: RendererRegistry<ComponentChildren>;
   readonly activeProvider: InboxProvider;
+  readonly senderEmail: string;
   readonly onSwitchProvider: (provider: InboxProvider) => void;
   readonly onToggleStar: (id: string) => void;
   readonly onToggleFlag: (id: string) => void;
   readonly onMarkRead: (id: string, unread: boolean) => void;
   readonly onArchive: (id: string) => void;
-  readonly onOpenCompose: (
-    replySubject?: string,
-    replyTo?: string,
-    prefilledBody?: string,
-    contextThread?: MailThreadItem
-  ) => void;
-  readonly onSendQuickReply: (to: string, subject: string, body: string) => void;
+  readonly onSendMail: (to: string, subject: string, body: string) => void;
   readonly onNavigateSource: (target: DeepLinkTarget) => void;
 }
 
@@ -42,12 +37,12 @@ const GMAIL_LABELS: ReadonlyArray<{ text: string; color: string }> = [
 export function GmailInboxRenderer({
   threads,
   registry,
+  senderEmail,
   onSwitchProvider,
   onToggleStar,
   onMarkRead,
   onArchive,
-  onOpenCompose,
-  onSendQuickReply,
+  onSendMail,
   onNavigateSource,
 }: MailProviderViewProps) {
   const [folder, setFolder] = useState<MailFolder>('inbox');
@@ -56,6 +51,12 @@ export function GmailInboxRenderer({
   const [isRailCollapsed, setIsRailCollapsed] = useState(false);
   const [query, setQuery] = useState('');
   const [openedId, setOpenedId] = useState<string | null>(null);
+  const [replyPulse, setReplyPulse] = useState(0);
+  const [inlineCompose, setInlineCompose] = useState<{
+    to: string;
+    subject: string;
+    body: string;
+  } | null>(null);
   const [previewBlock, setPreviewBlock] = useState<{
     att: MailAttachmentLink;
     block: ContentBlock;
@@ -102,12 +103,20 @@ export function GmailInboxRenderer({
   }
 
   async function openThreadWithAttachment(item: MailThreadItem, att: MailAttachmentLink) {
+    setInlineCompose(null);
     setOpenedId(item.id);
     if (item.unread) onMarkRead(item.id, false);
     const plugin = registry.findByRoute(att.pluginRoute);
     if (!plugin?.createSample) return;
     const sample = await plugin.createSample((p) => `${p}-${Date.now()}`);
     setPreviewBlock({ att, block: sample.artifact });
+  }
+
+  function submitInlineNewMail(e: Event) {
+    e.preventDefault();
+    if (!inlineCompose) return;
+    onSendMail(inlineCompose.to, inlineCompose.subject, inlineCompose.body);
+    setInlineCompose(null);
   }
 
   return (
@@ -148,6 +157,7 @@ export function GmailInboxRenderer({
             onInput={(e) => {
               setQuery((e.currentTarget as HTMLInputElement).value);
               setOpenedId(null);
+              setInlineCompose(null);
             }}
           />
           <svg
@@ -190,7 +200,10 @@ export function GmailInboxRenderer({
           <button
             type="button"
             class="gmail-compose-btn"
-            onClick={() => onOpenCompose()}
+            onClick={() => {
+              setOpenedId(null);
+              setInlineCompose({ to: '', subject: '', body: '' });
+            }}
             title="Compose"
           >
             <svg
@@ -219,6 +232,7 @@ export function GmailInboxRenderer({
               setFolder('inbox');
               setActiveLabel(null);
               setOpenedId(null);
+              setInlineCompose(null);
             }}
           >
             <span class="gmail-folder-left">
@@ -239,6 +253,7 @@ export function GmailInboxRenderer({
               setFolder('starred');
               setActiveLabel(null);
               setOpenedId(null);
+              setInlineCompose(null);
             }}
           >
             <span class="gmail-folder-left">
@@ -257,6 +272,7 @@ export function GmailInboxRenderer({
               setFolder('sent');
               setActiveLabel(null);
               setOpenedId(null);
+              setInlineCompose(null);
             }}
           >
             <span class="gmail-folder-left">
@@ -276,6 +292,7 @@ export function GmailInboxRenderer({
               setFolder('archive');
               setActiveLabel(null);
               setOpenedId(null);
+              setInlineCompose(null);
             }}
           >
             <span class="gmail-folder-left">
@@ -300,6 +317,7 @@ export function GmailInboxRenderer({
                     setFolder('inbox');
                     setActiveLabel((curr) => (curr === lbl.text ? null : lbl.text));
                     setOpenedId(null);
+                    setInlineCompose(null);
                   }}
                 >
                   <span class="gmail-folder-left">
@@ -313,7 +331,70 @@ export function GmailInboxRenderer({
         </nav>
 
         <section class="gmail-sheet" aria-label="Messages">
-          {openedThread ? (
+          {inlineCompose ? (
+            <>
+              <div class="gmail-action-strip">
+                <button
+                  type="button"
+                  class="ghost-pill"
+                  onClick={() => setInlineCompose(null)}
+                >
+                  ← Back to Inbox
+                </button>
+                <span class="sheet-meta-count">New Message</span>
+              </div>
+              <form class="inline-pane-compose-form" onSubmit={submitInlineNewMail}>
+                <input
+                  type="text"
+                  class="profile-input"
+                  placeholder="To"
+                  value={inlineCompose.to}
+                  onInput={(e) =>
+                    setInlineCompose((c) =>
+                      c ? { ...c, to: (e.currentTarget as HTMLInputElement).value } : c
+                    )
+                  }
+                />
+                <input
+                  type="text"
+                  class="profile-input"
+                  placeholder="Subject"
+                  value={inlineCompose.subject}
+                  onInput={(e) =>
+                    setInlineCompose((c) =>
+                      c ? { ...c, subject: (e.currentTarget as HTMLInputElement).value } : c
+                    )
+                  }
+                />
+                <textarea
+                  rows={10}
+                  class="mail-draft-textarea"
+                  placeholder="Write message…"
+                  value={inlineCompose.body}
+                  onInput={(e) =>
+                    setInlineCompose((c) =>
+                      c ? { ...c, body: (e.currentTarget as HTMLTextAreaElement).value } : c
+                    )
+                  }
+                />
+                <div class="mail-inline-reply-footer">
+                  <span class="sheet-meta-count">From {senderEmail}</span>
+                  <div class="stage-subbar-group">
+                    <button
+                      type="button"
+                      class="ghost-pill"
+                      onClick={() => setInlineCompose(null)}
+                    >
+                      Discard
+                    </button>
+                    <button type="submit" class="primary-action-pill is-sm">
+                      Send
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </>
+          ) : openedThread ? (
             <>
               <div class="gmail-action-strip">
                 <div class="stage-subbar-group">
@@ -402,14 +483,7 @@ export function GmailInboxRenderer({
                   <button
                     type="button"
                     class="ghost-pill"
-                    onClick={() =>
-                      onOpenCompose(
-                        `Re: ${openedThread.subject}`,
-                        openedThread.senderEmail,
-                        '',
-                        openedThread
-                      )
-                    }
+                    onClick={() => setReplyPulse((p) => p + 1)}
                   >
                     ↩ Reply
                   </button>
@@ -440,7 +514,7 @@ export function GmailInboxRenderer({
                               {att.filename}
                             </strong>
                             <span style={{ fontSize: '11px', color: '#9aa0a6' }}>
-                              {att.sizeLabel} · {isOpen ? 'Hide preview' : 'Preview renderer'}
+                              {att.sizeLabel}
                             </span>
                           </span>
                         </button>
@@ -490,6 +564,8 @@ export function GmailInboxRenderer({
 
                 <MailIntelligencePanel
                   thread={openedThread}
+                  replyFocusPulse={replyPulse}
+                  senderEmail={senderEmail}
                   onNavigateSource={onNavigateSource}
                   onPreviewInlineRoute={(route) => {
                     const matchedAtt = openedThread.attachments.find(
@@ -498,15 +574,7 @@ export function GmailInboxRenderer({
                     if (matchedAtt) void inspectAttachmentInline(matchedAtt);
                     else onNavigateSource({ pluginRoute: route });
                   }}
-                  onSendQuickReply={onSendQuickReply}
-                  onOpenInReplyComposer={(body) =>
-                    onOpenCompose(
-                      `Re: ${openedThread.subject}`,
-                      openedThread.senderEmail,
-                      body,
-                      openedThread
-                    )
-                  }
+                  onSendReply={onSendMail}
                 />
               </div>
             </>

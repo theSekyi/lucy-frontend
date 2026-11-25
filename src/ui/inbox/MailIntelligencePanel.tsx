@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   generateMailReplyDraft,
   queryMailTerminal,
@@ -16,18 +16,20 @@ export interface DeepLinkTarget {
 
 interface MailIntelligencePanelProps {
   readonly thread: MailThreadItem;
+  readonly replyFocusPulse: number;
+  readonly senderEmail: string;
   readonly onNavigateSource: (target: DeepLinkTarget) => void;
   readonly onPreviewInlineRoute?: (pluginRoute: string) => void;
-  readonly onSendQuickReply: (to: string, subject: string, body: string) => void;
-  readonly onOpenInReplyComposer: (prefilledBody: string) => void;
+  readonly onSendReply: (to: string, subject: string, body: string) => void;
 }
 
 export function MailIntelligencePanel({
   thread,
+  replyFocusPulse,
+  senderEmail,
   onNavigateSource,
   onPreviewInlineRoute,
-  onSendQuickReply,
-  onOpenInReplyComposer,
+  onSendReply,
 }: MailIntelligencePanelProps) {
   const [tone, setTone] = useState<ReplyDraftTone>('standard');
   const [draftText, setDraftText] = useState<string>(() =>
@@ -38,6 +40,9 @@ export function MailIntelligencePanel({
   const [terminalInput, setTerminalInput] = useState('');
   const [exchanges, setExchanges] = useState<MailTerminalExchange[]>([]);
 
+  const replyBoxRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   useEffect(() => {
     setTone('standard');
     setDraftText(generateMailReplyDraft(thread, 'standard'));
@@ -46,10 +51,17 @@ export function MailIntelligencePanel({
     setExchanges([]);
   }, [thread.id]);
 
+  useEffect(() => {
+    if (replyFocusPulse <= 0) return;
+    replyBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    textareaRef.current?.focus();
+  }, [replyFocusPulse]);
+
   function handleToneSelect(nextTone: ReplyDraftTone) {
     setTone(nextTone);
     setDraftText(generateMailReplyDraft(thread, nextTone));
     setSentNotice(false);
+    textareaRef.current?.focus();
   }
 
   function runTerminalQuery(questionText: string) {
@@ -81,127 +93,151 @@ export function MailIntelligencePanel({
   const sources = intel?.sources ?? [];
 
   return (
-    <section class="mail-intel-shell" aria-label="Prepared response, reasoning, and terminal">
-      <header class="mail-intel-header">
-        <div class="mail-intel-title-row">
-          <span class="mail-intel-tag">PREPARED BRIEF</span>
-          <span class="mail-intel-verdict">
-            {intel ? intel.verdict : 'Draft response prepared from thread context.'}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          class="mail-intel-toggle-btn"
-          onClick={() => setShowReasoning((v) => !v)}
-        >
-          {showReasoning ? 'Hide reasoning ▴' : 'Show reasoning ▾'}
-        </button>
-      </header>
-
-      {showReasoning && intel && (
-        <div class="mail-reasoning-block">
-          <div class="mail-reasoning-steps">
-            {intel.reasoning.map((item, idx) => {
-              const linked = sources.find((s) => s.id === item.sourceId);
-              return (
-                <div key={idx} class="mail-reasoning-row">
-                  <span class="mail-step-num">0{idx + 1}</span>
-                  <div class="mail-step-body">
-                    <span>{item.check}</span>
-                    {linked && (
-                      <button
-                        type="button"
-                        class="mail-deeplink-chip"
-                        title={linked.detail}
-                        onClick={() => triggerSource(linked)}
-                      >
-                        <span class="mail-deeplink-kind">{linked.kindLabel}</span>
-                        <span>{linked.label}</span>
-                        <span>↗</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+    <section class="mail-intel-shell" aria-label="Reasoning, inline reply, and terminal">
+      {intel && (
+        <div class="mail-reasoning-header-wrap">
+          <div class="mail-intel-header">
+            <span class="mail-intel-verdict">{intel.verdict}</span>
+            <button
+              type="button"
+              class="mail-intel-toggle-btn"
+              onClick={() => setShowReasoning((v) => !v)}
+            >
+              {showReasoning ? 'Hide reasoning ▴' : 'Reasoning ▾'}
+            </button>
           </div>
 
-          {sources.length > 0 && (
-            <div class="mail-sources-strip">
-              <span class="mail-sources-label">Sources</span>
-              <div class="mail-sources-list">
-                {sources.map((src) => (
-                  <button
-                    key={src.id}
-                    type="button"
-                    class="mail-source-pill"
-                    title={src.detail}
-                    onClick={() =>
-                      onNavigateSource({
-                        pluginRoute: src.pluginRoute,
-                        anchor: src.anchor,
-                        connectorId: src.connectorId,
-                      })
-                    }
-                  >
-                    <span class="mail-deeplink-kind">{src.kindLabel}</span>
-                    <span>{src.label}</span>
-                    <span class="mail-source-arrow">↗</span>
-                  </button>
-                ))}
+          {showReasoning && (
+            <div class="mail-reasoning-block">
+              <div class="mail-reasoning-steps">
+                {intel.reasoning.map((item, idx) => {
+                  const linked = sources.find((s) => s.id === item.sourceId);
+                  return (
+                    <div key={idx} class="mail-reasoning-row">
+                      <span class="mail-step-num">0{idx + 1}</span>
+                      <div class="mail-step-body">
+                        <span>{item.check}</span>
+                        {linked && (
+                          <button
+                            type="button"
+                            class="mail-deeplink-chip"
+                            onClick={() => triggerSource(linked)}
+                          >
+                            <span class="mail-deeplink-kind">{linked.kindLabel}</span>
+                            <span>{linked.label}</span>
+                            <span>↗</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+
+              {sources.length > 0 && (
+                <div class="mail-sources-strip">
+                  <span class="mail-sources-label">Sources</span>
+                  <div class="mail-sources-list">
+                    {sources.map((src) => (
+                      <button
+                        key={src.id}
+                        type="button"
+                        class="mail-source-pill"
+                        onClick={() =>
+                          onNavigateSource({
+                            pluginRoute: src.pluginRoute,
+                            anchor: src.anchor,
+                            connectorId: src.connectorId,
+                          })
+                        }
+                      >
+                        <span class="mail-deeplink-kind">{src.kindLabel}</span>
+                        <span>{src.label}</span>
+                        <span class="mail-source-arrow">↗</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      <div class="mail-draft-section">
+      <div ref={replyBoxRef} class="mail-inline-reply-box">
         <div class="mail-draft-toolbar">
-          <div class="mail-tone-tabs" role="tablist" aria-label="Draft style">
-            <span class="mail-sources-label">Draft reply</span>
-            {(['standard', 'concise', 'pushback'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                class={`mail-tone-btn ${tone === t ? 'is-active' : ''}`}
-                onClick={() => handleToneSelect(t)}
-              >
-                {t === 'standard' ? 'Standard' : t === 'concise' ? 'Concise' : 'Request backup'}
-              </button>
-            ))}
+          <div class="mail-reply-to-line">
+            <span class="mail-reply-glyph">↩</span>
+            <span class="mail-reply-recipient">{thread.senderEmail}</span>
           </div>
 
-          <div class="stage-subbar-group">
+          <div class="mail-tone-tabs" role="group" aria-label="Generate response">
             <button
               type="button"
-              class="ghost-pill"
-              onClick={() => onOpenInReplyComposer(draftText)}
+              class={`mail-tone-btn ${tone === 'standard' && draftText ? 'is-active' : ''}`}
+              onClick={() => handleToneSelect('standard')}
             >
-              Edit in Reply ↩
+              Generate response
             </button>
             <button
               type="button"
-              class="primary-action-pill is-sm"
-              onClick={() => {
-                onSendQuickReply(thread.senderEmail, `Re: ${thread.subject}`, draftText);
-                setSentNotice(true);
-              }}
+              class={`mail-tone-btn ${tone === 'concise' && draftText ? 'is-active' : ''}`}
+              onClick={() => handleToneSelect('concise')}
             >
-              {sentNotice ? '✓ Sent' : 'Send reply'}
+              Concise
+            </button>
+            <button
+              type="button"
+              class={`mail-tone-btn ${tone === 'pushback' && draftText ? 'is-active' : ''}`}
+              onClick={() => handleToneSelect('pushback')}
+            >
+              Request backup
             </button>
           </div>
         </div>
 
         <textarea
-          rows={4}
+          ref={textareaRef}
+          rows={5}
           class="mail-draft-textarea"
+          placeholder="Write your reply or click Generate response…"
           value={draftText}
           onInput={(e) => {
             setSentNotice(false);
             setDraftText((e.currentTarget as HTMLTextAreaElement).value);
           }}
         />
+
+        <div class="mail-inline-reply-footer">
+          <span class="sheet-meta-count">From {senderEmail}</span>
+
+          <div class="stage-subbar-group">
+            {draftText && (
+              <button
+                type="button"
+                class="ghost-pill"
+                onClick={() => {
+                  setDraftText('');
+                  setSentNotice(false);
+                  textareaRef.current?.focus();
+                }}
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              class="primary-action-pill is-sm"
+              onClick={() => {
+                if (!draftText.trim()) return;
+                onSendReply(thread.senderEmail, `Re: ${thread.subject}`, draftText);
+                setSentNotice(true);
+              }}
+            >
+              {sentNotice ? '✓ Sent' : 'Send'}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="mail-terminal-dock">
@@ -236,10 +272,12 @@ export function MailIntelligencePanel({
                     type="button"
                     class="mail-term-insert-btn"
                     onClick={() =>
-                      setDraftText((prev) => `${prev.trim()}\n\n${ex.answer}`)
+                      setDraftText((prev) =>
+                        prev.trim() ? `${prev.trim()}\n\n${ex.answer}` : ex.answer
+                      )
                     }
                   >
-                    Insert into draft ↵
+                    Insert into reply ↵
                   </button>
                 </div>
               </div>
@@ -254,12 +292,12 @@ export function MailIntelligencePanel({
           <input
             type="text"
             class="mail-terminal-input"
-            placeholder="Ask terminal about figures, clauses, or tied ledgers in this mail…"
+            placeholder="Ask terminal about figures, clauses, or tied ledgers…"
             value={terminalInput}
             onInput={(e) => setTerminalInput((e.currentTarget as HTMLInputElement).value)}
           />
           <button type="submit" class="mail-term-run-btn">
-            Run ↵
+            Ask ↵
           </button>
         </form>
 

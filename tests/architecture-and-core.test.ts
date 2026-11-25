@@ -1,7 +1,10 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { createFirmAdminController } from '../src/core/admin';
+import {
+  createFirmAdminController,
+  selectClientEngagementGroups,
+} from '../src/core/admin';
 import {
   generateMailReplyDraft,
   INITIAL_MAIL_THREADS,
@@ -313,16 +316,20 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(termRes.citations.some((c) => c.anchor === '§4.2')).toBe(true);
   });
 
-  it('manages Firm Admin staff roster, safe engagement reassignment on removal, and governance controls', () => {
+  it('manages Clients engagement groupings and Firm Admin staff roster with safe reassignment on removal', () => {
     const admin = createFirmAdminController();
     const initialCount = admin.getState().members.length;
+
+    const initialGroups = selectClientEngagementGroups(admin.getState());
+    expect(initialGroups.length).toBeGreaterThanOrEqual(4);
+    expect(initialGroups[0]?.engagements.length).toBeGreaterThanOrEqual(2);
+    expect(initialGroups[0]?.averageProgressPct).toBeGreaterThan(0);
 
     const newId = admin.addMember({
       fullName: 'Sophie Grant',
       email: 's.grant@cartervance.co.uk',
-      title: 'Audit Associate',
       department: 'Audit',
-      authority: 'Associate · Preparer',
+      authority: 'Associate',
     });
     expect(newId).toBeTruthy();
     expect(admin.getState().members).toHaveLength(initialCount + 1);
@@ -338,11 +345,9 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(reassignedOwnerId).not.toBe(newId);
     expect(admin.getState().members.some((m) => m.id === reassignedOwnerId)).toBe(true);
 
-    // Governance toggle flips cleanly
-    const polId = admin.getState().policies[0]!.id;
-    const beforePol = admin.getState().policies[0]!.enabled;
-    admin.togglePolicy(polId);
-    expect(admin.getState().policies[0]!.enabled).toBe(!beforePol);
+    // Updating stage automatically updates engagement progress percentage
+    admin.updateEngagementStage(firstEngId, 'Complete');
+    expect(admin.getState().engagements[0]?.progressPct).toBe(100);
   });
 });
 

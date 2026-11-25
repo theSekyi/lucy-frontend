@@ -9,6 +9,7 @@ import {
   AdminIcon,
   BellIcon,
   BotItemIcon,
+  ClientsIcon,
   ConnectorsIcon,
   HomeIcon,
   InboxIcon,
@@ -16,7 +17,6 @@ import {
   PanelToggleIcon,
   SearchIcon,
   SpinnerItemIcon,
-  TasksIcon,
 } from './icons';
 
 interface SidebarProps {
@@ -24,6 +24,7 @@ interface SidebarProps {
   readonly activeSection: NavSection;
   readonly activeTopicId: string | null;
   readonly unreadInboxCount: number;
+  readonly clientCount: number;
   readonly connectedCount: number;
   readonly userProfile: UserProfile;
   readonly isRecentsOpen: boolean;
@@ -53,6 +54,7 @@ export function Sidebar({
   activeSection,
   activeTopicId,
   unreadInboxCount,
+  clientCount,
   connectedCount,
   userProfile,
   isRecentsOpen,
@@ -87,9 +89,9 @@ export function Sidebar({
 
   const isHomeActive = activeSection === 'home' && activeTopicId === null;
   const isInboxActive = activeSection === 'inbox' && activeTopicId === null;
+  const isClientsActive = activeSection === 'clients' && activeTopicId === null;
   const isConnectorsActive = activeSection === 'connectors' && activeTopicId === null;
   const isAdminActive = activeSection === 'admin' && activeTopicId === null;
-  const isTasksActive = activeSection === 'tasks' && activeTopicId === null;
   const isProfileActive = activeSection === 'profile' && activeTopicId === null;
 
   return (
@@ -126,7 +128,7 @@ export function Sidebar({
             <input
               type="search"
               class="sidebar-search-input"
-              placeholder="Filter topics… (Esc)"
+              placeholder="Filter… (Esc)"
               value={searchQuery}
               autoFocus
               onInput={(e) => onSearchChange((e.currentTarget as HTMLInputElement).value)}
@@ -165,6 +167,16 @@ export function Sidebar({
 
         <button
           type="button"
+          class={`nav-row ${isClientsActive ? 'is-active' : ''}`}
+          onClick={() => onSelectSection('clients')}
+        >
+          <ClientsIcon />
+          <span>Clients</span>
+          <span class="nav-count-badge">{clientCount}</span>
+        </button>
+
+        <button
+          type="button"
           class={`nav-row ${isConnectorsActive ? 'is-active' : ''}`}
           onClick={() => onSelectSection('connectors')}
         >
@@ -180,15 +192,6 @@ export function Sidebar({
         >
           <AdminIcon />
           <span>Firm Admin</span>
-        </button>
-
-        <button
-          type="button"
-          class={`nav-row ${isTasksActive ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('tasks')}
-        >
-          <TasksIcon />
-          <span>Tasks</span>
         </button>
       </nav>
 
@@ -236,8 +239,8 @@ export function Sidebar({
             <span class={`net-dot is-${networkStatus}`} />
             <span>
               {networkStatus === 'offline'
-                ? `Offline mode${queuedCount > 0 ? ` · ${queuedCount} queued` : ''}`
-                : 'Low-bandwidth mode active'}
+                ? `Offline${queuedCount > 0 ? ` · ${queuedCount} queued` : ''}`
+                : 'Low-bandwidth mode'}
             </span>
           </div>
         )}
@@ -250,10 +253,7 @@ export function Sidebar({
           <span class="sidebar-avatar-sm" aria-hidden="true">
             {userProfile.initials}
           </span>
-          <span class="sidebar-profile-text">
-            <strong class="sidebar-profile-name">{userProfile.fullName}</strong>
-            <span class="sidebar-profile-role">{userProfile.role}</span>
-          </span>
+          <span class="sidebar-profile-name">{userProfile.fullName}</span>
         </button>
       </div>
     </aside>

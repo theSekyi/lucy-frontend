@@ -1,4 +1,4 @@
-export type NavSection = 'home' | 'inbox' | 'tasks' | 'connectors' | 'admin' | 'profile';
+export type NavSection = 'home' | 'inbox' | 'clients' | 'connectors' | 'admin' | 'profile';
 
 export type InboxProvider = 'gmail' | 'outlook';
 

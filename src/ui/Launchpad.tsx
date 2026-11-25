@@ -1,8 +1,8 @@
 import type { ComponentChildren } from 'preact';
+import type { ClientEngagementGroup } from '../core/admin';
 import type { RendererRegistry } from '../core/renderers';
 import type {
   ContentBlock,
-  DailyBriefSlide,
   ModelChoice,
   TopicThread,
   UserProfile,
@@ -11,8 +11,8 @@ import { Composer } from './Composer';
 import { ThreadItemIcon } from './icons';
 
 interface LaunchpadProps {
-  readonly brief: DailyBriefSlide;
   readonly userProfile: UserProfile;
+  readonly clientGroups: ReadonlyArray<ClientEngagementGroup>;
   readonly connectedCount: number;
   readonly recentTopics: ReadonlyArray<TopicThread>;
   readonly totalRecentCount: number;
@@ -28,15 +28,15 @@ interface LaunchpadProps {
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample: (pluginId: string) => void;
   readonly onSubmit: () => void;
-  readonly onStepBrief: (delta: -1 | 1) => void;
   readonly onOpenTopic: (topicId: string) => void;
+  readonly onOpenClients: () => void;
   readonly onOpenProfile: () => void;
   readonly onOpenConnectors: () => void;
 }
 
 export function Launchpad({
-  brief,
   userProfile,
+  clientGroups,
   connectedCount,
   recentTopics,
   totalRecentCount,
@@ -52,8 +52,8 @@ export function Launchpad({
   onRemoveAttachment,
   onLaunchPluginSample,
   onSubmit,
-  onStepBrief,
   onOpenTopic,
+  onOpenClients,
   onOpenProfile,
   onOpenConnectors,
 }: LaunchpadProps) {
@@ -63,9 +63,7 @@ export function Launchpad({
     <div class="launchpad-scroll">
       <div class="launchpad-column">
         <header class="hero-header">
-          <div>
-            <h1 class="hero-title">Good afternoon, {firstName}</h1>
-          </div>
+          <h1 class="hero-title">Good afternoon, {firstName}</h1>
 
           <div class="dashboard-header-actions">
             <button
@@ -73,7 +71,7 @@ export function Launchpad({
               class="ghost-pill"
               onClick={onOpenConnectors}
             >
-              {connectedCount} Connected Apps
+              {connectedCount} Connected
             </button>
 
             <button
@@ -85,10 +83,7 @@ export function Launchpad({
               <span class="dashboard-avatar-chip" aria-hidden="true">
                 {userProfile.initials}
               </span>
-              <span class="dashboard-profile-meta">
-                <strong class="dashboard-profile-name">{userProfile.fullName}</strong>
-                <span class="dashboard-profile-sub">Profile →</span>
-              </span>
+              <strong class="dashboard-profile-name">{userProfile.fullName}</strong>
             </button>
           </div>
         </header>
@@ -107,41 +102,57 @@ export function Launchpad({
           onSubmit={onSubmit}
         />
 
-        <section class="daily-brief-section" aria-label="Daily brief">
-          <div class="daily-brief-header">
-            <div class="daily-brief-heading">
-              <strong class="brief-title">Daily brief</strong>
-              <span class="brief-separator">·</span>
-              <span class="brief-subtitle">{brief.subtitle}</span>
+        <section class="dashboard-clients-section" aria-label="Clients summary">
+          <div class="dashboard-section-bar">
+            <div class="recent-topics-header" style={{ marginBottom: 0 }}>
+              <h2 class="recent-topics-title">Clients</h2>
+              <span class="recent-count-badge">{clientGroups.length}</span>
             </div>
-
-            <div class="brief-pager">
-              <button
-                type="button"
-                class="pager-btn"
-                aria-label="Previous brief"
-                onClick={() => onStepBrief(-1)}
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                class="pager-btn"
-                aria-label="Next brief"
-                onClick={() => onStepBrief(1)}
-              >
-                ›
-              </button>
-            </div>
+            <button
+              type="button"
+              class="conn-open-link"
+              onClick={onOpenClients}
+            >
+              View all →
+            </button>
           </div>
 
-          <p class="daily-brief-body">{brief.body}</p>
+          <div class="dashboard-clients-box">
+            {clientGroups.map((client) => (
+              <button
+                key={client.clientName}
+                type="button"
+                class="dashboard-client-row"
+                onClick={onOpenClients}
+              >
+                <div class="dashboard-client-left">
+                  <span class="dashboard-client-name">{client.clientName}</span>
+                  <span class="dashboard-client-count">
+                    {client.totalCount} {client.totalCount === 1 ? 'engagement' : 'engagements'}
+                  </span>
+                </div>
+
+                <div class="dashboard-client-right">
+                  <span class="dashboard-client-due">{client.nextDueLabel}</span>
+                  <div class="client-progress-inline is-sm">
+                    <div class="client-progress-track">
+                      <span
+                        class="client-progress-fill"
+                        style={{ width: `${client.averageProgressPct}%` }}
+                      />
+                    </div>
+                    <span class="client-progress-pct">{client.averageProgressPct}%</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         </section>
 
         <section class="recent-topics-section" aria-label="Recent items">
           <div class="recent-topics-header">
             <h2 class="recent-topics-title">
-              {searchQuery.trim() ? 'Matching items' : 'Recent'}
+              {searchQuery.trim() ? 'Matching' : 'Recent'}
             </h2>
             <span class="recent-count-badge">
               {searchQuery.trim() ? recentTopics.length : totalRecentCount}
@@ -165,7 +176,6 @@ export function Launchpad({
                     <span class="topic-row-title">{topic.title}</span>
                     <span class="topic-row-date">{topic.dateLabel}</span>
                   </div>
-                  <div class="topic-row-preview">{topic.preview}</div>
                 </div>
               </button>
             ))}

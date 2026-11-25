@@ -92,15 +92,12 @@ export function AdminIcon() {
   );
 }
 
-export function TasksIcon() {
+export function ClientsIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
-      <circle cx="3.5" cy="4.5" r="1.2" />
-      <line x1="6.5" y1="4.5" x2="13.5" y2="4.5" stroke-linecap="round" />
-      <path d="m2.5 8.5.9.9 1.7-1.8" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="6.5" y1="8.5" x2="13.5" y2="8.5" stroke-linecap="round" />
-      <circle cx="3.5" cy="12.2" r="1.2" />
-      <line x1="6.5" y1="12.2" x2="11.5" y2="12.2" stroke-linecap="round" />
+      <rect x="2.2" y="3.2" width="11.6" height="9.8" rx="1.6" />
+      <path d="M5.6 3.2V2.4a.9.9 0 0 1 .9-.9h3a.9.9 0 0 1 .9.9v.8" />
+      <line x1="2.2" y1="7" x2="13.8" y2="7" />
     </svg>
   );
 }

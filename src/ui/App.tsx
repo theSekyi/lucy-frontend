@@ -1,5 +1,10 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
+import {
+  defaultFirmAdmin,
+  selectClientEngagementGroups,
+  type FirmAdminState,
+} from '../core/admin';
 import type { RendererRegistry } from '../core/renderers';
 import type { WorkspaceState } from '../core/types';
 import {
@@ -10,6 +15,7 @@ import {
   type WorkspaceController,
 } from '../core/workspace';
 import type { FirmAdminPage as FirmAdminPageComponent } from './admin/FirmAdminPage';
+import type { ClientsPage as ClientsPageComponent } from './clients/ClientsPage';
 import type { ConnectorsPage as ConnectorsPageComponent } from './connectors/ConnectorsPage';
 import type { InboxWorkspace as InboxWorkspaceComponent } from './inbox/InboxWorkspace';
 import type { DeepLinkTarget } from './inbox/MailIntelligencePanel';
@@ -26,14 +32,19 @@ interface AppProps {
 
 export function App({ workspace, registry, onIngestFile }: AppProps) {
   const [state, setState] = useState<WorkspaceState>(() => workspace.getState());
+  const [adminState, setAdminState] = useState<FirmAdminState>(() =>
+    defaultFirmAdmin.getState()
+  );
   const [ThreadViewLoaded, setThreadViewLoaded] = useState<typeof ThreadViewComponent | null>(null);
   const [ProfileLoaded, setProfileLoaded] = useState<typeof ProfilePageComponent | null>(null);
+  const [ClientsLoaded, setClientsLoaded] = useState<typeof ClientsPageComponent | null>(null);
   const [ConnectorsLoaded, setConnectorsLoaded] =
     useState<typeof ConnectorsPageComponent | null>(null);
   const [InboxLoaded, setInboxLoaded] = useState<typeof InboxWorkspaceComponent | null>(null);
   const [AdminLoaded, setAdminLoaded] = useState<typeof FirmAdminPageComponent | null>(null);
 
   useEffect(() => workspace.subscribe(setState), [workspace]);
+  useEffect(() => defaultFirmAdmin.subscribe(setAdminState), []);
 
   useEffect(() => {
     async function applyUrlParams() {
@@ -43,6 +54,10 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
 
       if (rawPage === 'profile') {
         workspace.selectSection('profile');
+        return;
+      }
+      if (rawPage === 'clients') {
+        workspace.selectSection('clients');
         return;
       }
       if (rawPage === 'connectors') {
@@ -55,10 +70,6 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       }
       if (rawPage === 'inbox' || rawProvider === 'gmail' || rawProvider === 'outlook') {
         workspace.setInboxProvider(rawProvider === 'outlook' ? 'outlook' : 'gmail');
-        return;
-      }
-      if (rawPage === 'tasks') {
-        workspace.selectSection('tasks');
         return;
       }
 
@@ -117,9 +128,9 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       );
     } else if (
       state.activeSection === 'profile' ||
+      state.activeSection === 'clients' ||
       state.activeSection === 'connectors' ||
-      state.activeSection === 'admin' ||
-      state.activeSection === 'tasks'
+      state.activeSection === 'admin'
     ) {
       nextUrl.searchParams.set('page', state.activeSection);
       nextUrl.searchParams.delete('provider');
@@ -148,6 +159,12 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     }
     if (state.activeSection === 'profile' && !ProfileLoaded) {
       void import('./ProfilePage').then((mod) => setProfileLoaded(() => mod.ProfilePage));
+      return;
+    }
+    if (state.activeSection === 'clients' && !ClientsLoaded) {
+      void import('./clients/ClientsPage').then((mod) =>
+        setClientsLoaded(() => mod.ClientsPage)
+      );
       return;
     }
     if (state.activeSection === 'connectors' && !ConnectorsLoaded) {
@@ -180,6 +197,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     state.networkStatus,
     ThreadViewLoaded,
     ProfileLoaded,
+    ClientsLoaded,
     ConnectorsLoaded,
     InboxLoaded,
     AdminLoaded,
@@ -230,11 +248,11 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
   }, [workspace]);
 
   const activeTopic = state.topics.find((t) => t.id === state.activeTopicId) ?? null;
-  const activeBrief = state.briefs[state.activeBriefIndex] ?? state.briefs[0]!;
   const sidebarRecents = selectSidebarRecentTopics(state);
   const homeTopics = state.searchQuery.trim()
     ? selectFilteredTopics(state)
     : selectHomeRecentTopics(state);
+  const clientGroups = selectClientEngagementGroups(adminState);
 
   async function handleNavigateDeepLink(target: DeepLinkTarget) {
     if (target.pluginRoute) {
@@ -260,6 +278,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         activeSection={state.activeSection}
         activeTopicId={state.activeTopicId}
         unreadInboxCount={state.unreadInboxCount}
+        clientCount={clientGroups.length}
         connectedCount={state.connectedAppIds.length}
         userProfile={state.userProfile}
         isRecentsOpen={state.isRecentsOpen}
@@ -326,6 +345,16 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
               <div class="renderer-skeleton">Loading inbox…</div>
             </div>
           )
+        ) : state.activeSection === 'clients' ? (
+          ClientsLoaded ? (
+            <ClientsLoaded
+              onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)}
+            />
+          ) : (
+            <div class="launchpad-scroll">
+              <div class="renderer-skeleton">Loading clients…</div>
+            </div>
+          )
         ) : state.activeSection === 'connectors' ? (
           ConnectorsLoaded ? (
             <ConnectorsLoaded
@@ -360,48 +389,10 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
               <div class="renderer-skeleton">Loading profile…</div>
             </div>
           )
-        ) : state.activeSection === 'tasks' ? (
-          <div class="launchpad-scroll">
-            <div class="launchpad-column section-overview">
-              <div class="section-header-row">
-                <h1 class="hero-title">Tasks</h1>
-                <button
-                  type="button"
-                  class="ghost-pill"
-                  onClick={() => workspace.returnHome()}
-                >
-                  ← Back to Home
-                </button>
-              </div>
-              <p class="daily-brief-body">
-                Active engagement sign-offs and automated close workflows.
-              </p>
-              <div class="recent-topics-list">
-                {state.topics
-                  .filter((t) => t.pinnedInSidebar)
-                  .map((topic) => (
-                    <button
-                      key={topic.id}
-                      type="button"
-                      class="topic-row"
-                      onClick={() => workspace.openTopic(topic.id)}
-                    >
-                      <div class="topic-row-content">
-                        <div class="topic-row-top">
-                          <span class="topic-row-title">{topic.title}</span>
-                          <span class="topic-row-date">{topic.dateLabel}</span>
-                        </div>
-                        <div class="topic-row-preview">{topic.preview}</div>
-                      </div>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
         ) : (
           <Launchpad
-            brief={activeBrief}
             userProfile={state.userProfile}
+            clientGroups={clientGroups}
             connectedCount={state.connectedAppIds.length}
             recentTopics={homeTopics}
             totalRecentCount={selectHomeRecentTotalCount(state)}
@@ -417,8 +408,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
             onRemoveAttachment={(id) => workspace.removeAttachment(id)}
             onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
             onSubmit={() => workspace.submitPrompt()}
-            onStepBrief={(delta) => workspace.stepDailyBrief(delta)}
             onOpenTopic={(id) => workspace.openTopic(id)}
+            onOpenClients={() => workspace.selectSection('clients')}
             onOpenProfile={() => workspace.selectSection('profile')}
             onOpenConnectors={() => workspace.selectSection('connectors')}
           />

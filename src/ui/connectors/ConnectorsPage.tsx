@@ -2,13 +2,12 @@ import { useState } from 'preact/hooks';
 import type { InboxProvider, NavSection } from '../../core/types';
 import { CONNECTOR_LOGOS } from './connectorLogos';
 
-type ConnectorCategory = 'email' | 'ledgers' | 'tax' | 'practice' | 'banking';
+type ConnectorCategory = 'email' | 'storage' | 'ledgers' | 'tax' | 'practice' | 'banking';
 
 interface ConnectorDefinition {
   readonly id: string;
   readonly name: string;
   readonly category: ConnectorCategory;
-  readonly tag: string;
   readonly inboxTarget?: InboxProvider;
 }
 
@@ -17,129 +16,36 @@ const CATEGORY_GROUPS: ReadonlyArray<{
   readonly label: string;
 }> = [
   { id: 'email', label: 'Email' },
-  { id: 'ledgers', label: 'Ledgers & ERP' },
+  { id: 'storage', label: 'Storage & Docs' },
+  { id: 'ledgers', label: 'Ledgers' },
   { id: 'tax', label: 'Tax & HMRC' },
-  { id: 'practice', label: 'Practice & Audit' },
+  { id: 'practice', label: 'Practice' },
   { id: 'banking', label: 'Banking & Payroll' },
 ];
 
 const CONNECTORS: ReadonlyArray<ConnectorDefinition> = [
-  {
-    id: 'gmail',
-    name: 'Google Workspace',
-    category: 'email',
-    tag: 'Gmail · Labels · Attachments',
-    inboxTarget: 'gmail',
-  },
-  {
-    id: 'outlook',
-    name: 'Microsoft 365 Outlook',
-    category: 'email',
-    tag: 'Mail · Categories · Teams',
-    inboxTarget: 'outlook',
-  },
-  {
-    id: 'xero',
-    name: 'Xero',
-    category: 'ledgers',
-    tag: 'GL · VAT · Manual journals',
-  },
-  {
-    id: 'quickbooks',
-    name: 'QuickBooks Online',
-    category: 'ledgers',
-    tag: 'Chart of accounts · AJEs',
-  },
-  {
-    id: 'sage',
-    name: 'Sage Intacct & 50',
-    category: 'ledgers',
-    tag: 'Multi-entity GL · UK VAT',
-  },
-  {
-    id: 'netsuite',
-    name: 'Oracle NetSuite',
-    category: 'ledgers',
-    tag: 'OneWorld · ASC 606 · Close',
-  },
-  {
-    id: 'freeagent',
-    name: 'FreeAgent',
-    category: 'ledgers',
-    tag: 'SMB ledger · CIS',
-  },
-  {
-    id: 'hmrc-mtd',
-    name: 'HMRC Making Tax Digital',
-    category: 'tax',
-    tag: 'VAT · CT600 · ITSA',
-  },
-  {
-    id: 'companies-house',
-    name: 'Companies House',
-    category: 'tax',
-    tag: 'iXBRL accounts · CS01',
-  },
-  {
-    id: 'cch-axcess',
-    name: 'Wolters Kluwer CCH Axcess',
-    category: 'tax',
-    tag: '1120 / 1065 · Schedule M-1',
-  },
-  {
-    id: 'ultratax',
-    name: 'Thomson Reuters UltraTax CS',
-    category: 'tax',
-    tag: 'Federal & state bridges',
-  },
-  {
-    id: 'iris-tax',
-    name: 'IRIS Elements',
-    category: 'tax',
-    tag: 'FRS 102 / 105 · UK tax',
-  },
-  {
-    id: 'karbon',
-    name: 'Karbon',
-    category: 'practice',
-    tag: 'Workflows · PBC tasks',
-  },
-  {
-    id: 'caseware',
-    name: 'Caseware Cloud',
-    category: 'practice',
-    tag: 'Audit binders · Lead schedules',
-  },
-  {
-    id: 'dext',
-    name: 'Dext Prepare',
-    category: 'practice',
-    tag: 'Invoice & receipt capture',
-  },
-  {
-    id: 'ignition',
-    name: 'Ignition',
-    category: 'practice',
-    tag: 'Engagement letters · Scope',
-  },
-  {
-    id: 'open-banking',
-    name: 'Open Banking UK / Plaid',
-    category: 'banking',
-    tag: 'Direct bank statement feeds',
-  },
-  {
-    id: 'stripe',
-    name: 'Stripe',
-    category: 'banking',
-    tag: 'Payouts · Fees · Billing',
-  },
-  {
-    id: 'gusto',
-    name: 'Gusto',
-    category: 'banking',
-    tag: 'Payroll registers · Liabilities',
-  },
+  { id: 'gmail', name: 'Google Workspace (Gmail)', category: 'email', inboxTarget: 'gmail' },
+  { id: 'outlook', name: 'Microsoft 365 Outlook', category: 'email', inboxTarget: 'outlook' },
+  { id: 'sharepoint', name: 'Microsoft SharePoint', category: 'storage' },
+  { id: 'onedrive', name: 'Microsoft OneDrive', category: 'storage' },
+  { id: 'gdrive', name: 'Google Drive', category: 'storage' },
+  { id: 'xero', name: 'Xero', category: 'ledgers' },
+  { id: 'quickbooks', name: 'QuickBooks Online', category: 'ledgers' },
+  { id: 'sage', name: 'Sage Intacct & 50', category: 'ledgers' },
+  { id: 'netsuite', name: 'Oracle NetSuite', category: 'ledgers' },
+  { id: 'freeagent', name: 'FreeAgent', category: 'ledgers' },
+  { id: 'hmrc-mtd', name: 'HMRC Making Tax Digital', category: 'tax' },
+  { id: 'companies-house', name: 'Companies House', category: 'tax' },
+  { id: 'cch-axcess', name: 'Wolters Kluwer CCH Axcess', category: 'tax' },
+  { id: 'ultratax', name: 'Thomson Reuters UltraTax CS', category: 'tax' },
+  { id: 'iris-tax', name: 'IRIS Elements', category: 'tax' },
+  { id: 'karbon', name: 'Karbon', category: 'practice' },
+  { id: 'caseware', name: 'Caseware Cloud', category: 'practice' },
+  { id: 'dext', name: 'Dext Prepare', category: 'practice' },
+  { id: 'ignition', name: 'Ignition', category: 'practice' },
+  { id: 'open-banking', name: 'Open Banking UK / Plaid', category: 'banking' },
+  { id: 'stripe', name: 'Stripe', category: 'banking' },
+  { id: 'gusto', name: 'Gusto', category: 'banking' },
 ];
 
 interface ConnectorsPageProps {
@@ -154,7 +60,7 @@ export function ConnectorsPage({
   onToggleConnector,
   onOpenInboxProvider,
 }: ConnectorsPageProps) {
-  const [filterCat, setFilterCat] = useState<'all' | 'active' | ConnectorCategory>('all');
+  const [filterCat, setFilterCat] = useState<'all' | 'connected' | ConnectorCategory>('all');
   const [query, setQuery] = useState('');
 
   const q = query.trim().toLowerCase();
@@ -163,17 +69,12 @@ export function ConnectorsPage({
     <div class="launchpad-scroll">
       <div class="connectors-sleek-wrap">
         <header class="connectors-sleek-header">
-          <div class="connectors-title-row">
-            <h1 class="hero-title">Connectors</h1>
-            <span class="connectors-active-tally">
-              {connectedIds.length} of {CONNECTORS.length} active
-            </span>
-          </div>
+          <h1 class="hero-title">Connectors</h1>
 
           <input
             type="search"
             class="connectors-minimal-search"
-            placeholder="Filter…"
+            placeholder="Search…"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
           />
@@ -189,10 +90,10 @@ export function ConnectorsPage({
           </button>
           <button
             type="button"
-            class={`conn-tab-btn ${filterCat === 'active' ? 'is-active' : ''}`}
-            onClick={() => setFilterCat('active')}
+            class={`conn-tab-btn ${filterCat === 'connected' ? 'is-active' : ''}`}
+            onClick={() => setFilterCat('connected')}
           >
-            Active ({connectedIds.length})
+            Connected ({connectedIds.length})
           </button>
           {CATEGORY_GROUPS.map((g) => (
             <button
@@ -208,20 +109,14 @@ export function ConnectorsPage({
 
         <div class="connectors-groups-stack">
           {CATEGORY_GROUPS.map((group) => {
-            if (filterCat !== 'all' && filterCat !== 'active' && filterCat !== group.id) {
+            if (filterCat !== 'all' && filterCat !== 'connected' && filterCat !== group.id) {
               return null;
             }
 
             const items = CONNECTORS.filter((item) => {
               if (item.category !== group.id) return false;
-              if (filterCat === 'active' && !connectedIds.includes(item.id)) return false;
-              if (
-                q &&
-                !item.name.toLowerCase().includes(q) &&
-                !item.tag.toLowerCase().includes(q)
-              ) {
-                return false;
-              }
+              if (filterCat === 'connected' && !connectedIds.includes(item.id)) return false;
+              if (q && !item.name.toLowerCase().includes(q)) return false;
               return true;
             });
 
@@ -233,7 +128,7 @@ export function ConnectorsPage({
 
                 <div class="conn-list-box">
                   {items.map((item) => {
-                    const isOn = connectedIds.includes(item.id);
+                    const isConnected = connectedIds.includes(item.id);
                     const Logo = CONNECTOR_LOGOS[item.id];
 
                     return (
@@ -243,11 +138,10 @@ export function ConnectorsPage({
                             {Logo && <Logo size={18} />}
                           </span>
                           <span class="conn-row-name">{item.name}</span>
-                          <span class="conn-row-tag">{item.tag}</span>
                         </div>
 
                         <div class="conn-row-right">
-                          {item.inboxTarget && isOn && (
+                          {item.inboxTarget && isConnected && (
                             <button
                               type="button"
                               class="conn-open-link"
@@ -257,16 +151,26 @@ export function ConnectorsPage({
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={isOn}
-                            aria-label={`Toggle ${item.name}`}
-                            class={`conn-switch ${isOn ? 'is-on' : ''}`}
-                            onClick={() => onToggleConnector(item.id)}
-                          >
-                            <span class="conn-switch-thumb" />
-                          </button>
+                          {isConnected ? (
+                            <div class="conn-connected-actions">
+                              <span class="conn-connected-badge">Connected</span>
+                              <button
+                                type="button"
+                                class="conn-disconnect-btn"
+                                onClick={() => onToggleConnector(item.id)}
+                              >
+                                Disconnect
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              class="conn-oauth-btn"
+                              onClick={() => onToggleConnector(item.id)}
+                            >
+                              Connect ↗
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

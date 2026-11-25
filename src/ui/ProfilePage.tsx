@@ -30,7 +30,7 @@ export function ProfilePage({
             class="ghost-pill"
             onClick={() => onNavigate('connectors')}
           >
-            {connectedCount} Connected Apps →
+            {connectedCount} Connected →
           </button>
         </div>
 
@@ -41,9 +41,6 @@ export function ProfilePage({
             </div>
             <div class="profile-identity-meta">
               <h1 class="profile-name-heading">{profile.fullName}</h1>
-              <p class="profile-role-sub">
-                {profile.role} · {profile.email}
-              </p>
             </div>
           </header>
 
@@ -63,7 +60,7 @@ export function ProfilePage({
             </label>
 
             <label class="profile-field">
-              <span class="profile-field-label">Role / Title</span>
+              <span class="profile-field-label">Role</span>
               <input
                 type="text"
                 class="profile-input"
