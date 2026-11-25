@@ -26,19 +26,19 @@
   padding: 0 13px;
   border-right: 1px solid var(--border-subtle);
   font-size: 12px;
-  color: #8b8d98;
+  color: var(--text-muted);
   white-space: nowrap;
   transition: background 120ms ease, color 120ms ease;
 }
 
 .ide-file-tab:hover {
   background: rgba(255, 255, 255, 0.03);
-  color: #d4d4d8;
+  color: var(--text-primary);
 }
 
 .ide-file-tab.is-active {
   background: #101218;
-  color: #f4f4f6;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -53,12 +53,20 @@
 
 .ide-ext-pill {
   padding: 1.5px 5px;
-  border-radius: 4px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 9.5px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.06);
-  color: #a1a1aa;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-secondary);
+}
+
+.ide-inline-filename {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ide-dirty-dot {
@@ -75,17 +83,23 @@
   gap: 8px;
   padding: 6px 12px;
   background: #101218;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .ide-filepath {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: #71717a;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ide-line-range-tag {
+  color: #93c5fd;
+  margin-left: 8px;
 }
 
 .ide-actions {
@@ -93,6 +107,7 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .ide-viewport {
@@ -101,7 +116,7 @@
   overflow: auto;
   padding: 10px 0 16px;
   background: #0d0e13;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: 1.65;
   tab-size: 2;
@@ -111,7 +126,7 @@
   display: flex;
   align-items: flex-start;
   padding: 0 16px 0 0;
-  min-height: 20.6px;
+  min-height: 21px;
 }
 
 .ide-code-line:hover {
@@ -119,7 +134,7 @@
 }
 
 .ide-code-line.is-highlighted {
-  background: rgba(59, 130, 246, 0.13);
+  background: rgba(59, 130, 246, 0.14);
   box-shadow: inset 2px 0 0 #60a5fa;
 }
 
@@ -128,12 +143,13 @@
   box-shadow: inset 2px 0 0 #4ade80;
 }
 
+/* Raised line gutter contrast from 2.3:1 (#4b505d) to >= 5.5:1 (#8a91a2) */
 .ide-gutter-num {
-  width: 44px;
+  width: 46px;
   padding-right: 14px;
   text-align: right;
-  color: #4b505d;
-  font-size: 11px;
+  color: #8a91a2;
+  font-size: 11.5px;
   user-select: none;
   flex-shrink: 0;
   cursor: pointer;
@@ -141,7 +157,7 @@
 
 .ide-gutter-num:hover,
 .ide-code-line.is-highlighted .ide-gutter-num {
-  color: #93c5fd;
+  color: #bfdbfe;
 }
 
 .ide-line-content {
@@ -159,16 +175,20 @@
   flex: 1;
   width: 100%;
   min-height: 260px;
-  padding: 12px 16px 16px 44px;
+  padding: 12px 16px 16px 46px;
   background: #0d0e13;
   color: #e2e8f0;
   border: 0;
-  outline: none;
   resize: none;
-  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: 1.65;
   tab-size: 2;
+}
+
+.ide-editor-surface:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }
 
 .ide-statusbar {
@@ -179,15 +199,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
-  color: #71717a;
+  font-size: 12px;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 /* Inline single-file card */
 .inline-ide-card {
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: #0d0e13;
   overflow: hidden;
 }
@@ -200,32 +220,32 @@
   height: 34px;
   padding: 0 11px;
   background: #11131a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-/* Token colors (Zed / GitHub Dark inspired) */
+/* Token colors — all verified >= 4.8:1 on #0d0e13 */
 .tok-comment {
-  color: #636c7e;
+  color: #8c96ab;
   font-style: italic;
 }
 .tok-string {
   color: #86efac;
 }
 .tok-keyword {
-  color: #c084fc;
+  color: #d8b4fe;
 }
 .tok-fn {
-  color: #60a5fa;
+  color: #93c5fd;
 }
 .tok-type {
-  color: #2dd4bf;
+  color: #5eead4;
 }
 .tok-key {
-  color: #f472b6;
+  color: #f9a8d4;
 }
 .tok-num {
-  color: #fbbf24;
+  color: #fcd34d;
 }
 .tok-punct {
-  color: #94a3b8;
+  color: #cbd5e1;
 }

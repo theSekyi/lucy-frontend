@@ -1,5 +1,7 @@
-import type { ComponentChildren } from 'preact';
+import type { ComponentChildren, JSX } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 import { CONNECTOR_CATALOG } from '../core/connectors';
+import { getTimeGreeting } from '../core/money';
 import type { RendererRegistry } from '../core/renderers';
 import type {
   ContentBlock,
@@ -7,7 +9,8 @@ import type {
   UserProfile,
 } from '../core/types';
 import { Composer } from './Composer';
-import { CONNECTOR_LOGOS } from './connectors/connectorLogos';
+
+type LogoMap = Readonly<Record<string, (props: { size?: number }) => JSX.Element>>;
 
 interface LaunchpadProps {
   readonly userProfile: UserProfile;
@@ -49,6 +52,20 @@ export function Launchpad({
   onOpenConnectors,
 }: LaunchpadProps) {
   const firstName = userProfile.fullName.trim().split(/\s+/)[0] ?? 'Partner';
+  const greeting = getTimeGreeting();
+  const [logos, setLogos] = useState<LogoMap | null>(null);
+
+  useEffect(() => {
+    if (disconnectedIds.length === 0) return;
+    let mounted = true;
+    void import('./connectors/connectorLogos').then((m) => {
+      if (mounted) setLogos(() => m.CONNECTOR_LOGOS);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [disconnectedIds.length]);
+
   const disconnectedApps = disconnectedIds
     .map((id) => CONNECTOR_CATALOG.find((c) => c.id === id))
     .filter((c): c is NonNullable<typeof c> => Boolean(c));
@@ -57,7 +74,9 @@ export function Launchpad({
     <div class="launchpad-scroll">
       <div class="launchpad-column">
         <header class="hero-header">
-          <h1 class="hero-title">Good afternoon, {firstName}</h1>
+          <h1 class="hero-title">
+            {greeting}, {firstName}
+          </h1>
 
           <div class="dashboard-header-actions">
             <button
@@ -65,7 +84,7 @@ export function Launchpad({
               class="ghost-pill"
               onClick={onOpenConnectors}
             >
-              {connectedCount} Connected
+              {connectedCount} Connected →
             </button>
 
             <button
@@ -108,30 +127,34 @@ export function Launchpad({
             </button>
           </div>
 
-          <div class="dashboard-clients-box">
-            {todayItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                class="dashboard-client-row"
-                onClick={() => onOpenTodayItem(item)}
-              >
-                <div class="dashboard-today-left">
-                  <span class={`today-kind-pill is-${item.kindLabel.toLowerCase()}`}>
-                    {item.kindLabel}
-                  </span>
-                  <span class="dashboard-client-name">{item.title}</span>
-                </div>
+          {todayItems.length === 0 ? (
+            <div class="dashboard-empty-box">No items due today.</div>
+          ) : (
+            <div class="dashboard-clients-box">
+              {todayItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  class="dashboard-client-row"
+                  onClick={() => onOpenTodayItem(item)}
+                >
+                  <div class="dashboard-today-left">
+                    <span class={`today-kind-pill is-${item.kindLabel.toLowerCase()}`}>
+                      {item.kindLabel}
+                    </span>
+                    <span class="dashboard-client-name">{item.title}</span>
+                  </div>
 
-                <div class="dashboard-client-right">
-                  <span class="dashboard-client-due">{item.metaLabel}</span>
-                  <span class="client-dir-chevron" aria-hidden="true">
-                    ›
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div class="dashboard-client-right">
+                    <span class="dashboard-client-due">{item.metaLabel}</span>
+                    <span class="client-dir-chevron" aria-hidden="true">
+                      →
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         <section class="recent-topics-section" aria-label="Disconnected connectors">
@@ -150,11 +173,11 @@ export function Launchpad({
           </div>
 
           {disconnectedApps.length === 0 ? (
-            <div class="dashboard-empty-box">All connectors active.</div>
+            <div class="dashboard-empty-box">All firm connectors are active.</div>
           ) : (
             <div class="conn-list-box">
               {disconnectedApps.map((app) => {
-                const Logo = CONNECTOR_LOGOS[app.id];
+                const Logo = logos?.[app.id];
                 return (
                   <div key={app.id} class="conn-row">
                     <div class="conn-row-left">
@@ -165,7 +188,7 @@ export function Launchpad({
                     <div class="conn-row-right">
                       <button
                         type="button"
-                        class="conn-oauth-btn"
+                        class="conn-oauth-btn is-secondary"
                         onClick={() => onReconnectConnector(app.id)}
                       >
                         Reconnect ↗

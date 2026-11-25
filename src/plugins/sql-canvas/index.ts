@@ -7,11 +7,12 @@ export const sqlCanvasPlugin: RendererPlugin<ComponentChildren, SqlCanvasData> =
   aliases: ['sql'],
   label: 'Revenue Subledger Query',
   badge: 'SQL',
+  category: 'data',
   accent: 'sky',
-  ctaLabel: 'Open',
+  ctaLabel: 'Open →',
   placement: 'stage',
   priority: 33,
-  promptPattern: /\b(sql|snowflake|bigquery|warehouse|cohort|pivot|chart|query)\b/i,
+  promptPattern: /\b(sql|snowflake|bigquery|warehous\w*|cohorts?|pivots?|charts?|quer(?:y|ies))\b/i,
   sampleMenuLabel: 'Revenue Subledger Query',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');

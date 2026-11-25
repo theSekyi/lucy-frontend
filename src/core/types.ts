@@ -1,3 +1,5 @@
+import type { MailThreadItem } from './inbox';
+
 export type NavSection =
   | 'home'
   | 'inbox'
@@ -40,10 +42,6 @@ export type RenderPlacement = 'inline' | 'stage';
 
 export type BadgeAccent = 'emerald' | 'amber' | 'violet' | 'sky' | 'rose' | 'neutral';
 
-/**
- * Open-ended content envelope. Adding future formats (Excel, PDF, Redlines, SQL, DAGs, Slides, Workpapers)
- * never requires modifying core conversation types.
- */
 export interface ContentBlock<TData = unknown> {
   readonly id: string;
   readonly kind: string;
@@ -61,6 +59,8 @@ export interface SpreadsheetSheet {
   readonly columns: ReadonlyArray<string>;
   readonly rows: ReadonlyArray<ReadonlyArray<CellScalar>>;
   readonly formulas?: Readonly<Record<string, string>>;
+  /** Maps row index in `rows` to original 1-based Excel worksheet row number (e.g. 2 for first data row). */
+  readonly sourceRowNumbers?: ReadonlyArray<number>;
 }
 
 export interface SpreadsheetWorkbook {
@@ -158,7 +158,11 @@ export interface ExecutiveSlide {
   readonly eyebrow: string;
   readonly title: string;
   readonly takeaway: string;
-  readonly metrics?: ReadonlyArray<{ readonly label: string; readonly value: string; readonly delta?: string }>;
+  readonly metrics?: ReadonlyArray<{
+    readonly label: string;
+    readonly value: string;
+    readonly delta?: string;
+  }>;
   readonly bullets: ReadonlyArray<string>;
 }
 
@@ -169,12 +173,14 @@ export interface SlideDeckData {
   readonly slides: ReadonlyArray<ExecutiveSlide>;
 }
 
-export type TurnStatus = 'complete' | 'streaming' | 'queued-offline';
+export type TurnStatus = 'complete' | 'streaming' | 'queued-offline' | 'failed';
 
 export interface ConversationTurn {
   readonly id: string;
   readonly role: 'user' | 'assistant';
+  readonly actorName?: string;
   readonly createdAt: string;
+  readonly createdAtIso?: string;
   readonly status: TurnStatus;
   readonly blocks: ReadonlyArray<ContentBlock>;
 }
@@ -185,6 +191,7 @@ export interface TopicThread {
   readonly sidebarTitle?: string;
   readonly preview: string;
   readonly dateLabel: string;
+  readonly updatedAtIso?: string;
   readonly sidebarIcon?: SidebarIconKind;
   readonly pinnedInSidebar?: boolean;
   readonly listedOnHome?: boolean;
@@ -199,7 +206,53 @@ export interface TodayWorkItem {
   readonly target:
     | { readonly kind: 'mail'; readonly mailId: string }
     | { readonly kind: 'client'; readonly clientId: string; readonly engagementId?: string }
-    | { readonly kind: 'stage'; readonly pluginRoute: string; readonly anchor?: string };
+    | {
+        readonly kind: 'workpaper';
+        readonly workpaperId: string;
+        readonly pluginRoute?: string;
+        readonly anchor?: string;
+      };
+}
+
+export interface ArtifactRevision<TData = unknown> {
+  readonly id: string;
+  readonly blockId: string;
+  readonly topicId: string;
+  readonly artifactLabel: string;
+  readonly actorName: string;
+  readonly actorRole: string;
+  readonly createdAtIso: string;
+  readonly summary: ReadonlyArray<string>;
+  readonly beforeData: TData;
+  readonly afterData: TData;
+}
+
+export interface AuditLogEntry {
+  readonly id: string;
+  readonly actorName: string;
+  readonly actorRole: string;
+  readonly createdAtIso: string;
+  readonly action: string;
+  readonly targetLabel: string;
+  readonly detail: string;
+}
+
+export interface WorkspaceNotification {
+  readonly id: string;
+  readonly kind: 'info' | 'success' | 'warning' | 'error';
+  readonly message: string;
+  readonly createdAtIso: string;
+  readonly undoRevisionId?: string;
+  readonly undoSentMailId?: string;
+  readonly actionLabel?: string;
+}
+
+export interface QueuedOfflinePrompt {
+  readonly turnId: string;
+  readonly topicId: string;
+  readonly prompt: string;
+  readonly attachments: ReadonlyArray<ContentBlock>;
+  readonly createdAtIso: string;
 }
 
 export interface WorkspaceState {
@@ -215,6 +268,7 @@ export interface WorkspaceState {
   readonly connectedAppIds: ReadonlyArray<string>;
   readonly disconnectedAppIds: ReadonlyArray<string>;
   readonly todayItems: ReadonlyArray<TodayWorkItem>;
+  readonly mailThreads: ReadonlyArray<MailThreadItem>;
   readonly activeTopicId: string | null;
   readonly inspectedBlockId: string | null;
   readonly inspectedAnchor: string | null;
@@ -225,9 +279,15 @@ export interface WorkspaceState {
   readonly showAllSidebarRecents: boolean;
   readonly searchQuery: string;
   readonly isSearchOpen: boolean;
+  readonly isCommandPaletteOpen: boolean;
   readonly composerDraft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
   readonly topics: ReadonlyArray<TopicThread>;
+  readonly artifactDrafts: Readonly<Record<string, unknown>>;
+  readonly revisions: ReadonlyArray<ArtifactRevision>;
+  readonly auditLog: ReadonlyArray<AuditLogEntry>;
+  readonly notifications: ReadonlyArray<WorkspaceNotification>;
+  readonly queuedPrompts: ReadonlyArray<QueuedOfflinePrompt>;
   readonly networkStatus: NetworkStatus;
   readonly queuedTurnIds: ReadonlyArray<string>;
 }

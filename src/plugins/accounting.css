@@ -1,24 +1,12 @@
-/* Shared ultra-lean styles for modular Accounting Workpaper & Inline Control Plugins */
-.primary-stage-btn {
-  padding: 5px 11px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
-  background: #f4f4f6;
-  color: #09090b;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: opacity 120ms ease;
-}
-
-.primary-stage-btn:hover {
-  opacity: 0.9;
+/* Shared styles for Accounting Workpaper & Inline Control Plugins */
+.acct-table-scroll {
+  overflow-x: auto;
 }
 
 .acct-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 12.5px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -27,24 +15,38 @@
   top: 0;
   z-index: 2;
   background: #15151a;
-  color: #a1a1aa;
+  color: var(--text-secondary);
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12px;
   text-align: left;
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--border-strong);
 }
 
 .acct-table th.is-num,
 .acct-table td.is-num {
   text-align: right;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
 }
 
 .acct-table td {
   padding: 7px 10px;
   border-bottom: 1px solid var(--border-subtle);
-  color: #e4e4e7;
+  color: var(--text-primary);
+}
+
+.acct-muted-cell {
+  color: var(--text-secondary);
+}
+
+.acct-mono-cell {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.acct-totals-row td {
+  background: #15151b;
+  font-weight: 700;
 }
 
 .acct-row-clickable {
@@ -52,34 +54,60 @@
 }
 
 .acct-row-clickable:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .acct-row-clickable.is-selected {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.inline-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .acct-inline-num-input {
-  width: 86px;
-  padding: 3px 7px;
+  width: 96px;
+  padding: 4px 8px;
   border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   background: #0e0e12;
   text-align: right;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: #f4f4f6;
-  outline: none;
+  color: var(--text-primary);
   transition: border-color 120ms ease, background 120ms ease;
 }
 
 .acct-inline-num-input:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
-.acct-inline-num-input:focus {
-  border-color: rgba(255, 255, 255, 0.36);
+.acct-inline-num-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
   background: #14141a;
+}
+
+/* Subtle left-bar provenance indicator when user modifies baseline value */
+.acct-inline-num-input.is-edited {
+  border-left: 2.5px solid var(--tone-info-fg);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.flux-exceeds-pm {
+  color: var(--tone-warn-fg) !important;
+  font-weight: 600;
+}
+
+.flux-within-pm {
+  color: var(--text-secondary) !important;
+}
+
+.tb-drilldown-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 /* Vouching Source Invoice Sheet */
@@ -91,7 +119,7 @@
 }
 
 .vouch-ledger-pane {
-  max-height: 42%;
+  max-height: 44%;
   overflow: auto;
   border-bottom: 1px solid var(--border-strong);
 }
@@ -107,12 +135,87 @@
 .vouch-invoice-paper {
   max-width: 620px;
   margin: 0 auto;
-  background: #fbfaf7;
+  background: var(--bg-paper);
   color: #1c1917;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 22px 26px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
   font-size: 12.5px;
+}
+
+.vouch-paper-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vouch-vendor-heading {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.vouch-vendor-desc {
+  color: #44403c;
+  margin-top: 3px;
+}
+
+.vouch-doc-meta {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.vouch-meta-label {
+  font-size: 12px;
+  color: #57534e;
+  margin-right: 6px;
+}
+
+.vouch-amounts-box {
+  border-top: 1px solid #d6d3d1;
+  border-bottom: 1px solid #d6d3d1;
+  padding: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vouch-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vouch-amount-row.is-total {
+  padding-top: 6px;
+  border-top: 1px dashed #d6d3d1;
+  font-weight: 700;
+}
+
+.vouch-mono {
+  font-family: var(--font-mono);
+}
+
+.vouch-tie-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.vouch-tie-footer.is-tied {
+  color: #15803d;
+}
+
+.vouch-tie-footer.is-variance {
+  color: #b91c1c;
 }
 
 .vouch-bbox {
@@ -120,10 +223,10 @@
   align-items: center;
   gap: 5px;
   padding: 2px 7px;
-  border-radius: 4px;
-  border: 1.5px solid #d97706;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid #b45309;
   background: rgba(251, 191, 36, 0.22);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-weight: 600;
   color: #1c1917;
 }
@@ -138,26 +241,26 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: 11.5px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .tick-tied {
-  background: rgba(34, 197, 94, 0.12);
-  color: #86efac;
+  background: var(--tone-good-bg);
+  color: var(--tone-good-fg);
 }
 
 .tick-exception {
-  background: rgba(248, 113, 113, 0.12);
-  color: #fca5a5;
+  background: var(--tone-danger-bg);
+  color: var(--tone-danger-fg);
 }
 
 .tick-pbc {
-  background: rgba(251, 191, 36, 0.12);
-  color: #fcd34d;
+  background: var(--tone-warn-bg);
+  color: var(--tone-warn-fg);
 }
 
 /* Trial Balance Group & Drilldown */
@@ -171,7 +274,7 @@
   min-height: 36px;
   padding: 6px 14px;
   border-top: 1px solid var(--border-subtle);
-  background: #111114;
+  background: var(--bg-panel);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -182,7 +285,7 @@
 .tb-group-row td {
   background: #121217;
   font-weight: 600;
-  color: #d4d4d8;
+  color: #e4e4e7;
   cursor: pointer;
 }
 
@@ -196,12 +299,25 @@
   border: 1px solid var(--border-subtle);
   border-radius: 9px;
   background: #131318;
-  padding: 11px 14px;
+  padding: 12px 14px;
   margin-bottom: 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.recon-card-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recon-reason-text {
+  color: var(--text-secondary);
+  font-size: 12.5px;
 }
 
 /* Tax Bridge Waterfall */
@@ -228,6 +344,15 @@
   padding: 10px 14px;
   background: #17171d;
   border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.inline-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .inline-control-footer {

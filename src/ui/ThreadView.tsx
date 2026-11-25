@@ -1,8 +1,10 @@
 import type { ComponentChildren } from 'preact';
+import { formatAuditTimestamp } from '../core/money';
 import type { RendererRegistry } from '../core/renderers';
-import type { ContentBlock, TopicThread } from '../core/types';
+import type { ArtifactRevision, ContentBlock, TopicThread } from '../core/types';
 import { BlockSlot } from './BlockSlot';
 import { Composer } from './Composer';
+import './thread.css';
 
 interface ThreadViewProps {
   readonly topic: TopicThread;
@@ -13,13 +15,19 @@ interface ThreadViewProps {
   readonly isStageMaximized: boolean;
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
+  readonly artifactDrafts: Readonly<Record<string, unknown>>;
+  readonly revisions: ReadonlyArray<ArtifactRevision>;
+  readonly actorName: string;
   readonly onReturnHome: () => void;
   readonly onInspectBlock: (blockId: string | null, anchor?: string | null) => void;
+  readonly onUpdateArtifactDraft: (blockId: string, nextDraft: unknown) => void;
+  readonly onClearArtifactDraft: (blockId: string) => void;
   readonly onCommitRevision: (
     blockId: string,
     nextData: unknown,
     changeSummary: ReadonlyArray<string>
   ) => void;
+  readonly onUndoRevision: (revisionId: string) => void;
   readonly onToggleMaximizeStage: () => void;
   readonly onDraftChange: (value: string) => void;
   readonly onIngestFile: (file: File) => void;
@@ -37,9 +45,15 @@ export function ThreadView({
   isStageMaximized,
   draft,
   attachments,
+  artifactDrafts,
+  revisions,
+  actorName,
   onReturnHome,
   onInspectBlock,
+  onUpdateArtifactDraft,
+  onClearArtifactDraft,
   onCommitRevision,
+  onUndoRevision,
   onToggleMaximizeStage,
   onDraftChange,
   onIngestFile,
@@ -51,6 +65,11 @@ export function ThreadView({
   const stageBlocks = allBlocks.filter((b) => registry.resolve(b).placement === 'stage');
   const activeStageBlock = allBlocks.find((b) => b.id === inspectedBlockId) ?? null;
   const activeStagePlugin = activeStageBlock ? registry.resolve(activeStageBlock) : null;
+  const hasStageDraft =
+    activeStageBlock !== null && artifactDrafts[activeStageBlock.id] !== undefined;
+  const latestStageRevision = activeStageBlock
+    ? [...revisions].reverse().find((r) => r.blockId === activeStageBlock.id) ?? null
+    : null;
 
   return (
     <div class="thread-workspace">
@@ -71,7 +90,7 @@ export function ThreadView({
               class="ghost-pill"
               onClick={() => onInspectBlock(stageBlocks[stageBlocks.length - 1]!.id)}
             >
-              Open {stageBlocks[stageBlocks.length - 1]!.filename ?? 'stage'}
+              Open {stageBlocks[stageBlocks.length - 1]!.filename ?? 'stage'} →
             </button>
           )}
         </div>
@@ -108,9 +127,18 @@ export function ThreadView({
                               key={block.id}
                               block={block}
                               registry={registry}
+                              draft={artifactDrafts[block.id]}
+                              actorName={actorName}
                               isCompact={renderCompact}
                               siblingArtifactId={turnStageArtifactId}
                               onInspect={(id, anchor) => onInspectBlock(id, anchor ?? null)}
+                              onUpdateDraft={(nextDraft) =>
+                                onUpdateArtifactDraft(block.id, nextDraft)
+                              }
+                              onClearDraft={() => onClearArtifactDraft(block.id)}
+                              onCommitRevision={(nextData, summary) =>
+                                onCommitRevision(block.id, nextData, summary)
+                              }
                             />
                           );
                         })}
@@ -150,9 +178,40 @@ export function ThreadView({
                 <strong class="artifact-stage-title">
                   {activeStageBlock.filename ?? activeStageBlock.title ?? activeStagePlugin.label}
                 </strong>
+                {hasStageDraft && (
+                  <span class="draft-indicator-pill" title="Edits are auto-saved locally as a draft">
+                    Unsaved draft
+                  </span>
+                )}
+                {!hasStageDraft && latestStageRevision && (
+                  <span
+                    class="revision-stamp-label"
+                    title={`Saved by ${latestStageRevision.actorName}`}
+                  >
+                    Saved {formatAuditTimestamp(latestStageRevision.createdAtIso)}
+                  </span>
+                )}
               </div>
 
               <div class="artifact-stage-controls">
+                {hasStageDraft && (
+                  <button
+                    type="button"
+                    class="ghost-pill"
+                    onClick={() => onClearArtifactDraft(activeStageBlock.id)}
+                  >
+                    Discard draft
+                  </button>
+                )}
+                {latestStageRevision && (
+                  <button
+                    type="button"
+                    class="ghost-pill"
+                    onClick={() => onUndoRevision(latestStageRevision.id)}
+                  >
+                    Undo save
+                  </button>
+                )}
                 <button
                   type="button"
                   class="ghost-pill"
@@ -176,9 +235,15 @@ export function ThreadView({
                 key={activeStageBlock.id}
                 block={activeStageBlock}
                 registry={registry}
+                draft={artifactDrafts[activeStageBlock.id]}
+                actorName={actorName}
                 isCompact={false}
                 focusAnchor={inspectedAnchor}
                 anchorPulse={anchorPulse}
+                onUpdateDraft={(nextDraft) =>
+                  onUpdateArtifactDraft(activeStageBlock.id, nextDraft)
+                }
+                onClearDraft={() => onClearArtifactDraft(activeStageBlock.id)}
                 onCommitRevision={(nextData, summary) =>
                   onCommitRevision(activeStageBlock.id, nextData, summary)
                 }

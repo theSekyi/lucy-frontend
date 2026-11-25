@@ -1,4 +1,4 @@
-/* Lazy-loaded Spreadsheet Plugin Styles (0 bytes in critical initial bundle) */
+/* Lazy-loaded Spreadsheet Plugin Styles */
 .sheet-viewer {
   flex: 1;
   min-height: 0;
@@ -12,18 +12,18 @@
   gap: 8px;
   padding: 7px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  background: #111114;
-  font-size: 12px;
+  background: var(--bg-panel);
+  font-size: 12.5px;
 }
 
 .sheet-coord {
-  min-width: 34px;
+  min-width: 38px;
   text-align: center;
   padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.07);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .sheet-fx {
@@ -38,40 +38,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #e4e4e7;
-}
-
-.sheet-filter-input {
-  width: 124px;
-  height: 26px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border-subtle);
-  background: #0b0b0e;
+  font-family: var(--font-mono);
   color: var(--text-primary);
-  font-size: 11.5px;
-  outline: none;
-  transition: border-color 120ms ease;
-}
-
-.sheet-filter-input:focus {
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-.empty-note {
-  padding: 20px;
-  color: var(--text-muted);
-  font-size: 12.5px;
 }
 
 .sort-indicator {
-  color: var(--text-muted);
-  font-size: 11px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
 }
 
 .sheet-grid-scroll {
   flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -90,26 +68,30 @@
   border-bottom: 1px solid var(--border-strong);
   border-right: 1px solid var(--border-subtle);
   z-index: 2;
+  padding: 0;
 }
 
 .sheet-corner {
-  width: 34px;
+  width: 40px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
-.sheet-col-header {
+.sheet-col-sort-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   padding: 5px 8px;
   text-align: left;
-  cursor: pointer;
 }
 
-.sheet-col-header:hover {
+.sheet-col-sort-btn:hover {
   background: #1c1c22;
 }
 
 .sheet-col-letter {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-muted);
   font-weight: 500;
 }
@@ -119,8 +101,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  font-size: 12px;
   font-weight: 600;
-  color: #e4e4e7;
+  color: var(--text-primary);
+}
+
+.sheet-virtual-spacer td {
+  padding: 0;
+  border: 0;
 }
 
 .sheet-row-num {
@@ -129,60 +117,30 @@
   background: #121215;
   border-right: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 11px;
+  font-size: 11.5px;
   user-select: none;
+  height: 32px;
 }
 
 .sheet-cell {
-  padding: 6px 8px;
+  height: 32px;
+  padding: 5px 8px;
   border-right: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
-  color: #d4d4d8;
+  color: #e4e4ea;
   white-space: nowrap;
   cursor: cell;
 }
 
 .sheet-cell.is-numeric {
   text-align: right;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
 }
 
 .sheet-cell.is-selected {
-  outline: 1.5px solid rgba(255, 255, 255, 0.48);
-  outline-offset: -1.5px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.cell-pill {
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.cell-pill.tone-good {
-  background: rgba(34, 197, 94, 0.16);
-  color: #86efac;
-}
-
-.cell-pill.tone-warn {
-  background: rgba(249, 115, 22, 0.18);
-  color: #fdba74;
-}
-
-.cell-pill.tone-neutral {
-  background: rgba(255, 255, 255, 0.08);
-  color: #d4d4d8;
-}
-
-.sheet-tabs-bar {
-  height: 36px;
-  padding: 0 12px;
-  border-top: 1px solid var(--border-subtle);
-  background: #111114;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  background: rgba(147, 197, 253, 0.08);
 }
 
 .sheet-tabs-list {
@@ -194,17 +152,12 @@
 .sheet-tab {
   padding: 4px 10px;
   border-radius: 5px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
 .sheet-tab.is-active {
   background: #1e1e24;
-  color: #f4f4f6;
+  color: var(--text-primary);
   font-weight: 600;
-}
-
-.sheet-meta-count {
-  font-size: 11px;
-  color: var(--text-muted);
 }

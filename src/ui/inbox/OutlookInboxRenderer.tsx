@@ -43,7 +43,6 @@ function CalendarFluentIcon() {
       stroke="#62abf5"
       stroke-width="1.4"
       aria-hidden="true"
-      style={{ flexShrink: 0 }}
     >
       <rect x="2" y="3" width="12" height="11" rx="1.8" />
       <line x1="2" y1="6.5" x2="14" y2="6.5" />
@@ -57,9 +56,14 @@ export function OutlookInboxRenderer({
   threads,
   focusedThreadReq = null,
   registry,
+  workspace,
+  actorName,
+  isAjePosted = false,
+  injectedReplySnippet = null,
   activeProvider,
   senderEmail,
   onSwitchProvider,
+  onSelectThread,
   onToggleFlag,
   onMarkRead,
   onArchive,
@@ -81,7 +85,18 @@ export function OutlookInboxRenderer({
   const [replyPulse, setReplyPulse] = useState(0);
   const [rsvpMap, setRsvpMap] = useState<Record<string, 'accepted' | 'tentative'>>({});
 
-  const { previewBlock, clearPreview, openAttachment } = useMailAttachmentPreview(registry);
+  const { previewBlock, clearPreview, openAttachment } = useMailAttachmentPreview(
+    registry,
+    workspace
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 920px)');
+    const onChange = (e: MediaQueryListEvent) => setIsFolderPaneOpen(!e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     if (!focusedThreadReq?.id) return;
@@ -114,7 +129,6 @@ export function OutlookInboxRenderer({
 
   const activeMail =
     visibleThreads.find((t) => t.id === selectedId) ??
-    threads.find((t) => t.id === selectedId) ??
     visibleThreads[0] ??
     null;
 
@@ -129,17 +143,6 @@ export function OutlookInboxRenderer({
     <div class="outlook-frame">
       <header class="outlook-appbar">
         <div class="outlook-brand">
-          <svg width="15" height="15" viewBox="0 0 16 16" fill="#c8c6c4" aria-hidden="true">
-            <circle cx="3" cy="3" r="1.2" />
-            <circle cx="8" cy="3" r="1.2" />
-            <circle cx="13" cy="3" r="1.2" />
-            <circle cx="3" cy="8" r="1.2" />
-            <circle cx="8" cy="8" r="1.2" />
-            <circle cx="13" cy="8" r="1.2" />
-            <circle cx="3" cy="13" r="1.2" />
-            <circle cx="8" cy="13" r="1.2" />
-            <circle cx="13" cy="13" r="1.2" />
-          </svg>
           <OutlookLogo size={20} />
           <strong class="outlook-wordmark">Outlook</strong>
         </div>
@@ -150,6 +153,7 @@ export function OutlookInboxRenderer({
             type="search"
             class="gmail-search-input"
             placeholder="Search mail and people"
+            aria-label="Search in Outlook"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
           />
@@ -272,7 +276,7 @@ export function OutlookInboxRenderer({
               <span>Sent Items</span>
             </button>
 
-            <div class="outlook-folder-group-label">▾ Carter & Vance LLP</div>
+            <div class="outlook-folder-group-label">▾ Carter &amp; Vance LLP</div>
             <button
               type="button"
               class={`outlook-folder-btn ${folder === 'archive' ? 'is-active' : ''}`}
@@ -316,89 +320,114 @@ export function OutlookInboxRenderer({
           </div>
 
           <div class="gmail-list-scroll">
-            {DATE_GROUPS.map((group) => {
-              const items = visibleThreads.filter((t) => t.dateGroup === group);
-              if (items.length === 0) return null;
+            {visibleThreads.length === 0 ? (
+              <div class="mail-empty-folder">
+                <span>
+                  {q
+                    ? `No messages match “${query}”.`
+                    : unreadOnly
+                      ? 'No unread messages in this folder.'
+                      : 'No messages in this folder.'}
+                </span>
+                {(q || unreadOnly) && (
+                  <button
+                    type="button"
+                    class="ghost-pill"
+                    onClick={() => {
+                      setQuery('');
+                      setUnreadOnly(false);
+                    }}
+                  >
+                    Clear filter
+                  </button>
+                )}
+              </div>
+            ) : (
+              DATE_GROUPS.map((group) => {
+                const items = visibleThreads.filter((t) => t.dateGroup === group);
+                if (items.length === 0) return null;
 
-              return (
-                <Fragment key={group}>
-                  <div class="outlook-date-divider">▾ {group}</div>
-                  {items.map((item) => {
-                    const isSelected = activeMail?.id === item.id && !isComposing;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        class={`outlook-msg-card ${item.unread ? 'is-unread' : ''} ${isSelected ? 'is-selected' : ''}`}
-                        onClick={() => {
-                          setIsComposing(false);
-                          setSelectedId(item.id);
-                          setMobileShowReader(true);
-                          if (item.unread) onMarkRead(item.id, false);
-                        }}
-                      >
-                        {item.unread && <span class="outlook-unread-bar" />}
-
-                        <div
-                          class="outlook-avatar"
-                          style={{ background: item.avatarColor }}
+                return (
+                  <Fragment key={group}>
+                    <div class="outlook-date-divider">▾ {group}</div>
+                    {items.map((item) => {
+                      const isSelected = activeMail?.id === item.id && !isComposing;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          class={`outlook-msg-card ${item.unread ? 'is-unread' : ''} ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => {
+                            setIsComposing(false);
+                            setSelectedId(item.id);
+                            onSelectThread?.(item.id);
+                            setMobileShowReader(true);
+                            if (item.unread) onMarkRead(item.id, false);
+                          }}
                         >
-                          {item.senderInitials}
-                        </div>
+                          {item.unread && <span class="outlook-unread-bar" />}
 
-                        <div class="outlook-card-lines">
-                          <div class="outlook-card-line1">
-                            <span class="outlook-card-sender">{item.senderName}</span>
-                            <span class="outlook-indicators">
-                              {item.outlook.importance === 'high' && (
-                                <strong style={{ color: '#f87171' }} title="High importance">
-                                  !
-                                </strong>
-                              )}
-                              {item.outlook.mentionedMe && (
-                                <strong style={{ color: '#60a5fa' }} title="Mentioned you">
-                                  @
-                                </strong>
-                              )}
-                              {item.flagged && (
-                                <span style={{ color: '#fb923c' }} title="Flagged">
-                                  ⚑
+                          <div
+                            class="outlook-avatar"
+                            style={{ background: item.avatarColor }}
+                          >
+                            {item.senderInitials}
+                          </div>
+
+                          <div class="outlook-card-lines">
+                            <div class="outlook-card-line1">
+                              <span class="outlook-card-sender">{item.senderName}</span>
+                              <span class="outlook-indicators">
+                                {item.outlook.importance === 'high' && (
+                                  <strong class="outlook-imp-high" title="High importance">
+                                    !
+                                  </strong>
+                                )}
+                                {item.outlook.mentionedMe && (
+                                  <strong class="outlook-mention-mark" title="Mentioned you">
+                                    @
+                                  </strong>
+                                )}
+                                {item.flagged && (
+                                  <span class="outlook-flag-mark" title="Flagged">
+                                    ⚑
+                                  </span>
+                                )}
+                                {item.attachments.length > 0 && <PaperclipIcon />}
+                                <span class="outlook-time-label">{item.timeShort}</span>
+                              </span>
+                            </div>
+
+                            <div class="outlook-card-subject">{item.subject}</div>
+
+                            <div class="outlook-card-snippet-row">
+                              <span class="outlook-card-snippet">{item.snippet}</span>
+                              {item.outlook.categoryTag && (
+                                <span
+                                  class={`outlook-cat-tag cat-${item.outlook.categoryTag.color}`}
+                                >
+                                  {item.outlook.categoryTag.label}
                                 </span>
                               )}
-                              {item.attachments.length > 0 && <PaperclipIcon />}
-                              <span style={{ color: '#a19f9d' }}>{item.timeShort}</span>
-                            </span>
-                          </div>
+                            </div>
 
-                          <div class="outlook-card-subject">{item.subject}</div>
-
-                          <div class="outlook-card-snippet-row">
-                            <span class="outlook-card-snippet">{item.snippet}</span>
-                            {item.outlook.categoryTag && (
-                              <span
-                                class={`outlook-cat-tag cat-${item.outlook.categoryTag.color}`}
-                              >
-                                {item.outlook.categoryTag.label}
-                              </span>
+                            {item.attachments[0] && (
+                              <div class="outlook-inline-att-chip">
+                                <PaperclipIcon />
+                                <span>{item.attachments[0].filename}</span>
+                                {item.attachments.length > 1 && (
+                                  <span>+{item.attachments.length - 1}</span>
+                                )}
+                              </div>
                             )}
                           </div>
-
-                          {item.attachments[0] && (
-                            <div class="outlook-inline-att-chip">
-                              <PaperclipIcon />
-                              <span>{item.attachments[0].filename}</span>
-                              {item.attachments.length > 1 && (
-                                <span>+{item.attachments.length - 1}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </Fragment>
-              );
-            })}
+                        </button>
+                      );
+                    })}
+                  </Fragment>
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -425,8 +454,9 @@ export function OutlookInboxRenderer({
                 setMobileShowReader(false);
               }}
               onSend={(to, subject, body) => {
-                onSendMail(to, subject, body);
-                setIsComposing(false);
+                const ok = onSendMail(to, subject, body);
+                if (ok) setIsComposing(false);
+                return ok;
               }}
             />
           ) : activeMail ? (
@@ -447,7 +477,7 @@ export function OutlookInboxRenderer({
                 <div class="outlook-info-callout">
                   <div class="stage-subbar-group">
                     {activeMail.outlook.importance === 'high' && (
-                      <strong style={{ color: '#fca5a5' }}>! High Importance</strong>
+                      <strong class="outlook-imp-high">! High importance</strong>
                     )}
                     {activeMail.outlook.followUpDue && (
                       <span>⚑ {activeMail.outlook.followUpDue}</span>
@@ -483,7 +513,7 @@ export function OutlookInboxRenderer({
                         setRsvpMap((prev) => ({ ...prev, [activeMail.id]: 'accepted' }))
                       }
                     >
-                      {rsvpMap[activeMail.id] === 'accepted' ? '✓ Accepted' : 'Accept'}
+                      {rsvpMap[activeMail.id] === 'accepted' ? 'Accepted' : 'Accept'}
                     </button>
                     <button
                       type="button"
@@ -492,7 +522,7 @@ export function OutlookInboxRenderer({
                         setRsvpMap((prev) => ({ ...prev, [activeMail.id]: 'tentative' }))
                       }
                     >
-                      {rsvpMap[activeMail.id] === 'tentative' ? '✓ Tentative' : 'Tentative'}
+                      {rsvpMap[activeMail.id] === 'tentative' ? 'Tentative' : 'Tentative'}
                     </button>
                   </div>
                 </div>
@@ -550,6 +580,8 @@ export function OutlookInboxRenderer({
                 attachments={activeMail.attachments}
                 previewBlock={previewBlock}
                 registry={registry}
+                workspace={workspace}
+                actorName={actorName}
                 onToggleAttachment={(att) => void openAttachment(att)}
                 onClearPreview={clearPreview}
                 onNavigateSource={onNavigateSource}
@@ -559,6 +591,8 @@ export function OutlookInboxRenderer({
                 thread={activeMail}
                 replyFocusPulse={replyPulse}
                 senderEmail={senderEmail}
+                isAjePosted={isAjePosted}
+                injectedReplySnippet={injectedReplySnippet}
                 onNavigateSource={onNavigateSource}
                 onPreviewInlineRoute={(route) => {
                   const matchedAtt = activeMail.attachments.find(
@@ -571,7 +605,7 @@ export function OutlookInboxRenderer({
               />
             </>
           ) : (
-            <div class="sheet-meta-count">Select a message to read.</div>
+            <div class="mail-empty-folder">Select a message to read.</div>
           )}
         </section>
       </div>

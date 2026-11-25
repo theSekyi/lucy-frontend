@@ -20,7 +20,10 @@ function statusStroke(status: TopologyNode['status']): string {
 }
 
 function TopologyStageView({ context }: { context: RendererContext<TopologyGraphData> }) {
-  const graph = context.block.data;
+  const baseline = context.block.data;
+  const [localDraft, setLocalDraft] = useState<TopologyGraphData | null>(null);
+  const graph = context.draft ?? localDraft ?? baseline;
+
   const [selectedId, setSelectedId] = useState<string>(
     context.focusAnchor ??
       graph.nodes.find((n) => n.status === 'degraded')?.id ??
@@ -30,13 +33,7 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
   const [scale, setScale] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [nodeOffsets, setNodeOffsets] = useState<Record<string, { x: number; y: number }>>({});
-  const [forcedOutages, setForcedOutages] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(
-      graph.nodes.filter((n) => n.status === 'degraded').map((n) => [n.id, true])
-    )
-  );
   const [search, setSearch] = useState('');
-  const [syncedIncident, setSyncedIncident] = useState(false);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const dragStateRef = useRef<
@@ -51,13 +48,12 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
     }
   }, [context.focusAnchor, context.anchorPulse, graph.nodes]);
 
-  // Live blast-radius propagation via directed BFS from any degraded/outage node
   const effectiveStatuses = useMemo(() => {
     const statusMap = new Map<string, TopologyNode['status']>();
     const queue: string[] = [];
 
     for (const node of graph.nodes) {
-      if (forcedOutages[node.id]) {
+      if (node.status === 'degraded') {
         statusMap.set(node.id, 'degraded');
         queue.push(node.id);
       } else {
@@ -75,9 +71,8 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
       }
     }
     return statusMap;
-  }, [forcedOutages, graph.edges, graph.nodes]);
+  }, [graph.edges, graph.nodes]);
 
-  // Connected lineage neighborhood (ancestors + descendants of selected node)
   const connectedIds = useMemo(() => {
     const visited = new Set<string>([selectedId]);
     let changed = true;
@@ -109,16 +104,27 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
   }
 
   function toggleOutage(nodeId: string) {
-    setForcedOutages((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
-    setSyncedIncident(false);
+    const nextGraph: TopologyGraphData = {
+      ...graph,
+      nodes: graph.nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, status: n.status === 'degraded' ? 'healthy' : 'degraded' }
+          : n
+      ),
+    };
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(nextGraph);
+    } else {
+      setLocalDraft(nextGraph);
+    }
   }
 
-  function sendIncidentBriefToLucy() {
+  function saveLineageStatus() {
     const degraded = graph.nodes.filter((n) => effectiveStatuses.get(n.id) === 'degraded');
     const impacted = graph.nodes.filter((n) => effectiveStatuses.get(n.id) === 'impacted');
     const summary = [
-      `Degraded root source(s): ${degraded.map((n) => n.label).join(', ') || 'None (all healthy)'}`,
-      `Downstream blast radius (${impacted.length} impacted): ${impacted.map((n) => n.label).join(', ') || 'None'}`,
+      `Degraded source(s): ${degraded.map((n) => n.label).join(', ') || 'None (all healthy)'}`,
+      `Downstream impact (${impacted.length}): ${impacted.map((n) => n.label).join(', ') || 'None'}`,
     ];
     const nextGraph: TopologyGraphData = {
       ...graph,
@@ -128,7 +134,7 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
       })),
     };
     context.onCommitRevision?.(nextGraph, summary);
-    setSyncedIncident(true);
+    setLocalDraft(null);
   }
 
   const nodeMap = new Map(graph.nodes.map((n) => [n.id, n]));
@@ -150,7 +156,8 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
           <input
             type="search"
             class="sheet-filter-input"
-            placeholder="Find service…"
+            placeholder="Find system…"
+            aria-label="Find lineage system"
             value={search}
             onInput={(e) => {
               const val = (e.currentTarget as HTMLInputElement).value;
@@ -167,6 +174,7 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
           <button
             type="button"
             class="ghost-pill"
+            aria-label="Zoom out"
             onClick={() => setScale((s) => Math.max(0.65, Number((s - 0.15).toFixed(2))))}
           >
             −
@@ -175,6 +183,7 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
           <button
             type="button"
             class="ghost-pill"
+            aria-label="Zoom in"
             onClick={() => setScale((s) => Math.min(1.5, Number((s + 0.15).toFixed(2))))}
           >
             +
@@ -242,7 +251,14 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
           dragStateRef.current = null;
         }}
       >
-        <svg ref={svgRef} viewBox="0 0 728 300" width="100%" height="100%">
+        <svg
+          ref={svgRef}
+          viewBox="0 0 728 300"
+          width="100%"
+          height="100%"
+          role="img"
+          aria-label={graph.subtitle}
+        >
           <defs>
             <marker
               id="dagArrow"
@@ -301,8 +317,8 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
                       x={cx}
                       y={(y1 + y2) / 2 - 6}
                       text-anchor="middle"
-                      fill={isHot ? '#fdba74' : '#94a3b8'}
-                      font-size="9.5"
+                      fill={isHot ? '#fdba74' : '#cbd5e1'}
+                      font-size="10.5"
                     >
                       {edge.label}
                     </text>
@@ -324,8 +340,18 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
                 <g
                   key={node.id}
                   data-node-id={node.id}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${node.label} (${effStatus})`}
                   opacity={inLineage && matchesSearch ? 1 : 0.34}
                   style={{ cursor: 'grab' }}
+                  onFocus={() => setSelectedId(node.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedId(node.id);
+                    }
+                  }}
                 >
                   <rect
                     x={x}
@@ -338,11 +364,13 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
                     stroke-width={selected ? '2.1' : '1.4'}
                   />
                   <circle cx={x + 13} cy={y + 19} r="4.2" fill={stroke} />
-                  <text x={x + 23} y={y + 22} fill="#f4f4f6" font-size="11" font-weight="600">
+                  <text x={x + 23} y={y + 22} fill="#f4f4f6" font-size="11.5" font-weight="600">
                     {node.label}
                   </text>
-                  <text x={x + 13} y={y + 40} fill="#9ca3af" font-size="9.8">
-                    {effStatus === 'healthy' ? node.latency : `${effStatus.toUpperCase()} · ${node.owner}`}
+                  <text x={x + 13} y={y + 40} fill="#a1a1aa" font-size="10.5">
+                    {effStatus === 'healthy'
+                      ? node.latency
+                      : `${effStatus.toUpperCase()} · ${node.owner}`}
                   </text>
                 </g>
               );
@@ -371,14 +399,14 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
                 class="ghost-pill"
                 onClick={() => toggleOutage(selectedNode.id)}
               >
-                {forcedOutages[selectedNode.id] ? 'Mark healthy' : 'Mark delayed'}
+                {selectedNode.status === 'degraded' ? 'Mark healthy' : 'Mark delayed'}
               </button>
               <button
                 type="button"
                 class="primary-stage-btn"
-                onClick={sendIncidentBriefToLucy}
+                onClick={saveLineageStatus}
               >
-                {syncedIncident ? 'Saved' : 'Save status'}
+                Save
               </button>
             </div>
           </div>
@@ -389,7 +417,10 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
   );
 }
 
-export const topologyRendererModule: LoadedRenderer<preact.ComponentChildren, TopologyGraphData> = {
+export const topologyRendererModule: LoadedRenderer<
+  preact.ComponentChildren,
+  TopologyGraphData
+> = {
   render(context) {
     return <TopologyStageView context={context} />;
   },

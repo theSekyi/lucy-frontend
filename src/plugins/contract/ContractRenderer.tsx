@@ -16,14 +16,18 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
   function scrollClauseIntoMat(section: string) {
     const container = scrollRef.current;
     if (!container) return;
-    const el = container.querySelector<HTMLElement>(
-      `[data-clause="${CSS.escape(section)}"]`
-    );
+    const escaped =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(section)
+        : section.replace(/"/g, '\\"');
+    const el = container.querySelector<HTMLElement>(`[data-clause="${escaped}"]`);
     if (!el) return;
     const cRect = container.getBoundingClientRect();
     const eRect = el.getBoundingClientRect();
     const targetTop =
-      container.scrollTop + (eRect.top - cRect.top) - Math.max(24, (cRect.height - eRect.height) / 3);
+      container.scrollTop +
+      (eRect.top - cRect.top) -
+      Math.max(24, (cRect.height - eRect.height) / 3);
     container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   }
 
@@ -39,6 +43,19 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
   }
 
   const filterLower = query.trim().toLowerCase();
+  const visiblePages = doc.pages
+    .map((page) => ({
+      page,
+      matchingClauses: filterLower
+        ? page.clauses.filter(
+            (c) =>
+              c.section.toLowerCase().includes(filterLower) ||
+              c.heading.toLowerCase().includes(filterLower) ||
+              c.text.toLowerCase().includes(filterLower)
+          )
+        : page.clauses,
+    }))
+    .filter((entry) => entry.matchingClauses.length > 0);
 
   return (
     <div class="stage-plugin-shell">
@@ -79,6 +96,7 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
             type="search"
             class="sheet-filter-input"
             placeholder="Find in contract…"
+            aria-label="Find text in contract"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
           />
@@ -86,19 +104,19 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
       </div>
 
       <div class="pdf-desk-mat" ref={scrollRef}>
-        {doc.pages.map((page) => {
-          const matchingClauses = filterLower
-            ? page.clauses.filter(
-                (c) =>
-                  c.section.toLowerCase().includes(filterLower) ||
-                  c.heading.toLowerCase().includes(filterLower) ||
-                  c.text.toLowerCase().includes(filterLower)
-              )
-            : page.clauses;
-
-          if (matchingClauses.length === 0) return null;
-
-          return (
+        {visiblePages.length === 0 ? (
+          <div class="empty-note">
+            <span>No contract clauses match “{query}”.</span>
+            <button
+              type="button"
+              class="ghost-pill"
+              onClick={() => setQuery('')}
+            >
+              Clear search
+            </button>
+          </div>
+        ) : (
+          visiblePages.map(({ page, matchingClauses }) => (
             <section
               key={page.pageNumber}
               class={`pdf-folio-page theme-${folioTheme}`}
@@ -124,8 +142,15 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
                   <article
                     key={clause.section}
                     data-clause={clause.section}
+                    tabIndex={0}
                     class={`pdf-clause-row ${isGrounded ? 'is-grounded' : ''}`}
                     onClick={() => setActiveClause(clause.section)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveClause(clause.section);
+                      }
+                    }}
                   >
                     <div class="pdf-clause-num">{clause.section}</div>
 
@@ -147,7 +172,7 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
 
                       {clause.note && (
                         <div class="pdf-counsel-pin">
-                          <strong>Counsel Note:</strong>
+                          <strong>Review note:</strong>
                           <span>{clause.note}</span>
                         </div>
                       )}
@@ -163,14 +188,17 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
                 </span>
               </footer>
             </section>
-          );
-        })}
+          ))
+        )}
       </div>
     </div>
   );
 }
 
-export const contractRendererModule: LoadedRenderer<preact.ComponentChildren, CitedDocumentData> = {
+export const contractRendererModule: LoadedRenderer<
+  preact.ComponentChildren,
+  CitedDocumentData
+> = {
   render(context) {
     return <ContractInspectorView context={context} />;
   },

@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   generateMailReplyDraft,
-  queryMailTerminal,
+  resolveLiveMailVerdict,
   type MailSourceLink,
-  type MailTerminalExchange,
   type MailThreadItem,
   type ReplyDraftTone,
 } from '../../core/inbox';
-import { SendArrowIcon } from '../icons';
 
 export interface DeepLinkTarget {
+  readonly workpaperId?: string;
+  readonly blockId?: string;
   readonly pluginRoute?: string;
   readonly anchor?: string;
   readonly connectorId?: string;
@@ -19,15 +19,22 @@ interface MailIntelligencePanelProps {
   readonly thread: MailThreadItem;
   readonly replyFocusPulse: number;
   readonly senderEmail: string;
+  readonly isAjePosted?: boolean;
+  readonly injectedReplySnippet?: {
+    readonly text: string;
+    readonly pulse: number;
+  } | null;
   readonly onNavigateSource: (target: DeepLinkTarget) => void;
   readonly onPreviewInlineRoute?: (pluginRoute: string) => void;
-  readonly onSendReply: (to: string, subject: string, body: string) => void;
+  readonly onSendReply: (to: string, subject: string, body: string) => boolean;
 }
 
 export function MailIntelligencePanel({
   thread,
   replyFocusPulse,
   senderEmail,
+  isAjePosted = false,
+  injectedReplySnippet = null,
   onNavigateSource,
   onPreviewInlineRoute,
   onSendReply,
@@ -38,8 +45,6 @@ export function MailIntelligencePanel({
   );
   const [showReasoning, setShowReasoning] = useState(true);
   const [sentNotice, setSentNotice] = useState(false);
-  const [terminalInput, setTerminalInput] = useState('');
-  const [exchanges, setExchanges] = useState<MailTerminalExchange[]>([]);
 
   const replyBoxRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -48,8 +53,6 @@ export function MailIntelligencePanel({
     setTone('standard');
     setDraftText(generateMailReplyDraft(thread, 'standard'));
     setSentNotice(false);
-    setTerminalInput('');
-    setExchanges([]);
   }, [thread.id]);
 
   useEffect(() => {
@@ -58,24 +61,23 @@ export function MailIntelligencePanel({
     textareaRef.current?.focus();
   }, [replyFocusPulse]);
 
+  useEffect(() => {
+    if (!injectedReplySnippet || injectedReplySnippet.pulse <= 0) return;
+    setSentNotice(false);
+    setDraftText((prev) =>
+      prev.trim()
+        ? `${prev.trim()}\n\n${injectedReplySnippet.text}`
+        : injectedReplySnippet.text
+    );
+    replyBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    textareaRef.current?.focus();
+  }, [injectedReplySnippet?.pulse]);
+
   function handleToneSelect(nextTone: ReplyDraftTone) {
     setTone(nextTone);
     setDraftText(generateMailReplyDraft(thread, nextTone));
     setSentNotice(false);
     textareaRef.current?.focus();
-  }
-
-  function runTerminalQuery(questionText: string) {
-    const clean = questionText.trim();
-    if (!clean) return;
-    const result = queryMailTerminal(thread, clean);
-    setExchanges((prev) => [...prev, result]);
-    setTerminalInput('');
-  }
-
-  function handleTerminalSubmit(e: Event) {
-    e.preventDefault();
-    runTerminalQuery(terminalInput);
   }
 
   function triggerSource(src: MailSourceLink) {
@@ -84,6 +86,7 @@ export function MailIntelligencePanel({
       return;
     }
     onNavigateSource({
+      workpaperId: src.workpaperId,
       pluginRoute: src.pluginRoute,
       anchor: src.anchor,
       connectorId: src.connectorId,
@@ -91,20 +94,22 @@ export function MailIntelligencePanel({
   }
 
   const intel = thread.intelligence;
+  const liveVerdict = resolveLiveMailVerdict(thread, { ajePosted: isAjePosted });
   const sources = intel?.sources ?? [];
 
   return (
-    <section class="mail-intel-shell" aria-label="Verification checks, reply, and thread search">
+    <section class="mail-intel-shell" aria-label="Verification checks and reply composer">
       {intel && (
         <div>
           <div class="mail-intel-header">
-            <span class="mail-intel-verdict">{intel.verdict}</span>
+            <span class="mail-intel-verdict">{liveVerdict ?? intel.verdict}</span>
             <button
               type="button"
               class="mail-intel-toggle-btn"
+              aria-expanded={showReasoning}
               onClick={() => setShowReasoning((v) => !v)}
             >
-              {showReasoning ? 'Hide checks' : 'Checks'}
+              {showReasoning ? 'Hide checks' : 'Show checks'}
             </button>
           </div>
 
@@ -127,7 +132,7 @@ export function MailIntelligencePanel({
                             onClick={() => triggerSource(linked)}
                           >
                             <span>{linked.label}</span>
-                            <span>↗</span>
+                            <span>→</span>
                           </button>
                         )}
                       </div>
@@ -147,7 +152,7 @@ export function MailIntelligencePanel({
             <span class="mail-reply-recipient">{thread.senderEmail}</span>
           </div>
 
-          <div class="mail-tone-tabs" role="group" aria-label="Reply format">
+          <div class="mail-tone-tabs" role="group" aria-label="Reply draft template">
             <button
               type="button"
               class={`mail-tone-btn ${tone === 'standard' && draftText ? 'is-active' : ''}`}
@@ -177,6 +182,7 @@ export function MailIntelligencePanel({
           rows={5}
           class="mail-draft-textarea"
           placeholder="Write reply…"
+          aria-label={`Reply to ${thread.senderName}`}
           value={draftText}
           onInput={(e) => {
             setSentNotice(false);
@@ -204,71 +210,23 @@ export function MailIntelligencePanel({
             <button
               type="button"
               class="primary-action-pill is-sm"
+              disabled={!draftText.trim()}
               onClick={() => {
                 if (!draftText.trim()) return;
-                onSendReply(thread.senderEmail, `Re: ${thread.subject}`, draftText);
-                setSentNotice(true);
+                const sent = onSendReply(
+                  thread.senderEmail,
+                  `Re: ${thread.subject}`,
+                  draftText
+                );
+                if (sent) {
+                  setSentNotice(true);
+                }
               }}
             >
-              {sentNotice ? '✓ Sent' : 'Send'}
+              {sentNotice ? 'Sent' : 'Send reply'}
             </button>
           </div>
         </div>
-      </div>
-
-      <div class="mail-terminal-dock">
-        {exchanges.length > 0 && (
-          <div class="mail-terminal-log">
-            {exchanges.map((ex) => (
-              <div key={ex.id} class="mail-terminal-entry">
-                <div class="mail-term-q">{ex.question}</div>
-                <div class="mail-term-a">{ex.answer}</div>
-                <div class="mail-term-actions">
-                  {ex.citations.map((cit) => (
-                    <button
-                      key={cit.id}
-                      type="button"
-                      class="mail-deeplink-chip"
-                      onClick={() =>
-                        onNavigateSource({
-                          pluginRoute: cit.pluginRoute,
-                          anchor: cit.anchor,
-                          connectorId: cit.connectorId,
-                        })
-                      }
-                    >
-                      <span>{cit.label} ↗</span>
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    class="mail-term-insert-btn"
-                    onClick={() =>
-                      setDraftText((prev) =>
-                        prev.trim() ? `${prev.trim()}\n\n${ex.answer}` : ex.answer
-                      )
-                    }
-                  >
-                    Insert into reply
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <form class="mail-terminal-form" onSubmit={handleTerminalSubmit}>
-          <input
-            type="text"
-            class="mail-terminal-input"
-            placeholder="Ask about figures, clauses, or tied ledgers…"
-            value={terminalInput}
-            onInput={(e) => setTerminalInput((e.currentTarget as HTMLInputElement).value)}
-          />
-          <button type="submit" class="composer-send-btn is-xs" aria-label="Ask">
-            <SendArrowIcon />
-          </button>
-        </form>
       </div>
     </section>
   );

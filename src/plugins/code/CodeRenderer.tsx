@@ -58,9 +58,6 @@ const TYPES_AND_BUILTINS = new Set([
   'Math', 'Promise', 'Array', 'Map', 'Set', 'Object', 'Readonly', 'ReadonlyArray',
 ]);
 
-/**
- * Single-pass zero-dependency lexical highlighter covering TS/JS, Python, SQL, YAML/JSON, Go, and Rust.
- */
 function tokenizeCodeLine(line: string): ComponentChildren[] {
   const out: ComponentChildren[] = [];
   let i = 0;
@@ -69,7 +66,6 @@ function tokenizeCodeLine(line: string): ComponentChildren[] {
   while (i < line.length) {
     const rest = line.slice(i);
 
-    // 1. Line comments (//, #, --)
     if (rest.startsWith('//') || rest.startsWith('#') || rest.startsWith('--')) {
       out.push(
         <span key={k++} class="tok-comment">
@@ -79,7 +75,6 @@ function tokenizeCodeLine(line: string): ComponentChildren[] {
       break;
     }
 
-    // 2. Quoted strings
     const strMatch = rest.match(/^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)/);
     if (strMatch) {
       out.push(
@@ -91,9 +86,14 @@ function tokenizeCodeLine(line: string): ComponentChildren[] {
       continue;
     }
 
-    // 3. YAML / Object property keys (identifier followed immediately by colon)
     const keyMatch = rest.match(/^([A-Za-z_][\w-]*)(\s*:)(?!:)/);
-    if (keyMatch && (i === 0 || /^\s+$/.test(line.slice(0, i)) || line[i - 1] === '{' || line[i - 1] === ',')) {
+    if (
+      keyMatch &&
+      (i === 0 ||
+        /^\s+$/.test(line.slice(0, i)) ||
+        line[i - 1] === '{' ||
+        line[i - 1] === ',')
+    ) {
       out.push(
         <span key={k++} class="tok-key">
           {keyMatch[1]}
@@ -108,7 +108,6 @@ function tokenizeCodeLine(line: string): ComponentChildren[] {
       continue;
     }
 
-    // 4. Numbers & boolean literals
     const numMatch = rest.match(/^(?:\b\d+(?:\.\d+)?\b|\b(?:true|false|True|False|null)\b)/);
     if (numMatch) {
       out.push(
@@ -120,7 +119,6 @@ function tokenizeCodeLine(line: string): ComponentChildren[] {
       continue;
     }
 
-    // 5. Identifiers, Keywords, Types, Function calls
     const idMatch = rest.match(/^[A-Za-z_$][\w$]*/);
     if (idMatch) {
       const word = idMatch[0];
@@ -150,7 +148,6 @@ function tokenizeCodeLine(line: string): ComponentChildren[] {
       continue;
     }
 
-    // 6. Operators & brackets
     const punctMatch = rest.match(/^[{}()[\].,:;=>+\-*/%&|<>!?]+/);
     if (punctMatch) {
       out.push(
@@ -162,7 +159,6 @@ function tokenizeCodeLine(line: string): ComponentChildren[] {
       continue;
     }
 
-    // 7. Whitespace / plain text
     const wsMatch = rest.match(/^\s+/);
     const chunk = wsMatch ? wsMatch[0] : rest[0]!;
     out.push(chunk);
@@ -190,12 +186,17 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
     [context.block.data, context.block.filename, context.block.title]
   );
 
-  const [files, setFiles] = useState<CodeFileEntry[]>(() => baselineFiles);
+  const [localDraft, setLocalDraft] = useState<CodeSnippetData | null>(null);
+  const effectiveData = context.draft ?? localDraft ?? context.block.data;
+  const files = useMemo(
+    () => normalizeFiles(effectiveData, context.block.filename ?? context.block.title),
+    [context.block.filename, context.block.title, effectiveData]
+  );
+
   const [activeIdx, setActiveIdx] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [wrapLines, setWrapLines] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [synced, setSynced] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [lineRange, setLineRange] = useState<{ start: number; end: number } | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -226,16 +227,33 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
     });
   }
 
-  function copyActiveFile() {
-    navigator.clipboard?.writeText(activeFile.code);
-    setCopied(true);
+  function scheduleCopyReset() {
     if (copyTimerRef.current !== null) {
       clearTimeout(copyTimerRef.current);
     }
     copyTimerRef.current = setTimeout(() => {
       copyTimerRef.current = null;
-      setCopied(false);
-    }, 1300);
+      setCopyState('idle');
+    }, 1600);
+  }
+
+  function copyActiveFile() {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      setCopyState('failed');
+      scheduleCopyReset();
+      return;
+    }
+
+    navigator.clipboard
+      .writeText(activeFile.code)
+      .then(() => {
+        setCopyState('copied');
+        scheduleCopyReset();
+      })
+      .catch(() => {
+        setCopyState('failed');
+        scheduleCopyReset();
+      });
   }
 
   function downloadActiveFile() {
@@ -248,37 +266,48 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
     URL.revokeObjectURL(url);
   }
 
-  function syncCodeEditsToLucy() {
-    if (dirtyFiles.length === 0) return;
-    const summary = dirtyFiles.map((f) => {
-      const orig = baselineFiles.find((b) => b.filename === f.filename);
-      const changedCount = f.code
-        .split('\n')
-        .filter((l, i) => l !== orig?.code.split('\n')[i]).length;
-      return `${f.filename}: updated ${Math.max(1, changedCount)} line(s)`;
-    });
-    context.onCommitRevision?.({ ...context.block.data, files }, summary);
-    setIsEditing(false);
-    setSynced(true);
+  function updateActiveFileCode(nextCode: string) {
+    const nextFiles = files.map((f, idx) =>
+      idx === activeIdx ? { ...f, code: nextCode } : f
+    );
+    const nextData: CodeSnippetData = { ...effectiveData, files: nextFiles };
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(nextData);
+    } else {
+      setLocalDraft(nextData);
+    }
   }
+
+  function commitCodeEdits() {
+    const summary =
+      dirtyFiles.length > 0
+        ? dirtyFiles.map((f) => {
+            const orig = baselineFiles.find((b) => b.filename === f.filename);
+            const changedCount = f.code
+              .split('\n')
+              .filter((l, i) => l !== orig?.code.split('\n')[i]).length;
+            return `${f.filename}: updated ${Math.max(1, changedCount)} line(s)`;
+          })
+        : [`Verified ${activeFile.filename}`];
+    context.onCommitRevision?.({ ...effectiveData, files }, summary);
+    setIsEditing(false);
+    setLocalDraft(null);
+  }
+
+  const copyLabel =
+    copyState === 'copied'
+      ? 'Copied'
+      : copyState === 'failed'
+        ? 'Copy unavailable'
+        : 'Copy';
 
   if (isInlineSingle) {
     return (
       <div class="inline-ide-card">
         <div class="inline-ide-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+          <div class="inline-header-meta">
             <span class="ide-ext-pill">{style.ext}</span>
-            <strong
-              style={{
-                fontSize: '12px',
-                color: '#e4e4e7',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {activeFile.filename}
-            </strong>
+            <strong class="ide-inline-filename">{activeFile.filename}</strong>
           </div>
 
           <div class="ide-actions">
@@ -290,7 +319,7 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
               {wrapLines ? 'Unwrap' : 'Wrap'}
             </button>
             <button type="button" class="ghost-pill" onClick={copyActiveFile}>
-              {copied ? '✓ Copied' : 'Copy'}
+              {copyLabel}
             </button>
           </div>
         </div>
@@ -305,12 +334,14 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
                 key={idx}
                 class={`ide-code-line ${highlighted ? 'is-highlighted' : ''}`}
               >
-                <span
+                <button
+                  type="button"
                   class="ide-gutter-num"
+                  aria-label={`Highlight line ${ln}`}
                   onClick={(e) => handleLineClick(ln, e.shiftKey)}
                 >
                   {ln}
-                </span>
+                </button>
                 <span class="ide-line-content">{tokenizeCodeLine(line)}</span>
               </div>
             );
@@ -353,7 +384,7 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
         <span class="ide-filepath">
           {activeFile.filepath ?? `src/${activeFile.filename}`}
           {lineRange && (
-            <span style={{ color: '#60a5fa', marginLeft: '8px' }}>
+            <span class="ide-line-range-tag">
               · L{lineRange.start}
               {lineRange.end > lineRange.start ? `–L${lineRange.end}` : ''}
             </span>
@@ -373,25 +404,20 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
             class="ghost-pill"
             onClick={() => setIsEditing((e) => !e)}
           >
-            {isEditing ? 'Done Editing' : 'Edit'}
+            {isEditing ? 'Preview' : 'Edit'}
           </button>
-          {dirtyFiles.length > 0 && (
-            <button
-              type="button"
-              class="primary-stage-btn"
-              onClick={syncCodeEditsToLucy}
-            >
-              Apply edits ({dirtyFiles.length})
-            </button>
-          )}
-          {dirtyFiles.length === 0 && synced && (
-            <span class="cell-pill tone-good">✓ Saved</span>
-          )}
           <button type="button" class="ghost-pill" onClick={downloadActiveFile}>
             Download
           </button>
           <button type="button" class="ghost-pill" onClick={copyActiveFile}>
-            {copied ? '✓ Copied' : 'Copy'}
+            {copyLabel}
+          </button>
+          <button
+            type="button"
+            class="primary-stage-btn"
+            onClick={commitCodeEdits}
+          >
+            {dirtyFiles.length > 0 ? `Save (${dirtyFiles.length})` : 'Save'}
           </button>
         </div>
       </div>
@@ -402,13 +428,9 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
           value={activeFile.code}
           spellcheck={false}
           aria-label={`Edit ${activeFile.filename}`}
-          onInput={(e) => {
-            const nextCode = (e.currentTarget as HTMLTextAreaElement).value;
-            setSynced(false);
-            setFiles((prev) =>
-              prev.map((f, idx) => (idx === activeIdx ? { ...f, code: nextCode } : f))
-            );
-          }}
+          onInput={(e) =>
+            updateActiveFileCode((e.currentTarget as HTMLTextAreaElement).value)
+          }
         />
       ) : (
         <div class={`ide-viewport ${wrapLines ? 'is-wrapped' : ''}`}>
@@ -429,13 +451,15 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
                   .filter(Boolean)
                   .join(' ')}
               >
-                <span
+                <button
+                  type="button"
                   class="ide-gutter-num"
+                  aria-label={`Highlight line ${ln}`}
                   title="Click to highlight line (Shift+Click for range)"
                   onClick={(e) => handleLineClick(ln, e.shiftKey)}
                 >
                   {ln}
-                </span>
+                </button>
                 <span class="ide-line-content">{tokenizeCodeLine(line)}</span>
               </div>
             );

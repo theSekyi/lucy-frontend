@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   defaultFirmAdmin,
+  evaluateMonthCloseGuard,
+  formatSignOffStamp,
   selectClientEngagementGroups,
   type EngagementStage,
   type FirmAdminController,
   type FirmAdminState,
+  type SigningAuthority,
 } from '../../core/admin';
+import type { UserProfile, WorkspaceNotification } from '../../core/types';
 import type { DeepLinkTarget } from '../inbox/MailIntelligencePanel';
 import { SelectMenu, type SelectMenuOption } from '../primitives/SelectMenu';
 import './clients.css';
@@ -18,10 +22,22 @@ const STAGE_OPTIONS: ReadonlyArray<SelectMenuOption<EngagementStage>> = [
   { value: 'Complete', label: 'Complete' },
 ];
 
+function inferAuthorityFromRole(role: string): SigningAuthority {
+  if (/partner/i.test(role)) return 'Partner';
+  if (/director/i.test(role)) return 'Director';
+  if (/manager/i.test(role)) return 'Manager';
+  if (/senior/i.test(role)) return 'Senior';
+  return 'Associate';
+}
+
 interface ClientsPageProps {
   readonly controller?: FirmAdminController;
   readonly selectedClientId: string | null;
   readonly selectedEngagementId: string | null;
+  readonly currentUser?: UserProfile;
+  readonly onNotify?: (
+    input: Omit<WorkspaceNotification, 'id' | 'createdAtIso'>
+  ) => void;
   readonly onSelectClient: (clientId: string | null, engagementId?: string | null) => void;
   readonly onOpenWorkpaper: (target: DeepLinkTarget) => void;
   readonly onClientCountChange?: (count: number) => void;
@@ -31,6 +47,8 @@ export function ClientsPage({
   controller = defaultFirmAdmin,
   selectedClientId,
   selectedEngagementId,
+  currentUser,
+  onNotify,
   onSelectClient,
   onOpenWorkpaper,
   onClientCountChange,
@@ -72,6 +90,8 @@ export function ClientsPage({
       activeClient.periods[10]!;
     const doneTasks = activePeriod.tasks.filter((t) => t.done).length;
     const totalTasks = activePeriod.tasks.length;
+    const closeGuard = evaluateMonthCloseGuard(activePeriod);
+    const isClosed = activePeriod.status === 'closed';
     const openEngId =
       expandedEngId === '__none__'
         ? null
@@ -91,15 +111,22 @@ export function ClientsPage({
             </button>
 
             <div class="client-detail-badges">
+              <span class="client-meta-pill">{activeClient.jurisdiction} · {activeClient.currency}</span>
               <span class="client-meta-pill">{activeClient.ledger}</span>
-              <span class="client-meta-pill">YE {activeClient.yearEnd}</span>
+              <span class="client-meta-pill" title="Financial year-end">
+                Year-end {activeClient.yearEnd}
+              </span>
             </div>
           </div>
 
           <header class="client-detail-header">
             <h1 class="hero-title">{activeClient.clientName}</h1>
 
-            <div class="client-progress-inline">
+            <div
+              class="client-progress-inline"
+              title="Average engagement completion across statutory deliverables"
+            >
+              <span class="sheet-meta-count">Engagements</span>
               <div class="client-progress-track">
                 <span
                   class="client-progress-fill"
@@ -110,7 +137,7 @@ export function ClientsPage({
             </div>
           </header>
 
-          <nav class="connectors-tab-strip" role="tablist">
+          <nav class="connectors-tab-strip" role="tablist" aria-label="Client views">
             <button
               type="button"
               role="tab"
@@ -161,10 +188,10 @@ export function ClientsPage({
                 <div class="bk-period-left">
                   <strong class="bk-period-title">{activePeriod.fullLabel}</strong>
                   <span class={`bk-status-tag is-${activePeriod.status}`}>
-                    {activePeriod.status === 'closed'
+                    {isClosed
                       ? 'Closed'
                       : activePeriod.status === 'in-progress'
-                        ? 'In Progress'
+                        ? 'In progress'
                         : 'Upcoming'}
                   </span>
                   <span class="bk-period-stat">
@@ -175,26 +202,47 @@ export function ClientsPage({
                       Bank {activePeriod.bankMatchPct}% matched
                     </span>
                   )}
+                  {isClosed && activePeriod.closedBy && (
+                    <span class="bk-period-stat">
+                      {formatSignOffStamp(activePeriod.closedBy, activePeriod.closedAtIso)}
+                    </span>
+                  )}
                 </div>
 
-                <button
-                  type="button"
-                  class={
-                    activePeriod.status === 'closed'
-                      ? 'ghost-pill'
-                      : 'primary-action-pill is-sm'
-                  }
-                  onClick={() =>
-                    controller.toggleBookkeepingMonthLock(
-                      activeClient.clientId,
-                      activePeriod.monthKey
-                    )
-                  }
-                >
-                  {activePeriod.status === 'closed'
-                    ? 'Reopen month'
-                    : `Close ${activePeriod.shortLabel} books`}
-                </button>
+                <div class="stage-subbar-group">
+                  {!isClosed && !closeGuard.ok && closeGuard.reason && (
+                    <span class="guard-reason-hint">{closeGuard.reason}</span>
+                  )}
+                  <button
+                    type="button"
+                    class={isClosed ? 'ghost-pill' : 'primary-action-pill is-sm'}
+                    disabled={!isClosed && !closeGuard.ok}
+                    onClick={() => {
+                      const result = controller.toggleBookkeepingMonthLock(
+                        activeClient.clientId,
+                        activePeriod.monthKey,
+                        {
+                          actorName: currentUser?.fullName ?? 'Elena Carter',
+                          requireTasksComplete: !isClosed,
+                        }
+                      );
+                      if (!result.ok && result.reason) {
+                        onNotify?.({ kind: 'warning', message: result.reason });
+                      } else {
+                        onNotify?.({
+                          kind: 'success',
+                          message: isClosed
+                            ? `Reopened ${activePeriod.fullLabel} books for ${activeClient.clientName}.`
+                            : `Closed and locked ${activePeriod.fullLabel} books for ${activeClient.clientName}.`,
+                        });
+                      }
+                    }}
+                  >
+                    {isClosed
+                      ? 'Reopen month'
+                      : `Close ${activePeriod.shortLabel} books`}
+                  </button>
+                </div>
               </div>
 
               <div class="conn-list-box">
@@ -225,15 +273,18 @@ export function ClientsPage({
                         {owner && (
                           <span class="bk-task-owner">{owner.fullName}</span>
                         )}
-                        {task.pluginRoute && (
+                        {(task.workpaperId || task.pluginRoute) && (
                           <button
                             type="button"
                             class="client-open-btn"
                             onClick={() =>
-                              onOpenWorkpaper({ pluginRoute: task.pluginRoute })
+                              onOpenWorkpaper({
+                                workpaperId: task.workpaperId,
+                                pluginRoute: task.pluginRoute,
+                              })
                             }
                           >
-                            Workpaper ↗
+                            Workpaper →
                           </button>
                         )}
                       </div>
@@ -247,6 +298,7 @@ export function ClientsPage({
               {activeClient.engagements.map((eng) => {
                 const isExpanded = openEngId === eng.id;
                 const completedSteps = eng.tasks.filter((t) => t.done).length;
+                const signStamp = formatSignOffStamp(eng.signedOffBy, eng.signedOffAtIso);
 
                 return (
                   <section key={eng.id} class="client-group-card">
@@ -284,9 +336,14 @@ export function ClientsPage({
                     {isExpanded && (
                       <div class="eng-detail-body">
                         <div class="eng-detail-controls">
-                          <span class="bk-period-stat">
-                            {completedSteps}/{eng.tasks.length} steps complete
-                          </span>
+                          <div class="stage-subbar-group">
+                            <span class="bk-period-stat">
+                              {completedSteps}/{eng.tasks.length} steps complete
+                            </span>
+                            {signStamp && (
+                              <span class="bk-period-stat">{signStamp}</span>
+                            )}
+                          </div>
 
                           <div class="stage-subbar-group">
                             <SelectMenu
@@ -295,23 +352,41 @@ export function ClientsPage({
                               ariaLabel={`Stage for ${eng.deliverable}`}
                               value={eng.stage}
                               options={STAGE_OPTIONS}
-                              onChange={(nextStage) =>
-                                controller.updateEngagementStage(eng.id, nextStage)
-                              }
+                              onChange={(nextStage) => {
+                                const res = controller.updateEngagementStage(
+                                  eng.id,
+                                  nextStage,
+                                  currentUser
+                                    ? {
+                                        fullName: currentUser.fullName,
+                                        authority: inferAuthorityFromRole(currentUser.role),
+                                      }
+                                    : undefined
+                                );
+                                if (!res.ok && res.reason) {
+                                  onNotify?.({ kind: 'warning', message: res.reason });
+                                } else {
+                                  onNotify?.({
+                                    kind: 'success',
+                                    message: `Updated "${eng.deliverable}" to ${nextStage}.`,
+                                  });
+                                }
+                              }}
                             />
 
-                            {eng.pluginRoute && (
+                            {(eng.workpaperId || eng.pluginRoute) && (
                               <button
                                 type="button"
                                 class="primary-action-pill is-sm"
                                 onClick={() =>
                                   onOpenWorkpaper({
+                                    workpaperId: eng.workpaperId,
                                     pluginRoute: eng.pluginRoute,
                                     anchor: eng.anchor,
                                   })
                                 }
                               >
-                                Open workpaper ↗
+                                Open workpaper →
                               </button>
                             )}
                           </div>
@@ -334,18 +409,19 @@ export function ClientsPage({
                                 </span>
                               </label>
 
-                              {step.pluginRoute && (
+                              {(step.workpaperId || step.pluginRoute) && (
                                 <button
                                   type="button"
                                   class="client-open-btn"
                                   onClick={() =>
                                     onOpenWorkpaper({
+                                      workpaperId: step.workpaperId,
                                       pluginRoute: step.pluginRoute,
                                       anchor: step.anchor,
                                     })
                                   }
                                 >
-                                  Open ↗
+                                  Open →
                                 </button>
                               )}
                             </div>
@@ -391,6 +467,7 @@ export function ClientsPage({
             type="search"
             class="connectors-minimal-search"
             placeholder="Search clients…"
+            aria-label="Search clients"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
           />
@@ -420,47 +497,80 @@ export function ClientsPage({
           </button>
         </nav>
 
-        <div class="conn-list-box">
-          {visibleGroups.map((client) => (
-            <button
-              key={client.clientId}
-              type="button"
-              class="client-directory-row"
-              onClick={() => onSelectClient(client.clientId)}
-            >
-              <div class="client-dir-left">
-                <span class="client-dir-name">{client.clientName}</span>
-                <span class="client-meta-pill">{client.ledger}</span>
-              </div>
-
-              <div class="client-dir-right">
-                <span class={`bk-status-tag is-${client.currentMonthStatus}`}>
-                  {client.currentMonthStatus === 'closed'
-                    ? 'Nov Closed'
-                    : `Nov · ${client.currentMonthProgressPct}%`}
-                </span>
-
-                <span class="client-dir-eng-count">
-                  {client.totalCount} {client.totalCount === 1 ? 'engagement' : 'engagements'}
-                </span>
-
-                <div class="client-progress-inline is-sm">
-                  <div class="client-progress-track">
-                    <span
-                      class="client-progress-fill"
-                      style={{ width: `${client.averageProgressPct}%` }}
-                    />
-                  </div>
-                  <span class="client-progress-pct">{client.averageProgressPct}%</span>
+        {visibleGroups.length === 0 ? (
+          <div class="dashboard-empty-box">
+            <span>
+              {q
+                ? `No clients match “${query}”.`
+                : filter === 'complete'
+                  ? 'No clients have closed both monthly books and all statutory engagements yet.'
+                  : 'No clients match this filter.'}
+            </span>
+            {(q || filter !== 'all') && (
+              <button
+                type="button"
+                class="ghost-pill"
+                onClick={() => {
+                  setQuery('');
+                  setFilter('all');
+                }}
+              >
+                Show all clients
+              </button>
+            )}
+          </div>
+        ) : (
+          <div class="conn-list-box">
+            {visibleGroups.map((client) => (
+              <button
+                key={client.clientId}
+                type="button"
+                class="client-directory-row"
+                onClick={() => onSelectClient(client.clientId)}
+              >
+                <div class="client-dir-left">
+                  <span class="client-dir-name">{client.clientName}</span>
+                  <span class="client-meta-pill">{client.ledger}</span>
+                  <span class="client-meta-pill">{client.currency}</span>
                 </div>
 
-                <span class="client-dir-chevron" aria-hidden="true">
-                  ›
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
+                <div class="client-dir-right">
+                  <span
+                    class={`bk-status-tag is-${client.currentMonthStatus}`}
+                    title="November monthly bookkeeping close progress"
+                  >
+                    {client.currentMonthStatus === 'closed'
+                      ? 'Nov closed'
+                      : `Nov close · ${client.currentMonthProgressPct}%`}
+                  </span>
+
+                  <span class="client-dir-eng-count">
+                    {client.totalCount} {client.totalCount === 1 ? 'engagement' : 'engagements'}
+                  </span>
+
+                  <div
+                    class="client-progress-inline is-sm"
+                    title="Overall statutory engagement completion"
+                  >
+                    <div class="client-progress-track">
+                      <span
+                        class="client-progress-fill"
+                        style={{ width: `${client.averageProgressPct}%` }}
+                      />
+                    </div>
+                    <span class="client-progress-pct">
+                      Overall {client.averageProgressPct}%
+                    </span>
+                  </div>
+
+                  <span class="client-dir-chevron" aria-hidden="true">
+                    →
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

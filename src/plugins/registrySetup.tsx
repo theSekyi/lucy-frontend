@@ -69,11 +69,16 @@ export const BUILTIN_PLUGINS: ReadonlyArray<RendererPlugin<ComponentChildren, an
   codeSnippetPlugin,
 ];
 
-export function createDefaultRendererRegistry(): RendererRegistry<ComponentChildren> {
-  const registry = createRendererRegistry<ComponentChildren>(fallbackPlugin);
+export function registerBuiltinPlugins(
+  registry: RendererRegistry<ComponentChildren>
+): void {
   for (const plugin of BUILTIN_PLUGINS) {
     registry.register(plugin);
   }
-  void registry.loadRenderer({ id: 'prime', kind: 'prose', data: '' });
+}
+
+export function createDefaultRendererRegistry(): RendererRegistry<ComponentChildren> {
+  const registry = createRendererRegistry<ComponentChildren>(fallbackPlugin);
+  registerBuiltinPlugins(registry);
   return registry;
 }

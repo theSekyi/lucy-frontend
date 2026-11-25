@@ -1,74 +1,67 @@
 import { useState } from 'preact/hooks';
+import { evaluateRollforwardTieOut } from '../../core/ledger';
+import { formatMoneyMinor } from '../../core/money';
 import type { LoadedRenderer, RendererContext } from '../../core/renderers';
+import { MoneyInput } from '../../ui/primitives/MoneyInput';
 import '../enterprise-stage.css';
 import '../accounting.css';
-import type { RollforwardData, RollforwardPeriod } from './sample';
-
-function fmtUsdWhole(n: number): string {
-  return `$${Math.round(n).toLocaleString('en-US')}`;
-}
+import type { RollforwardData } from './sample';
 
 function RollforwardStageView({ context }: { context: RendererContext<RollforwardData> }) {
-  const initial = context.block.data;
+  const baseline = context.block.data;
+  const [localDraft, setLocalDraft] = useState<RollforwardData | null>(null);
+  const data = context.draft ?? localDraft ?? baseline;
+  const currency = data.currency ?? 'GBP';
+  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
+
   const [schedIdx, setSchedIdx] = useState(0);
-  const [periodsBySched, setPeriodsBySched] = useState<Record<string, RollforwardPeriod[]>>(() =>
-    Object.fromEntries(initial.schedules.map((s) => [s.id, [...s.periods]]))
-  );
-  const [stagedAje, setStagedAje] = useState(false);
-
-  const activeSched = initial.schedules[schedIdx] ?? initial.schedules[0]!;
-  const periods = periodsBySched[activeSched.id] ?? [...activeSched.periods];
-
-  // Cascade Opening -> Ending dynamically so the rollforward identity never breaks
-  let runningOpening = activeSched.openingBalance;
-  const computedRows = periods.map((p) => {
-    const open = runningOpening;
-    const ending = open + p.additions - p.recognized;
-    runningOpening = ending;
-    return { ...p, open, ending };
-  });
-
-  const lastRow = computedRows[computedRows.length - 1]!;
+  const activeSched = data.schedules[schedIdx] ?? data.schedules[0]!;
+  const activeEval = evaluateRollforwardTieOut(activeSched);
+  const baselineSched =
+    baseline.schedules.find((s) => s.id === activeSched.id) ?? activeSched;
+  const lastRow = activeEval.rows[activeEval.rows.length - 1]!;
 
   function updateCell(idx: number, key: 'additions' | 'recognized', val: number) {
-    setStagedAje(false);
-    setPeriodsBySched((prev) => ({
-      ...prev,
-      [activeSched.id]: (prev[activeSched.id] ?? []).map((p, i) =>
-        i === idx ? { ...p, [key]: val } : p
+    const next: RollforwardData = {
+      ...data,
+      schedules: data.schedules.map((s) =>
+        s.id === activeSched.id
+          ? {
+              ...s,
+              periods: s.periods.map((p, pIdx) =>
+                pIdx === idx ? { ...p, [key]: Math.max(0, Math.round(val)) } : p
+              ),
+            }
+          : s
       ),
-    }));
+    };
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(next);
+    } else {
+      setLocalDraft(next);
+    }
   }
 
-  function stagePeriodEndAje() {
+  function saveSchedule() {
     const summary = [
-      `${activeSched.standard} (${lastRow.period}): ${activeSched.accountPair} for ${fmtUsdWhole(lastRow.recognized)} (Ending balance: ${fmtUsdWhole(lastRow.ending)})`,
+      `${activeSched.standard} (${lastRow.period}): ${activeSched.accountPair} — recognized ${formatMoneyMinor(lastRow.recMinor, { currency })} (ending balance: ${formatMoneyMinor(lastRow.endingMinor, { currency })})`,
     ];
-    context.onCommitRevision?.(
-      {
-        schedules: initial.schedules.map((s) => ({
-          ...s,
-          periods: periodsBySched[s.id] ?? s.periods,
-        })),
-      },
-      summary
-    );
-    setStagedAje(true);
+    context.onCommitRevision?.(data, summary);
+    setLocalDraft(null);
   }
 
   return (
     <div class="stage-plugin-shell">
       <div class="stage-subbar">
-        <div class="seg-tabs" role="tablist">
-          {initial.schedules.map((s, idx) => (
+        <div class="seg-tabs" role="tablist" aria-label="Accounting rollforward schedules">
+          {data.schedules.map((s, idx) => (
             <button
               key={s.id}
               type="button"
+              role="tab"
+              aria-selected={idx === schedIdx}
               class={`seg-tab ${idx === schedIdx ? 'is-active' : ''}`}
-              onClick={() => {
-                setSchedIdx(idx);
-                setStagedAje(false);
-              }}
+              onClick={() => setSchedIdx(idx)}
             >
               {s.standard.split('·')[0]?.trim()}
             </button>
@@ -76,9 +69,9 @@ function RollforwardStageView({ context }: { context: RendererContext<Rollforwar
         </div>
 
         <div class="stage-subbar-group">
-          <span class="tickmark-pill tick-tied">Tied</span>
-          <button type="button" class="primary-stage-btn" onClick={stagePeriodEndAje}>
-            {stagedAje ? 'Staged' : `Stage ${lastRow.period} AJE`}
+          <span class="tickmark-pill tick-tied">Reconciled</span>
+          <button type="button" class="primary-stage-btn" onClick={saveSchedule}>
+            Save
           </button>
         </div>
       </div>
@@ -87,67 +80,65 @@ function RollforwardStageView({ context }: { context: RendererContext<Rollforwar
         <div class="redline-doc-banner">
           <div>
             <strong>{activeSched.standard}</strong>
-            <div class="clause-footnote" style={{ marginTop: '3px' }}>
-              Entry rule: {activeSched.accountPair}
-            </div>
+            <div class="clause-footnote">Entry rule: {activeSched.accountPair}</div>
           </div>
-          <span class="sheet-meta-count">Ending: {fmtUsdWhole(lastRow.ending)}</span>
+          <span class="sheet-meta-count">
+            Ending: <strong>{formatMoneyMinor(lastRow.endingMinor, { currency })}</strong>
+          </span>
         </div>
 
         <table class="acct-table">
           <thead>
             <tr>
-              <th>Period</th>
-              <th class="is-num">Opening</th>
-              <th class="is-num">+ Additions</th>
-              <th class="is-num">− Recognized</th>
-              <th class="is-num">Ending Balance</th>
+              <th scope="col">Period</th>
+              <th scope="col" class="is-num">
+                Opening ({symbol})
+              </th>
+              <th scope="col" class="is-num">
+                + Additions ({symbol})
+              </th>
+              <th scope="col" class="is-num">
+                − Recognized ({symbol})
+              </th>
+              <th scope="col" class="is-num">
+                Ending Balance ({symbol})
+              </th>
             </tr>
           </thead>
           <tbody>
-            {computedRows.map((row, idx) => (
-              <tr key={row.period}>
-                <td>
-                  <strong>{row.period}</strong>
-                </td>
-                <td class="is-num">{fmtUsdWhole(row.open)}</td>
-                <td class="is-num">
-                  <input
-                    type="number"
-                    step="5000"
-                    class="acct-inline-num-input"
-                    value={row.additions}
-                    aria-label={`${row.period} additions`}
-                    onInput={(e) =>
-                      updateCell(
-                        idx,
-                        'additions',
-                        Number((e.currentTarget as HTMLInputElement).value) || 0
-                      )
-                    }
-                  />
-                </td>
-                <td class="is-num">
-                  <input
-                    type="number"
-                    step="5000"
-                    class="acct-inline-num-input"
-                    value={row.recognized}
-                    aria-label={`${row.period} recognized`}
-                    onInput={(e) =>
-                      updateCell(
-                        idx,
-                        'recognized',
-                        Number((e.currentTarget as HTMLInputElement).value) || 0
-                      )
-                    }
-                  />
-                </td>
-                <td class="is-num">
-                  <strong>{fmtUsdWhole(row.ending)}</strong>
-                </td>
-              </tr>
-            ))}
+            {activeEval.rows.map((row, idx) => {
+              const origPeriod = baselineSched.periods[idx];
+              const livePeriod = activeSched.periods[idx]!;
+              return (
+                <tr key={row.period}>
+                  <td>
+                    <strong>{row.period}</strong>
+                  </td>
+                  <td class="is-num">{formatMoneyMinor(row.openMinor, { currency })}</td>
+                  <td class="is-num">
+                    <MoneyInput
+                      value={livePeriod.additions}
+                      baselineValue={origPeriod?.additions}
+                      allowNegative={false}
+                      ariaLabel={`${row.period} additions`}
+                      onChange={(val) => updateCell(idx, 'additions', val)}
+                    />
+                  </td>
+                  <td class="is-num">
+                    <MoneyInput
+                      value={livePeriod.recognized}
+                      baselineValue={origPeriod?.recognized}
+                      allowNegative={false}
+                      ariaLabel={`${row.period} recognized`}
+                      onChange={(val) => updateCell(idx, 'recognized', val)}
+                    />
+                  </td>
+                  <td class="is-num">
+                    <strong>{formatMoneyMinor(row.endingMinor, { currency })}</strong>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

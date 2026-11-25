@@ -1,4 +1,5 @@
 import type { AuthSession, NavSection, UserProfile } from '../core/types';
+import './profile.css';
 
 interface ProfilePageProps {
   readonly profile: UserProfile;
@@ -27,7 +28,7 @@ export function ProfilePage({
             onClick={() => onNavigate('home')}
           >
             <span>←</span>
-            <span>Dashboard</span>
+            <span>Home</span>
           </button>
 
           <div class="stage-subbar-group">
@@ -61,7 +62,7 @@ export function ProfilePage({
 
           <div class="profile-clean-stack">
             <label class="profile-field">
-              <span class="profile-field-label">Full Name</span>
+              <span class="profile-field-label">Full name</span>
               <input
                 type="text"
                 class="profile-input"
@@ -89,7 +90,7 @@ export function ProfilePage({
             </label>
 
             <label class="profile-field">
-              <span class="profile-field-label">Work Email</span>
+              <span class="profile-field-label">Work email</span>
               <input
                 type="email"
                 class="profile-input"

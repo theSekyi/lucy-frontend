@@ -1,6 +1,9 @@
 import { Fragment } from 'preact';
 import { useState } from 'preact/hooks';
+import { evaluateTrialBalanceTieOut } from '../../core/ledger';
+import { formatAccountingNumber, formatMoney, formatMoneyMinor } from '../../core/money';
 import type { LoadedRenderer, RendererContext } from '../../core/renderers';
+import { MoneyInput } from '../../ui/primitives/MoneyInput';
 import '../enterprise-stage.css';
 import '../accounting.css';
 import type { TrialBalanceAccount, TrialBalanceData } from './sample';
@@ -12,46 +15,67 @@ const CATEGORIES: TrialBalanceAccount['category'][] = [
   'Operating Expenses',
 ];
 
-function fmtAcct(n: number): string {
-  const abs = Math.abs(Math.round(n)).toLocaleString('en-US');
-  return n < 0 ? `(${abs})` : abs;
-}
-
 function TrialBalanceStageView({ context }: { context: RendererContext<TrialBalanceData> }) {
-  const tb = context.block.data;
-  const [pmThreshold, setPmThreshold] = useState(tb.materialityThreshold);
-  const [ajeMap, setAjeMap] = useState<Record<string, number>>(() =>
-    Object.fromEntries(tb.accounts.map((a) => [a.code, a.aje]))
-  );
+  const baseline = context.block.data;
+  const [localDraft, setLocalDraft] = useState<TrialBalanceData | null>(null);
+  const tb = context.draft ?? localDraft ?? baseline;
+  const currency = tb.currency ?? 'GBP';
+  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
+
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
-  const [saved, setSaved] = useState(false);
 
-  const netAdjusted = tb.accounts.reduce(
-    (sum, a) => sum + a.unadjusted + (ajeMap[a.code] ?? a.aje),
-    0
-  );
-  const netAje = tb.accounts.reduce((sum, a) => sum + (ajeMap[a.code] ?? a.aje), 0);
+  const tieOut = evaluateTrialBalanceTieOut(tb);
+  const baselineMap = new Map(baseline.accounts.map((a) => [a.code, a]));
+
+  function applyDraft(next: TrialBalanceData) {
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(next);
+    } else {
+      setLocalDraft(next);
+    }
+  }
+
+  function updatePm(nextPm: number) {
+    applyDraft({
+      ...tb,
+      materialityThreshold: Math.max(0, Math.round(nextPm)),
+    });
+  }
+
+  function updateAccountAje(code: string, nextAje: number) {
+    applyDraft({
+      ...tb,
+      accounts: tb.accounts.map((a) =>
+        a.code === code ? { ...a, aje: Math.round(nextAje) } : a
+      ),
+    });
+  }
 
   function saveAdjustments() {
+    if (!tieOut.isBalanced) return;
     const changes = tb.accounts
-      .filter((a) => (ajeMap[a.code] ?? a.aje) !== a.aje)
-      .map((a) => `Acct ${a.code} (${a.name}) AJE: ${fmtAcct(a.aje)} → ${fmtAcct(ajeMap[a.code]!)}`);
-    if (pmThreshold !== tb.materialityThreshold) {
-      changes.push(`Performance Materiality: $${pmThreshold.toLocaleString('en-US')}`);
+      .filter((a) => {
+        const orig = baselineMap.get(a.code);
+        return orig !== undefined && orig.aje !== a.aje;
+      })
+      .map((a) => {
+        const orig = baselineMap.get(a.code)!;
+        return `Acct ${a.code} (${a.name}) AJE: ${formatAccountingNumber(orig.aje)} → ${formatAccountingNumber(a.aje)}`;
+      });
+
+    if (tb.materialityThreshold !== baseline.materialityThreshold) {
+      changes.push(
+        `Performance materiality: ${formatMoney(tb.materialityThreshold, { currency })}`
+      );
     }
     if (changes.length === 0) {
-      changes.push(`Verified Trial Balance tie-out (Net balance: $${netAdjusted})`);
+      changes.push(
+        `Verified Trial Balance tie-out (Net balance: ${formatMoneyMinor(tieOut.netAdjustedMinor, { currency })})`
+      );
     }
-    context.onCommitRevision?.(
-      {
-        ...tb,
-        materialityThreshold: pmThreshold,
-        accounts: tb.accounts.map((a) => ({ ...a, aje: ajeMap[a.code] ?? a.aje })),
-      },
-      changes
-    );
-    setSaved(true);
+    context.onCommitRevision?.(tb, changes);
+    setLocalDraft(null);
   }
 
   return (
@@ -59,62 +83,92 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
       <div class="stage-subbar">
         <div class="stage-subbar-group">
           <span
-            class={`tickmark-pill ${netAdjusted === 0 ? 'tick-tied' : 'tick-exception'}`}
+            class={`tickmark-pill ${tieOut.isBalanced ? 'tick-tied' : 'tick-exception'}`}
           >
-            {netAdjusted === 0
-              ? 'Balanced ($0)'
-              : `Imbalance: $${fmtAcct(netAdjusted)}`}
+            {tieOut.isBalanced
+              ? `Balanced (${symbol}0)`
+              : `Imbalance: ${formatMoneyMinor(tieOut.netAdjustedMinor, { currency, accounting: true })}`}
           </span>
 
-          <span class="sheet-meta-count">PM ($):</span>
-          <input
-            type="number"
-            step="5000"
-            class="acct-inline-num-input"
-            value={pmThreshold}
-            aria-label="Performance materiality threshold"
-            onInput={(e) => {
-              setPmThreshold(Number((e.currentTarget as HTMLInputElement).value) || 0);
-              setSaved(false);
-            }}
-          />
+          <label class="inline-field-label">
+            <span
+              class="sheet-meta-count"
+              title="Performance materiality threshold for period-over-period flux review"
+            >
+              PM ({symbol}):
+            </span>
+            <MoneyInput
+              value={tb.materialityThreshold}
+              baselineValue={baseline.materialityThreshold}
+              allowNegative={false}
+              ariaLabel="Performance materiality threshold"
+              onChange={updatePm}
+            />
+          </label>
+
+          <span class="sheet-meta-count">
+            {tieOut.flaggedCount} flagged
+          </span>
         </div>
 
-        <button
-          type="button"
-          class="primary-stage-btn"
-          disabled={netAdjusted !== 0}
-          style={netAdjusted !== 0 ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-          onClick={saveAdjustments}
-        >
-          {saved ? 'Saved' : 'Save TB'}
-        </button>
+        <div class="stage-subbar-group">
+          {!tieOut.isBalanced && (
+            <span class="guard-reason-hint">
+              Balance debits and credits to {symbol}0 to save
+            </span>
+          )}
+          <button
+            type="button"
+            class="primary-stage-btn"
+            disabled={!tieOut.isBalanced}
+            onClick={saveAdjustments}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       <div class="acct-scroll-viewport">
         <table class="acct-table">
           <thead>
             <tr>
-              <th>Account</th>
-              <th class="is-num">Unadjusted</th>
-              <th class="is-num">AJE Dr/(Cr)</th>
-              <th class="is-num">Adjusted TB</th>
-              <th class="is-num">Flux ($)</th>
-              <th>Flag</th>
+              <th scope="col">Account</th>
+              <th scope="col" class="is-num">
+                Unadjusted ({symbol})
+              </th>
+              <th scope="col" class="is-num">
+                AJE Dr/(Cr)
+              </th>
+              <th scope="col" class="is-num">
+                Adjusted TB
+              </th>
+              <th scope="col" class="is-num">
+                Flux ({symbol})
+              </th>
+              <th scope="col">Flag</th>
             </tr>
           </thead>
           <tbody>
             {CATEGORIES.map((cat) => {
               const rows = tb.accounts.filter((a) => a.category === cat);
-              const isCollapsed = collapsedCats[cat];
+              const isCollapsed = Boolean(collapsedCats[cat]);
 
               return (
                 <Fragment key={cat}>
                   <tr
                     class="tb-group-row"
+                    tabIndex={0}
+                    role="button"
+                    aria-expanded={!isCollapsed}
                     onClick={() =>
                       setCollapsedCats((prev) => ({ ...prev, [cat]: !prev[cat] }))
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setCollapsedCats((prev) => ({ ...prev, [cat]: !prev[cat] }));
+                      }
+                    }}
                   >
                     <td colSpan={6}>
                       {isCollapsed ? '▸' : '▾'} {cat} ({rows.length})
@@ -123,54 +177,66 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
 
                   {!isCollapsed &&
                     rows.map((acct) => {
-                      const ajeVal = ajeMap[acct.code] ?? acct.aje;
-                      const adjusted = acct.unadjusted + ajeVal;
+                      const orig = baselineMap.get(acct.code);
+                      const adjusted = acct.unadjusted + acct.aje;
                       const flux = adjusted - acct.priorPeriod;
-                      const exceedsPm = Math.abs(flux) >= pmThreshold;
+                      const exceedsPm = Math.abs(flux) >= tb.materialityThreshold;
                       const isExpanded = expandedCode === acct.code;
 
                       return (
                         <Fragment key={acct.code}>
                           <tr
                             class={`acct-row-clickable ${isExpanded ? 'is-selected' : ''}`}
+                            tabIndex={0}
+                            aria-expanded={isExpanded}
                             onClick={() =>
-                              setExpandedCode((curr) => (curr === acct.code ? null : acct.code))
+                              setExpandedCode((curr) =>
+                                curr === acct.code ? null : acct.code
+                              )
                             }
+                            onKeyDown={(e) => {
+                              if (e.target !== e.currentTarget) return;
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setExpandedCode((curr) =>
+                                  curr === acct.code ? null : acct.code
+                                );
+                              }
+                            }}
                           >
                             <td>
                               <strong>{acct.code}</strong> · {acct.name}
                             </td>
-                            <td class="is-num">{fmtAcct(acct.unadjusted)}</td>
+                            <td class="is-num">{formatAccountingNumber(acct.unadjusted)}</td>
                             <td class="is-num" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="number"
-                                class="acct-inline-num-input"
-                                value={ajeVal}
-                                aria-label={`AJE for ${acct.code}`}
-                                onInput={(e) => {
-                                  setSaved(false);
-                                  setAjeMap((prev) => ({
-                                    ...prev,
-                                    [acct.code]:
-                                      Number((e.currentTarget as HTMLInputElement).value) || 0,
-                                  }));
-                                }}
+                              <MoneyInput
+                                value={acct.aje}
+                                baselineValue={orig?.aje}
+                                allowNegative
+                                ariaLabel={`Adjusting journal amount for account ${acct.code} ${acct.name}`}
+                                onChange={(val) => updateAccountAje(acct.code, val)}
                               />
                             </td>
                             <td class="is-num">
-                              <strong>{fmtAcct(adjusted)}</strong>
+                              <strong>{formatAccountingNumber(adjusted)}</strong>
                             </td>
                             <td
-                              class="is-num"
-                              style={{ color: exceedsPm ? '#fcd34d' : '#a1a1aa' }}
+                              class={`is-num ${exceedsPm ? 'flux-exceeds-pm' : 'flux-within-pm'}`}
                             >
-                              {flux >= 0 ? `+${fmtAcct(flux)}` : fmtAcct(flux)}
+                              {flux >= 0
+                                ? `+${formatAccountingNumber(flux)}`
+                                : formatAccountingNumber(flux)}
                             </td>
                             <td>
                               {exceedsPm ? (
-                                <span class="tickmark-pill tick-pbc">&gt; PM</span>
+                                <span
+                                  class="tickmark-pill tick-pbc"
+                                  title="Exceeds performance materiality — flux explanation required"
+                                >
+                                  &gt; PM
+                                </span>
                               ) : (
-                                <span class="sheet-meta-count">Pass</span>
+                                <span class="sheet-meta-count">Within PM</span>
                               )}
                             </td>
                           </tr>
@@ -178,8 +244,8 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
                           {isExpanded && (
                             <tr class="tb-drilldown-row">
                               <td colSpan={6}>
-                                <div style={{ fontSize: '11.5px', color: '#a1a1aa' }}>
-                                  <strong>GL Drill-Down ({acct.code}):</strong>{' '}
+                                <div class="tb-drilldown-detail">
+                                  <strong>GL subledger detail ({acct.code}):</strong>{' '}
                                   {acct.drilldown.join(' · ')}
                                 </div>
                               </td>
@@ -200,7 +266,8 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
           {tb.entity} · {tb.period}
         </span>
         <span class="sheet-meta-count">
-          Net AJE: <strong>{fmtAcct(netAje)}</strong>
+          Net Profit: <strong>{formatMoneyMinor(tieOut.netProfitMinor, { currency })}</strong> · Net AJE:{' '}
+          <strong>{formatMoneyMinor(tieOut.netAjeMinor, { currency, accounting: true })}</strong>
         </span>
       </div>
     </div>

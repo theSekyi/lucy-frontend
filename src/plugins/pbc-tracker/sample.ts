@@ -1,70 +1,26 @@
+import {
+  ACME_PBC_TRACKER,
+  type PbcItem,
+  type PbcStatus,
+  type PbcTrackerData,
+} from '../../core/ledger';
 import type { SampleTurnPayload } from '../../core/renderers';
 
-export type PbcStatus = 'overdue' | 'pending' | 'received';
-
-export interface PbcItem {
-  readonly id: string;
-  readonly code: string;
-  readonly requestTitle: string;
-  readonly clientOwner: string;
-  readonly aging: string;
-  readonly status: PbcStatus;
-}
-
-export interface PbcTrackerData {
-  readonly engagementName: string;
-  readonly clientName: string;
-  readonly items: ReadonlyArray<PbcItem>;
-}
-
-export const PBC_SAMPLE: PbcTrackerData = {
-  engagementName: 'Q4 Audit & Close Fieldwork',
-  clientName: 'Acme Holdings Corp',
-  items: [
-    {
-      id: 'pbc-1',
-      code: 'PBC-04',
-      requestTitle: 'Chase #4821 Dec 1–5 Cutoff Bank Statement',
-      clientOwner: 'Controller',
-      aging: 'Overdue 4d',
-      status: 'overdue',
-    },
-    {
-      id: 'pbc-2',
-      code: 'PBC-09',
-      requestTitle: 'Signed Hudson Yards Suite 810 CAM Escalation Notice',
-      clientOwner: 'VP Workplace',
-      aging: 'Due in 2d',
-      status: 'pending',
-    },
-    {
-      id: 'pbc-3',
-      code: 'PBC-12',
-      requestTitle: 'Board Minutes Approving Q4 Equity Grants',
-      clientOwner: 'General Counsel',
-      aging: 'Overdue 2d',
-      status: 'overdue',
-    },
-    {
-      id: 'pbc-4',
-      code: 'PBC-15',
-      requestTitle: 'Executed Baker McKenzie Audit Legal Inquiry Letter',
-      clientOwner: 'External Counsel',
-      aging: 'Verified Nov 22',
-      status: 'received',
-    },
-  ],
-};
+export type { PbcItem, PbcStatus, PbcTrackerData };
+export const PBC_SAMPLE: PbcTrackerData = ACME_PBC_TRACKER;
 
 export function buildPbcSampleTurn(nextId: (p: string) => string): SampleTurnPayload {
+  const openCount = ACME_PBC_TRACKER.items.filter((i) => i.status !== 'received').length;
+  const receivedCount = ACME_PBC_TRACKER.items.length - openCount;
+  const overdueCount = ACME_PBC_TRACKER.items.filter((i) => i.status === 'overdue').length;
   return {
-    prose: '**Q4 Fieldwork PBC Request List** (`3` open, `1` received):',
+    prose: `**${ACME_PBC_TRACKER.engagementName} PBC Request List** (\`${openCount}\` open, \`${receivedCount}\` received):`,
     artifact: {
       id: nextId('block-pbc'),
       kind: 'pbc-tracker',
       title: 'PBC Open-Item Tracker',
-      summary: '3 open requests (2 overdue) · 1 received',
-      data: PBC_SAMPLE,
+      summary: `${openCount} open requests (${overdueCount} overdue) · ${receivedCount} received`,
+      data: ACME_PBC_TRACKER,
     },
   };
 }

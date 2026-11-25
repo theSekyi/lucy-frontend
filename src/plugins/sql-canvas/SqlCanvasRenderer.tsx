@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
+import { expandReconciledSqlSubledgerRows } from '../../core/ledger';
 import type { LoadedRenderer, RendererContext } from '../../core/renderers';
-import type { CellScalar, SqlCanvasData } from '../../core/types';
+import type { SqlCanvasData } from '../../core/types';
 import '../enterprise-stage.css';
 
 type SqlTab = 'chart' | 'grid' | 'sql';
@@ -8,31 +9,20 @@ type ChartKind = 'bars' | 'area';
 
 const VIRTUAL_ROW_HEIGHT = 30;
 const OVERSCAN_ROWS = 6;
-const SEGMENTS = ['All', 'Financial Services', 'Healthcare', 'Global Retail', 'Cloud Infra', 'Defense'];
-
-function expandWarehouseDrilldownRows(baseRows: ReadonlyArray<ReadonlyArray<CellScalar>>) {
-  if (baseRows.length > 50) return baseRows;
-  const segments = ['Financial Services', 'Healthcare', 'Global Retail', 'Cloud Infra', 'Defense'];
-  const regions = ['US-East', 'EU-Central', 'UK-South', 'APAC-Tokyo'];
-  const expanded: CellScalar[][] = [];
-  for (let i = 0; i < 2400; i += 1) {
-    const q = baseRows[i % baseRows.length]!;
-    const arr = Math.round(45 + ((i * 37) % 480));
-    const exp = Math.round(arr * (0.12 + (i % 7) * 0.03));
-    const ndr = Number((114 + ((i * 3) % 24) + (i % 5) * 0.2).toFixed(1));
-    expanded.push([
-      `${q[0]} · ${segments[i % segments.length]} #${i + 1} (${regions[i % regions.length]})`,
-      arr,
-      exp,
-      ndr,
-      q[4] ?? 84.0,
-    ]);
-  }
-  return expanded;
-}
+const SEGMENTS = [
+  'All',
+  'Financial Services',
+  'Healthcare',
+  'Global Retail',
+  'Cloud Infra',
+  'Public Sector',
+];
 
 function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasData> }) {
-  const data = context.block.data;
+  const baseline = context.block.data;
+  const [localDraft, setLocalDraft] = useState<SqlCanvasData | null>(null);
+  const data = context.draft ?? localDraft ?? baseline;
+
   const [tab, setTab] = useState<SqlTab>('chart');
   const [chartKind, setChartKind] = useState<ChartKind>('bars');
   const [metricIdx, setMetricIdx] = useState<number>(1);
@@ -43,11 +33,16 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
   const [pickedRowIdx, setPickedRowIdx] = useState<number | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [filter, setFilter] = useState('');
-  const [sqlText, setSqlText] = useState(data.query);
   const [execMs, setExecMs] = useState(data.executionMs);
   const [sqlLimit, setSqlLimit] = useState<number | null>(null);
 
-  const drilldownRows = useMemo(() => expandWarehouseDrilldownRows(data.rows), [data.rows]);
+  const usesPounds = data.columns.some((c) => c.includes('£'));
+  const symbol = usesPounds ? '£' : '$';
+
+  const drilldownRows = useMemo(
+    () => expandReconciledSqlSubledgerRows(data.rows),
+    [data.rows]
+  );
 
   const filteredGridRows = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -79,29 +74,48 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
   }, [drilldownRows, filter, selectedQuarter, selectedSegment, sortCol, sqlLimit]);
 
   const summaryStats = useMemo(() => {
-    let sumArr = 0;
+    let sumRecognizedK = 0;
     let sumNdr = 0;
     for (const r of filteredGridRows) {
-      sumArr += typeof r[1] === 'number' ? r[1] : 0;
+      sumRecognizedK += typeof r[1] === 'number' ? r[1] : 0;
       sumNdr += typeof r[3] === 'number' ? r[3] : 0;
     }
-    const avgNdr = filteredGridRows.length ? (sumNdr / filteredGridRows.length).toFixed(1) : '0.0';
-    return { sumArr, avgNdr };
+    const avgNdr = filteredGridRows.length
+      ? (sumNdr / filteredGridRows.length).toFixed(1)
+      : '0.0';
+    return {
+      sumRecognizedK: Number(sumRecognizedK.toFixed(1)),
+      avgNdr,
+    };
   }, [filteredGridRows]);
+
+  function updateQueryText(nextQuery: string) {
+    const nextData: SqlCanvasData = { ...data, query: nextQuery };
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(nextData);
+    } else {
+      setLocalDraft(nextData);
+    }
+  }
 
   function runInteractiveQuery() {
     const t0 = performance.now();
-    const limitMatch = sqlText.match(/\bLIMIT\s+(\d+)/i);
+    const limitMatch = data.query.match(/\bLIMIT\s+(\d+)/i);
     setSqlLimit(limitMatch ? Number(limitMatch[1]) : null);
 
-    const whereSeg = SEGMENTS.slice(1).find((s) =>
-      new RegExp(s, 'i').test(sqlText)
-    );
+    const whereSeg = SEGMENTS.slice(1).find((s) => new RegExp(s, 'i').test(data.query));
     if (whereSeg) setSelectedSegment(whereSeg);
 
     const elapsed = Math.max(4, Math.round((performance.now() - t0) * 10 + 11));
     setExecMs(elapsed);
     setTab('grid');
+  }
+
+  function saveSqlQuery() {
+    context.onCommitRevision?.(data, [
+      `Saved SQL subledger query (${filteredGridRows.length.toLocaleString('en-US')} rows · ${symbol}${summaryStats.sumRecognizedK.toLocaleString('en-US')}K recognized)`,
+    ]);
+    setLocalDraft(null);
   }
 
   const viewportHeight = 390;
@@ -113,16 +127,28 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
   const visibleSlice = filteredGridRows.slice(startIdx, endIdx);
   const gridTemplate = `minmax(195px, 2.3fr) repeat(${data.columns.length - 1}, minmax(82px, 1fr))`;
 
-  const metricName = data.columns[metricIdx] ?? 'Enterprise ARR ($K)';
+  const metricName = data.columns[metricIdx] ?? `Recognized (${symbol}K)`;
   const chartValues = data.rows.map((r) => Number(r[metricIdx] ?? 0));
   const maxVal = Math.max(1, ...chartValues);
   const activeBarIndex = hoveredBar ?? data.rows.length - 1;
   const activeRow = data.rows[activeBarIndex] ?? data.rows[0]!;
   const prevRow = activeBarIndex > 0 ? data.rows[activeBarIndex - 1] : null;
-  const qoqDelta =
-    prevRow && Number(prevRow[metricIdx]) > 0
-      ? `+${(((Number(activeRow[metricIdx]) - Number(prevRow[metricIdx])) / Number(prevRow[metricIdx])) * 100).toFixed(1)}% QoQ`
-      : 'Baseline quarter';
+
+  let qoqDelta = 'Baseline quarter';
+  if (prevRow && Number(prevRow[metricIdx]) !== 0) {
+    const rawPct =
+      ((Number(activeRow[metricIdx]) - Number(prevRow[metricIdx])) /
+        Math.abs(Number(prevRow[metricIdx]))) *
+      100;
+    const signPrefix = rawPct > 0 ? '+' : '';
+    qoqDelta = `${signPrefix}${rawPct.toFixed(1)}% QoQ`;
+  }
+
+  const q4Row = data.rows[data.rows.length - 1];
+  const q4RevM = ((Number(q4Row?.[1] ?? 5640)) / 1000).toFixed(2);
+  const fyTotalM = (
+    data.rows.reduce((s, r) => s + Number(r[1] ?? 0), 0) / 1000
+  ).toFixed(2);
 
   const areaPoints = data.rows
     .map((row, idx) => {
@@ -152,7 +178,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
             class={`seg-tab ${tab === 'grid' ? 'is-active' : ''}`}
             onClick={() => setTab('grid')}
           >
-            Rows ({filteredGridRows.length.toLocaleString()})
+            Rows ({filteredGridRows.length.toLocaleString('en-US')})
           </button>
           <button
             type="button"
@@ -187,15 +213,23 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
           <div class="sql-kpi-strip">
             <div class="kpi-tile">
               <div class="kpi-tile-label">Q4 Recognized Rev</div>
-              <div class="kpi-tile-value">$5.64M</div>
+              <div class="kpi-tile-value">
+                {symbol}
+                {q4RevM}M
+              </div>
             </div>
             <div class="kpi-tile">
-              <div class="kpi-tile-label">Gross Margin</div>
-              <div class="kpi-tile-value">85.1%</div>
+              <div class="kpi-tile-label">FY26 Subledger Total</div>
+              <div class="kpi-tile-value">
+                {symbol}
+                {fyTotalM}M
+              </div>
             </div>
             <div class="kpi-tile">
               <div class="kpi-tile-label">Subledger Rows</div>
-              <div class="kpi-tile-value">{filteredGridRows.length.toLocaleString()}</div>
+              <div class="kpi-tile-value">
+                {filteredGridRows.length.toLocaleString('en-US')}
+              </div>
             </div>
           </div>
 
@@ -253,11 +287,12 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
             {[0, 0.25, 0.5, 0.75, 1].map((step) => {
               const y = 185 - step * 140;
               const rawVal = maxVal * step;
-              const label = rawVal >= 1000 ? `${(rawVal / 1000).toFixed(1)}k` : rawVal.toFixed(0);
+              const label =
+                rawVal >= 1000 ? `${(rawVal / 1000).toFixed(1)}k` : rawVal.toFixed(0);
               return (
                 <g key={step}>
                   <line x1="46" y1={y} x2="500" y2={y} stroke="rgba(255,255,255,0.06)" />
-                  <text x="38" y={y + 4} text-anchor="end" fill="#6e6e77" font-size="10">
+                  <text x="38" y={y + 4} text-anchor="end" fill="#9494a0" font-size="10">
                     {label}
                   </text>
                 </g>
@@ -290,12 +325,26 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
               return (
                 <g
                   key={quarterLabel}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`${quarterLabel}: ${val.toLocaleString('en-US')} ${metricName}`}
                   style={{ cursor: 'pointer' }}
                   onMouseEnter={() => setHoveredBar(idx)}
                   onMouseLeave={() => setHoveredBar(null)}
+                  onFocus={() => setHoveredBar(idx)}
                   onClick={() =>
-                    setSelectedQuarter((curr) => (curr === quarterLabel ? null : quarterLabel))
+                    setSelectedQuarter((curr) =>
+                      curr === quarterLabel ? null : quarterLabel
+                    )
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedQuarter((curr) =>
+                        curr === quarterLabel ? null : quarterLabel
+                      );
+                    }
+                  }}
                 >
                   {chartKind === 'bars' ? (
                     <rect
@@ -321,7 +370,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
                     y={177 - h}
                     text-anchor="middle"
                     fill="#e4e4e7"
-                    font-size="10.5"
+                    font-size="11"
                     font-weight="500"
                   >
                     {val.toLocaleString('en-US')}
@@ -331,7 +380,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
                     y="204"
                     text-anchor="middle"
                     fill={isSelected ? '#ffffff' : '#a1a1aa'}
-                    font-size="11"
+                    font-size="11.5"
                     font-weight={isSelected ? '600' : '400'}
                   >
                     {quarterLabel}
@@ -345,7 +394,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
 
       {tab === 'grid' && (
         <>
-          <div class="stage-subbar" style={{ background: '#0e0e12' }}>
+          <div class="stage-subbar sql-filter-subbar">
             <div class="stage-subbar-group">
               {SEGMENTS.map((seg) => (
                 <button
@@ -366,6 +415,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
               type="search"
               class="sheet-filter-input"
               placeholder="Search cohorts…"
+              aria-label="Search subledger cohorts"
               value={filter}
               onInput={(e) => {
                 setFilter((e.currentTarget as HTMLInputElement).value);
@@ -399,40 +449,63 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
               })}
             </div>
 
-            <div
-              style={{
-                height: `${filteredGridRows.length * VIRTUAL_ROW_HEIGHT}px`,
-                position: 'relative',
-              }}
-            >
-              {visibleSlice.map((row, offset) => {
-                const rowIndex = startIdx + offset;
-                return (
-                  <div
-                    key={rowIndex}
-                    class={`vgrid-row ${pickedRowIdx === rowIndex ? 'is-picked' : ''}`}
-                    style={{
-                      top: `${rowIndex * VIRTUAL_ROW_HEIGHT}px`,
-                      gridTemplateColumns: gridTemplate,
-                    }}
-                    onClick={() => setPickedRowIdx(rowIndex)}
-                  >
-                    {row.map((cell, cIdx) => (
-                      <div key={cIdx} class={`vgrid-cell ${cIdx > 0 ? 'is-num' : ''}`}>
-                        {typeof cell === 'number' ? cell.toLocaleString('en-US') : String(cell ?? '')}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
+            {filteredGridRows.length === 0 ? (
+              <div class="empty-note">
+                <span>No subledger rows match the current filter.</span>
+                <button
+                  type="button"
+                  class="ghost-pill"
+                  onClick={() => {
+                    setSelectedQuarter(null);
+                    setSelectedSegment('All');
+                    setFilter('');
+                    setSqlLimit(null);
+                  }}
+                >
+                  Reset filters
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  height: `${filteredGridRows.length * VIRTUAL_ROW_HEIGHT}px`,
+                  position: 'relative',
+                }}
+              >
+                {visibleSlice.map((row, offset) => {
+                  const rowIndex = startIdx + offset;
+                  return (
+                    <div
+                      key={rowIndex}
+                      class={`vgrid-row ${pickedRowIdx === rowIndex ? 'is-picked' : ''}`}
+                      style={{
+                        top: `${rowIndex * VIRTUAL_ROW_HEIGHT}px`,
+                        gridTemplateColumns: gridTemplate,
+                      }}
+                      onClick={() => setPickedRowIdx(rowIndex)}
+                    >
+                      {row.map((cell, cIdx) => (
+                        <div key={cIdx} class={`vgrid-cell ${cIdx > 0 ? 'is-num' : ''}`}>
+                          {typeof cell === 'number'
+                            ? cell.toLocaleString('en-US')
+                            : String(cell ?? '')}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div class="sheet-tabs-bar">
             <span class="sheet-meta-count">
-              Rows: <strong>{filteredGridRows.length.toLocaleString()}</strong> · Recognized:{' '}
-              <strong>${summaryStats.sumArr.toLocaleString('en-US')}K</strong> · Avg Retention:{' '}
-              <strong>{summaryStats.avgNdr}%</strong>
+              Rows: <strong>{filteredGridRows.length.toLocaleString('en-US')}</strong> · Recognized:{' '}
+              <strong>
+                {symbol}
+                {summaryStats.sumRecognizedK.toLocaleString('en-US')}K
+              </strong>{' '}
+              · Avg Retention: <strong>{summaryStats.avgNdr}%</strong>
             </span>
             {(selectedQuarter || selectedSegment !== 'All' || filter || sqlLimit) && (
               <button
@@ -457,15 +530,21 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
           <div class="sql-editor-card">
             <div class="sql-editor-header">
               <span>{data.warehouse}</span>
-              <button type="button" class="primary-stage-btn" onClick={runInteractiveQuery}>
-                Run query
-              </button>
+              <div class="stage-subbar-group">
+                <button type="button" class="ghost-pill" onClick={saveSqlQuery}>
+                  Save
+                </button>
+                <button type="button" class="primary-stage-btn" onClick={runInteractiveQuery}>
+                  Run query
+                </button>
+              </div>
             </div>
             <textarea
               class="sql-editor-textarea"
-              value={sqlText}
+              value={data.query}
+              aria-label="SQL subledger query editor"
               spellcheck={false}
-              onInput={(e) => setSqlText((e.currentTarget as HTMLTextAreaElement).value)}
+              onInput={(e) => updateQueryText((e.currentTarget as HTMLTextAreaElement).value)}
               onKeyDown={(e) => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                   e.preventDefault();
@@ -480,7 +559,10 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
   );
 }
 
-export const sqlCanvasRendererModule: LoadedRenderer<preact.ComponentChildren, SqlCanvasData> = {
+export const sqlCanvasRendererModule: LoadedRenderer<
+  preact.ComponentChildren,
+  SqlCanvasData
+> = {
   render(context) {
     return <SqlCanvasStageView context={context} />;
   },

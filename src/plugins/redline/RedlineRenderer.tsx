@@ -61,90 +61,105 @@ function computeWordDiff(before: string, after: string): DiffToken[] {
 }
 
 function RedlineDiffView({ context }: { context: RendererContext<RedlineDocumentData> }) {
-  const doc = context.block.data;
+  const baseline = context.block.data;
+  const [localDraft, setLocalDraft] = useState<RedlineDocumentData | null>(null);
+  const doc = context.draft ?? localDraft ?? baseline;
   const [mode, setMode] = useState<DiffMode>('split');
-  const [decisions, setDecisions] = useState<Record<string, Decision>>(() =>
-    Object.fromEntries(doc.hunks.map((h) => [h.id, h.initialDecision ?? 'pending']))
-  );
-  const [draftAfter, setDraftAfter] = useState<Record<string, string>>(() =>
-    Object.fromEntries(doc.hunks.map((h) => [h.id, h.after]))
-  );
-  const [savedFlag, setSavedFlag] = useState(false);
+
+  const baselineMap = new Map(baseline.hunks.map((h) => [h.id, h]));
 
   const wordDiffByHunk = useMemo(
     () =>
-      Object.fromEntries(
-        doc.hunks.map((h) => [h.id, computeWordDiff(h.before, draftAfter[h.id] ?? h.after)])
-      ),
-    [doc.hunks, draftAfter]
+      Object.fromEntries(doc.hunks.map((h) => [h.id, computeWordDiff(h.before, h.after)])),
+    [doc.hunks]
   );
 
-  const acceptedCount = doc.hunks.filter((h) => decisions[h.id] === 'accepted').length;
-  const rejectedCount = doc.hunks.filter((h) => decisions[h.id] === 'rejected').length;
+  const acceptedCount = doc.hunks.filter((h) => h.initialDecision === 'accepted').length;
+  const rejectedCount = doc.hunks.filter((h) => h.initialDecision === 'rejected').length;
   const pendingCount = doc.hunks.length - acceptedCount - rejectedCount;
 
-  const hasChanges = doc.hunks.some(
-    (h) =>
-      (draftAfter[h.id] ?? h.after) !== h.after ||
-      (decisions[h.id] ?? 'pending') !== (h.initialDecision ?? 'pending')
-  );
+  function applyDraft(next: RedlineDocumentData) {
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(next);
+    } else {
+      setLocalDraft(next);
+    }
+  }
 
   function setHunkDecision(id: string, next: Decision) {
-    setDecisions((prev) => ({ ...prev, [id]: next }));
-    setSavedFlag(false);
+    applyDraft({
+      ...doc,
+      hunks: doc.hunks.map((h) =>
+        h.id === id ? { ...h, initialDecision: next } : h
+      ),
+    });
   }
 
   function updateProposedText(id: string, nextText: string) {
-    setDraftAfter((prev) => ({ ...prev, [id]: nextText }));
-    setDecisions((prev) => ({ ...prev, [id]: 'accepted' }));
-    setSavedFlag(false);
+    applyDraft({
+      ...doc,
+      hunks: doc.hunks.map((h) =>
+        h.id === id
+          ? { ...h, after: nextText, initialDecision: 'accepted' }
+          : h
+      ),
+    });
+  }
+
+  function resetHunkText(id: string) {
+    const orig = baselineMap.get(id);
+    if (!orig) return;
+    applyDraft({
+      ...doc,
+      hunks: doc.hunks.map((h) =>
+        h.id === id
+          ? { ...h, after: orig.after, initialDecision: orig.initialDecision ?? 'pending' }
+          : h
+      ),
+    });
   }
 
   function acceptAllPending() {
-    setDecisions((prev) => {
-      const updated = { ...prev };
-      for (const hunk of doc.hunks) {
-        if (updated[hunk.id] === 'pending') updated[hunk.id] = 'accepted';
-      }
-      return updated;
+    applyDraft({
+      ...doc,
+      hunks: doc.hunks.map((h) =>
+        (h.initialDecision ?? 'pending') === 'pending'
+          ? { ...h, initialDecision: 'accepted' }
+          : h
+      ),
     });
-    setSavedFlag(false);
   }
 
   function commitRedlines() {
     const summary = doc.hunks.map((h) => {
-      const status = (decisions[h.id] ?? 'pending').toUpperCase();
-      const currentAfter = draftAfter[h.id] ?? h.after;
-      const wasEdited = currentAfter !== h.after;
-      return `${h.section}: ${status}${wasEdited ? ` — "${currentAfter}"` : ''}`;
+      const orig = baselineMap.get(h.id);
+      const status = (h.initialDecision ?? 'pending').toUpperCase();
+      const wasEdited = orig !== undefined && h.after !== orig.after;
+      return `${h.section}: ${status}${wasEdited ? ` — "${h.after}"` : ''}`;
     });
 
-    const updatedDoc: RedlineDocumentData = {
-      ...doc,
-      hunks: doc.hunks.map((h) => ({
-        ...h,
-        after: draftAfter[h.id] ?? h.after,
-        initialDecision: decisions[h.id] ?? 'pending',
-      })),
-    };
-    context.onCommitRevision?.(updatedDoc, summary);
-    setSavedFlag(true);
+    context.onCommitRevision?.(doc, summary);
+    setLocalDraft(null);
   }
 
   return (
     <div class="stage-plugin-shell">
       <div class="stage-subbar">
         <div class="stage-subbar-group">
-          <div class="seg-tabs" role="tablist">
+          <div class="seg-tabs" role="tablist" aria-label="Redline display mode">
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'split'}
               class={`seg-tab ${mode === 'split' ? 'is-active' : ''}`}
               onClick={() => setMode('split')}
             >
-              Side-by-Side
+              Side-by-side
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'inline'}
               class={`seg-tab ${mode === 'inline' ? 'is-active' : ''}`}
               onClick={() => setMode('inline')}
             >
@@ -152,6 +167,8 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'clean'}
               class={`seg-tab ${mode === 'clean' ? 'is-active' : ''}`}
               onClick={() => setMode('clean')}
             >
@@ -160,7 +177,7 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
           </div>
 
           <span class="sheet-meta-count">
-            {acceptedCount} accepted · {pendingCount} pending
+            {acceptedCount} accepted · {rejectedCount} rejected · {pendingCount} pending
           </span>
         </div>
 
@@ -170,11 +187,9 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
               Accept all
             </button>
           )}
-          {(hasChanges || !savedFlag) && (
-            <button type="button" class="primary-stage-btn" onClick={commitRedlines}>
-              {savedFlag ? 'Saved' : 'Save'}
-            </button>
-          )}
+          <button type="button" class="primary-stage-btn" onClick={commitRedlines}>
+            Save
+          </button>
         </div>
       </div>
 
@@ -182,19 +197,17 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
         <div class="redline-doc-banner">
           <div>
             <strong>{doc.documentName}</strong>
-            <div class="clause-footnote" style={{ marginTop: '2px' }}>
-              {doc.author}
-            </div>
+            <div class="clause-footnote">{doc.author}</div>
           </div>
           <span class="sheet-meta-count">{doc.hunks.length} clauses</span>
         </div>
 
         {doc.hunks.map((hunk) => {
-          const status = decisions[hunk.id] ?? 'pending';
-          const currentAfter = draftAfter[hunk.id] ?? hunk.after;
-          const isEdited = currentAfter !== hunk.after;
+          const orig = baselineMap.get(hunk.id);
+          const status = hunk.initialDecision ?? 'pending';
+          const isEdited = orig !== undefined && hunk.after !== orig.after;
           const tokens = wordDiffByHunk[hunk.id] ?? [];
-          const resolvedClean = status === 'rejected' ? hunk.before : currentAfter;
+          const resolvedClean = status === 'rejected' ? hunk.before : hunk.after;
 
           return (
             <article key={hunk.id} class={`redline-hunk-card status-${status}`}>
@@ -209,9 +222,7 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
                     <button
                       type="button"
                       class="ghost-pill"
-                      onClick={() =>
-                        setDraftAfter((prev) => ({ ...prev, [hunk.id]: hunk.after }))
-                      }
+                      onClick={() => resetHunkText(hunk.id)}
                     >
                       Reset
                     </button>
@@ -238,15 +249,15 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
               {mode === 'split' && (
                 <div class="redline-columns">
                   <div class="redline-col is-before">
-                    <div class="redline-col-label">Prior Draft</div>
+                    <div class="redline-col-label">Prior draft</div>
                     <div>{hunk.before}</div>
                   </div>
                   <div class="redline-col is-after">
-                    <div class="redline-col-label">Proposed Redline</div>
+                    <div class="redline-col-label">Proposed redline</div>
                     <textarea
-                      rows={Math.max(4, Math.ceil(currentAfter.length / 30))}
+                      rows={Math.max(4, Math.ceil(hunk.after.length / 30))}
                       class="redline-editable-prose"
-                      value={currentAfter}
+                      value={hunk.after}
                       aria-label={`Proposed redline for ${hunk.section}`}
                       onInput={(e) =>
                         updateProposedText(
@@ -305,7 +316,10 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
   );
 }
 
-export const redlineRendererModule: LoadedRenderer<preact.ComponentChildren, RedlineDocumentData> = {
+export const redlineRendererModule: LoadedRenderer<
+  preact.ComponentChildren,
+  RedlineDocumentData
+> = {
   render(context) {
     return <RedlineDiffView context={context} />;
   },

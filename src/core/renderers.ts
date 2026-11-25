@@ -1,5 +1,7 @@
 import type { BadgeAccent, ContentBlock, RenderPlacement } from './types';
 
+export type PluginCategory = 'accounting' | 'documents' | 'data';
+
 export interface SampleTurnPayload {
   readonly prose: string;
   readonly artifact: ContentBlock;
@@ -8,11 +10,15 @@ export interface SampleTurnPayload {
 
 export interface RendererContext<TData = unknown> {
   readonly block: ContentBlock<TData>;
+  readonly draft?: TData;
+  readonly actorName?: string;
   readonly isCompact?: boolean;
   readonly focusAnchor?: string | null;
   readonly anchorPulse?: number;
   readonly siblingArtifactId?: string | null;
   readonly onInspect?: (blockId: string, anchor?: string) => void;
+  readonly onUpdateDraft?: (nextDraft: TData) => void;
+  readonly onClearDraft?: () => void;
   readonly onCommitRevision?: (nextData: TData, changeSummary: ReadonlyArray<string>) => void;
 }
 
@@ -25,6 +31,7 @@ export interface RendererPlugin<TView, TData = unknown> {
   readonly aliases?: ReadonlyArray<string>;
   readonly label: string;
   readonly badge: string;
+  readonly category?: PluginCategory;
   readonly accent?: BadgeAccent;
   readonly ctaLabel?: string;
   readonly placement: RenderPlacement;
@@ -38,12 +45,20 @@ export interface RendererPlugin<TView, TData = unknown> {
 
 export interface RendererRegistry<TView> {
   register: <TData>(plugin: RendererPlugin<TView, TData>) => () => void;
+  subscribe: (listener: () => void) => () => void;
   resolve: (block: ContentBlock) => RendererPlugin<TView>;
   findByRoute: (routeKey: string) => RendererPlugin<TView> | undefined;
   matchPromptPlugin: (prompt: string) => RendererPlugin<TView> | undefined;
   loadRenderer: (block: ContentBlock) => Promise<LoadedRenderer<TView>>;
   getCachedRenderer: (pluginId: string) => LoadedRenderer<TView> | undefined;
   listPlugins: () => ReadonlyArray<RendererPlugin<TView>>;
+}
+
+export function isChunkVersionMismatchError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err ?? '');
+  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS/i.test(
+    message
+  );
 }
 
 /**
@@ -80,7 +95,14 @@ export function createRendererRegistry<TView>(
   const plugins = new Map<string, RendererPlugin<TView>>();
   const resolvedCache = new Map<string, LoadedRenderer<TView>>();
   const inflightLoads = new Map<string, Promise<LoadedRenderer<TView>>>();
+  const listeners = new Set<() => void>();
   let cachedSorted: ReadonlyArray<RendererPlugin<TView>> | null = null;
+
+  function notifyRegistryListeners() {
+    for (const listener of [...listeners]) {
+      listener();
+    }
+  }
 
   function sortedPlugins(): ReadonlyArray<RendererPlugin<TView>> {
     if (!cachedSorted) {
@@ -119,9 +141,9 @@ export function createRendererRegistry<TView>(
         inflightLoads.delete(plugin.id);
         return loaded;
       })
-      .catch(async () => {
+      .catch((err) => {
         inflightLoads.delete(plugin.id);
-        return fallbackPlugin.load();
+        throw err;
       });
 
     inflightLoads.set(plugin.id, loadAttempt);
@@ -132,10 +154,19 @@ export function createRendererRegistry<TView>(
     register(plugin) {
       plugins.set(plugin.id, plugin as RendererPlugin<TView>);
       cachedSorted = null;
+      notifyRegistryListeners();
       return () => {
         plugins.delete(plugin.id);
         resolvedCache.delete(plugin.id);
         cachedSorted = null;
+        notifyRegistryListeners();
+      };
+    },
+
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
       };
     },
 

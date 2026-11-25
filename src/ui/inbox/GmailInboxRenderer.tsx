@@ -8,6 +8,7 @@ import type {
 } from '../../core/inbox';
 import type { RendererRegistry } from '../../core/renderers';
 import type { InboxProvider } from '../../core/types';
+import type { WorkspaceController } from '../../core/workspace';
 import { GmailLogo } from '../connectors/connectorLogos';
 import { SearchIcon } from '../icons';
 import { MailIntelligencePanel, type DeepLinkTarget } from './MailIntelligencePanel';
@@ -22,14 +23,19 @@ export interface MailProviderViewProps {
   readonly threads: ReadonlyArray<MailThreadItem>;
   readonly focusedThreadReq?: { readonly id: string; readonly pulse: number } | null;
   readonly registry: RendererRegistry<ComponentChildren>;
+  readonly workspace?: WorkspaceController;
+  readonly actorName?: string;
+  readonly isAjePosted?: boolean;
+  readonly injectedReplySnippet?: { readonly text: string; readonly pulse: number } | null;
   readonly activeProvider: InboxProvider;
   readonly senderEmail: string;
   readonly onSwitchProvider: (provider: InboxProvider) => void;
+  readonly onSelectThread?: (id: string | null) => void;
   readonly onToggleStar: (id: string) => void;
   readonly onToggleFlag: (id: string) => void;
   readonly onMarkRead: (id: string, unread: boolean) => void;
   readonly onArchive: (id: string) => void;
-  readonly onSendMail: (to: string, subject: string, body: string) => void;
+  readonly onSendMail: (to: string, subject: string, body: string) => boolean;
   readonly onNavigateSource: (target: DeepLinkTarget) => void;
 }
 
@@ -44,9 +50,14 @@ export function GmailInboxRenderer({
   threads,
   focusedThreadReq = null,
   registry,
+  workspace,
+  actorName,
+  isAjePosted = false,
+  injectedReplySnippet = null,
   activeProvider,
   senderEmail,
   onSwitchProvider,
+  onSelectThread,
   onToggleStar,
   onMarkRead,
   onArchive,
@@ -64,7 +75,18 @@ export function GmailInboxRenderer({
   const [isComposing, setIsComposing] = useState(false);
   const [replyPulse, setReplyPulse] = useState(0);
 
-  const { previewBlock, clearPreview, openAttachment } = useMailAttachmentPreview(registry);
+  const { previewBlock, clearPreview, openAttachment } = useMailAttachmentPreview(
+    registry,
+    workspace
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 740px)');
+    const onChange = (e: MediaQueryListEvent) => setIsRailCollapsed(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     if (focusedThreadReq?.id) {
@@ -103,12 +125,32 @@ export function GmailInboxRenderer({
 
   const openedThread = threads.find((t) => t.id === openedId) ?? null;
 
+  function selectThread(item: MailThreadItem) {
+    setIsComposing(false);
+    setOpenedId(item.id);
+    onSelectThread?.(item.id);
+    clearPreview();
+    if (item.unread) onMarkRead(item.id, false);
+  }
+
+  function closeThreadToFolder() {
+    setOpenedId(null);
+    onSelectThread?.(null);
+    clearPreview();
+  }
+
   function openThreadWithAttachment(item: MailThreadItem, att: MailAttachmentLink) {
     setIsComposing(false);
     setOpenedId(item.id);
+    onSelectThread?.(item.id);
     if (item.unread) onMarkRead(item.id, false);
     void openAttachment(att, false);
   }
+
+  const rangeSummary =
+    visibleThreads.length === 0
+      ? '0 of 0'
+      : `1–${visibleThreads.length} of ${visibleThreads.length}`;
 
   return (
     <div class="gmail-frame">
@@ -144,6 +186,7 @@ export function GmailInboxRenderer({
             type="search"
             class="gmail-search-input"
             placeholder="Search in mail"
+            aria-label="Search in Gmail"
             value={query}
             onInput={(e) => {
               setQuery((e.currentTarget as HTMLInputElement).value);
@@ -169,6 +212,7 @@ export function GmailInboxRenderer({
             class="gmail-compose-btn"
             onClick={() => {
               setOpenedId(null);
+              onSelectThread?.(null);
               clearPreview();
               setIsComposing(true);
             }}
@@ -199,7 +243,7 @@ export function GmailInboxRenderer({
             onClick={() => {
               setFolder('inbox');
               setActiveLabel(null);
-              setOpenedId(null);
+              closeThreadToFolder();
               setIsComposing(false);
             }}
           >
@@ -220,7 +264,7 @@ export function GmailInboxRenderer({
             onClick={() => {
               setFolder('starred');
               setActiveLabel(null);
-              setOpenedId(null);
+              closeThreadToFolder();
               setIsComposing(false);
             }}
           >
@@ -239,7 +283,7 @@ export function GmailInboxRenderer({
             onClick={() => {
               setFolder('sent');
               setActiveLabel(null);
-              setOpenedId(null);
+              closeThreadToFolder();
               setIsComposing(false);
             }}
           >
@@ -259,7 +303,7 @@ export function GmailInboxRenderer({
             onClick={() => {
               setFolder('archive');
               setActiveLabel(null);
-              setOpenedId(null);
+              closeThreadToFolder();
               setIsComposing(false);
             }}
           >
@@ -284,7 +328,7 @@ export function GmailInboxRenderer({
                   onClick={() => {
                     setFolder('inbox');
                     setActiveLabel((curr) => (curr === lbl.text ? null : lbl.text));
-                    setOpenedId(null);
+                    closeThreadToFolder();
                     setIsComposing(false);
                   }}
                 >
@@ -309,15 +353,16 @@ export function GmailInboxRenderer({
                 >
                   ← Back to Inbox
                 </button>
-                <span class="sheet-meta-count">New Message</span>
+                <span class="sheet-meta-count">New message</span>
               </div>
               <InlineNewMailForm
                 variant="gmail"
                 senderEmail={senderEmail}
                 onDiscard={() => setIsComposing(false)}
                 onSend={(to, subject, body) => {
-                  onSendMail(to, subject, body);
-                  setIsComposing(false);
+                  const ok = onSendMail(to, subject, body);
+                  if (ok) setIsComposing(false);
+                  return ok;
                 }}
               />
             </>
@@ -328,10 +373,7 @@ export function GmailInboxRenderer({
                   <button
                     type="button"
                     class="ghost-pill"
-                    onClick={() => {
-                      setOpenedId(null);
-                      clearPreview();
-                    }}
+                    onClick={closeThreadToFolder}
                   >
                     ← Back to Inbox
                   </button>
@@ -340,7 +382,7 @@ export function GmailInboxRenderer({
                     class="ghost-pill"
                     onClick={() => {
                       onArchive(openedThread.id);
-                      setOpenedId(null);
+                      closeThreadToFolder();
                     }}
                   >
                     Archive
@@ -350,7 +392,7 @@ export function GmailInboxRenderer({
                     class="ghost-pill"
                     onClick={() => {
                       onMarkRead(openedThread.id, true);
-                      setOpenedId(null);
+                      closeThreadToFolder();
                     }}
                   >
                     Mark unread
@@ -415,6 +457,8 @@ export function GmailInboxRenderer({
                   attachments={openedThread.attachments}
                   previewBlock={previewBlock}
                   registry={registry}
+                  workspace={workspace}
+                  actorName={actorName}
                   onToggleAttachment={(att) => void openAttachment(att)}
                   onClearPreview={clearPreview}
                   onNavigateSource={onNavigateSource}
@@ -424,6 +468,8 @@ export function GmailInboxRenderer({
                   thread={openedThread}
                   replyFocusPulse={replyPulse}
                   senderEmail={senderEmail}
+                  isAjePosted={isAjePosted}
+                  injectedReplySnippet={injectedReplySnippet}
                   onNavigateSource={onNavigateSource}
                   onPreviewInlineRoute={(route) => {
                     const matchedAtt = openedThread.attachments.find(
@@ -440,8 +486,6 @@ export function GmailInboxRenderer({
             <>
               <div class="gmail-action-strip">
                 <div class="stage-subbar-group">
-                  <span class="gmail-row-check" aria-hidden="true" />
-                  <span>↻</span>
                   {activeLabel && (
                     <>
                       <span class="mail-sender-strong">Label: {activeLabel}</span>
@@ -456,19 +500,19 @@ export function GmailInboxRenderer({
                   )}
                   {folder !== 'inbox' && !activeLabel && (
                     <span class="mail-sender-strong">
-                      {folder === 'archive' ? 'All Mail' : folder[0]?.toUpperCase() + folder.slice(1)}
+                      {folder === 'archive'
+                        ? 'All Mail'
+                        : folder[0]!.toUpperCase() + folder.slice(1)}
                     </span>
                   )}
                 </div>
                 <div class="stage-subbar-group">
-                  <span>
-                    1–{visibleThreads.length} of {visibleThreads.length}
-                  </span>
+                  <span>{rangeSummary}</span>
                 </div>
               </div>
 
               {folder === 'inbox' && !activeLabel && !q && (
-                <div class="gmail-category-tabs" role="tablist">
+                <div class="gmail-category-tabs" role="tablist" aria-label="Inbox categories">
                   <button
                     type="button"
                     role="tab"
@@ -510,72 +554,110 @@ export function GmailInboxRenderer({
                       <path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V4h9l8.6 8.6a2 2 0 0 1 0 .8Z" />
                       <circle cx="7.5" cy="8.5" r="1.2" fill="currentColor" />
                     </svg>
-                    <span>HMRC & Filings</span>
+                    <span>HMRC &amp; Filings</span>
                   </button>
                 </div>
               )}
 
-              <div class="gmail-list-scroll">
-                {visibleThreads.map((item) => (
-                  <div
-                    key={item.id}
-                    class={`gmail-row ${item.unread ? 'is-unread' : ''}`}
-                    onClick={() => {
-                      setOpenedId(item.id);
-                      clearPreview();
-                      if (item.unread) onMarkRead(item.id, false);
-                    }}
-                  >
-                    <div class="gmail-row-main">
-                      <span class="gmail-row-check" aria-hidden="true" />
+              <div class="gmail-list-scroll" role="list" aria-label="Message threads">
+                {visibleThreads.length === 0 ? (
+                  <div class="mail-empty-folder">
+                    <span>
+                      {q
+                        ? `No messages match “${query}”.`
+                        : folder === 'sent'
+                          ? 'No sent messages yet.'
+                          : folder === 'starred'
+                            ? 'No starred threads.'
+                            : folder === 'archive'
+                              ? 'No archived threads.'
+                              : 'No messages in this view.'}
+                    </span>
+                    {(q || activeLabel) && (
                       <button
                         type="button"
-                        class={`gmail-star-btn ${item.starred ? 'is-starred' : ''}`}
-                        aria-label="Star thread"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleStar(item.id);
+                        class="ghost-pill"
+                        onClick={() => {
+                          setQuery('');
+                          setActiveLabel(null);
                         }}
                       >
-                        {item.starred ? '★' : '☆'}
+                        Clear filter
                       </button>
-
-                      <span class="gmail-sender-col">{item.senderName}</span>
-
-                      {item.gmailLabel && (
-                        <span class={`gmail-label-chip tone-${item.gmailLabel.tone}`}>
-                          {item.gmailLabel.text}
-                        </span>
-                      )}
-
-                      <span class="gmail-subject-col">
-                        <span class="gmail-subject-text">{item.subject}</span>
-                        <span class="gmail-snippet-dash"> — {item.snippet}</span>
-                      </span>
-
-                      <span class="gmail-time-col">{item.timeShort}</span>
-                    </div>
-
-                    {item.attachments.length > 0 && (
-                      <div class="gmail-row-attachments">
-                        {item.attachments.map((att) => (
-                          <button
-                            key={att.id}
-                            type="button"
-                            class="gmail-att-pill"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openThreadWithAttachment(item, att);
-                            }}
-                          >
-                            <span class="gmail-att-badge">{att.badge}</span>
-                            <span>{att.filename}</span>
-                          </button>
-                        ))}
-                      </div>
                     )}
                   </div>
-                ))}
+                ) : (
+                  visibleThreads.map((item) => (
+                    <div
+                      key={item.id}
+                      role="listitem"
+                      tabIndex={0}
+                      aria-label={`${item.unread ? 'Unread: ' : ''}${item.senderName} — ${item.subject}`}
+                      class={`gmail-row ${item.unread ? 'is-unread' : ''}`}
+                      onClick={() => selectThread(item)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          selectThread(item);
+                        }
+                      }}
+                    >
+                      <div class="gmail-row-main">
+                        <button
+                          type="button"
+                          class={`gmail-star-btn ${item.starred ? 'is-starred' : ''}`}
+                          aria-label={
+                            item.starred
+                              ? `Remove star from ${item.subject}`
+                              : `Star ${item.subject}`
+                          }
+                          aria-pressed={item.starred}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleStar(item.id);
+                          }}
+                        >
+                          {item.starred ? '★' : '☆'}
+                        </button>
+
+                        <span class="gmail-sender-col">{item.senderName}</span>
+
+                        {item.gmailLabel && (
+                          <span class={`gmail-label-chip tone-${item.gmailLabel.tone}`}>
+                            {item.gmailLabel.text}
+                          </span>
+                        )}
+
+                        <span class="gmail-subject-col">
+                          <span class="gmail-subject-text">{item.subject}</span>
+                          <span class="gmail-snippet-dash"> — {item.snippet}</span>
+                        </span>
+
+                        <span class="gmail-time-col">{item.timeShort}</span>
+                      </div>
+
+                      {item.attachments.length > 0 && (
+                        <div class="gmail-row-attachments">
+                          {item.attachments.map((att) => (
+                            <button
+                              key={att.id}
+                              type="button"
+                              class="gmail-att-pill"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openThreadWithAttachment(item, att);
+                              }}
+                            >
+                              <span class="gmail-att-badge">{att.badge}</span>
+                              <span>{att.filename}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </>
           )}

@@ -1,0 +1,62 @@
+/* User Profile Page */
+.profile-slim-container {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.profile-card-shell {
+  background: #121216;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 22px 24px 24px;
+}
+
+.profile-identity-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.profile-avatar-lg {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: #202026;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-identity-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-name-heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.profile-sso-pill {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.profile-clean-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

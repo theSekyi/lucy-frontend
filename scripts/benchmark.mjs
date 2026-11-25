@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 
+const MAX_CRITICAL_BROTLI_BYTES = 30 * 1024;
 const distDir = join(process.cwd(), 'dist');
 const assetsDir = join(distDir, 'assets');
 
@@ -55,7 +56,6 @@ const profiles = [
   { name: '2G / Rural EDGE (150 kbps, 600ms RTT)', kbps: 150, rtt: 600 },
 ];
 
-// Count total lines of source code
 function countLines(dir) {
   let total = 0;
   for (const entry of readdirSync(dir)) {
@@ -85,10 +85,10 @@ console.table(
 
 console.log('\n=== PAYLOAD SUMMARY ===');
 console.log(
-  `Critical Initial Boot: Raw ${kb(critRaw)} | Gzip ${kb(critGzip)} | Brotli ${kb(critBrotli)}`
+  `Critical Initial Boot: Raw ${kb(critRaw)} | Gzip ${kb(critGzip)} | Brotli ${kb(critBrotli)} (Budget <= ${kb(MAX_CRITICAL_BROTLI_BYTES)})`
 );
 console.log(
-  `Deferred Capability Plugins (Thread + Excel + Code): Raw ${kb(defRaw)} | Gzip ${kb(defGzip)} | Brotli ${kb(defBrotli)}`
+  `Deferred Capability Plugins (Routes + 14 Stage/Inline Renderers): Raw ${kb(defRaw)} | Gzip ${kb(defGzip)} | Brotli ${kb(defBrotli)}`
 );
 console.log(`Total Source Lines (TS + TSX + CSS): ${loc} LOC (scanned in ${scanMs} ms)`);
 
@@ -103,3 +103,11 @@ console.table(
     ).toFixed(1)}x faster`,
   }))
 );
+
+if (critBrotli > MAX_CRITICAL_BROTLI_BYTES) {
+  console.error(
+    `\n[BUDGET FAIL] Critical initial boot Brotli payload (${kb(critBrotli)}) exceeds the ${kb(MAX_CRITICAL_BROTLI_BYTES)} limit.`
+  );
+  process.exit(1);
+}
+console.log(`\n[BUDGET PASS] Critical initial boot Brotli payload is within ${kb(MAX_CRITICAL_BROTLI_BYTES)}.`);

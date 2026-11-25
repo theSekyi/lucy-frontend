@@ -105,7 +105,7 @@ describe('Cross-Inbox Ask Engine & Per-Email Terminal edge cases', () => {
 
     const vouchAns = queryAcrossInbox(
       INITIAL_MAIL_THREADS,
-      'Check Brex $42.10 FX variance on WP E-40'
+      'Check Brex £42.10 FX variance on WP E-40'
     );
     expect(vouchAns.matchedThreads.some((m) => m.id === 'mail-dext-vouch')).toBe(true);
     expect(vouchAns.sources.some((s) => s.pluginRoute === 'vouch')).toBe(true);
@@ -114,8 +114,9 @@ describe('Cross-Inbox Ask Engine & Per-Email Terminal edge cases', () => {
       INITIAL_MAIL_THREADS,
       'Unrelated topic xyz987'
     );
-    expect(fallbackAns.answer).toContain('Across 10 inbox threads (5 unread)');
-    expect(fallbackAns.matchedThreads.length).toBeGreaterThan(0);
+    expect(fallbackAns.matchKind).toBe('no-match');
+    expect(fallbackAns.matchedThreads).toEqual([]);
+    expect(fallbackAns.answer).toContain('No inbox threads matched');
 
     // Marking threads read updates cross-inbox unread summary counts dynamically
     const allRead = INITIAL_MAIL_THREADS.map((t) => ({ ...t, unread: false }));

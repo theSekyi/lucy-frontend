@@ -7,11 +7,12 @@ export const contractPlugin: RendererPlugin<ComponentChildren, CitedDocumentData
   aliases: ['pdf', 'contract'],
   label: 'Contract Review',
   badge: 'PDF',
+  category: 'documents',
   accent: 'amber',
-  ctaLabel: 'Open',
+  ctaLabel: 'Open →',
   placement: 'stage',
   priority: 35,
-  promptPattern: /\b(contract|msa|soc2|clause|pdf|10-k|rfp|indemnif|liability)\b/i,
+  promptPattern: /\b(contracts?|msa|soc2|clauses?|pdfs?|10-k|rfps?|indemnif\w*|liabilit\w*)\b/i,
   sampleMenuLabel: 'Contract Review (PDF)',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');

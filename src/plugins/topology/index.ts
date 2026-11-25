@@ -7,11 +7,12 @@ export const topologyPlugin: RendererPlugin<ComponentChildren, TopologyGraphData
   aliases: ['dag', 'lineage'],
   label: 'Consolidation Lineage',
   badge: 'DAG',
+  category: 'data',
   accent: 'amber',
-  ctaLabel: 'Open',
+  ctaLabel: 'Open →',
   placement: 'stage',
   priority: 32,
-  promptPattern: /\b(lineage|topology|blast\s*radius|incident|dag|graph|mermaid|dependency)\b/i,
+  promptPattern: /\b(lineag\w*|topolog\w*|blast\s*radius|incidents?|dag|graphs?|dependenc\w*)\b/i,
   sampleMenuLabel: 'Consolidation Lineage',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');

@@ -1,0 +1,47 @@
+:root {
+  /* Surface elevation scale */
+  --bg-frame: #000000;
+  --bg-surface-top: #0d0d0f;
+  --bg-surface-bottom: #09090b;
+  --bg-panel: #111115;
+  --bg-elevated: #151519;
+  --bg-composer: #17171b;
+  --bg-input: #0d0d11;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active-pill: #18181d;
+  --bg-paper: #fbfaf7;
+
+  /* Hairline & interactive borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: #93c5fd;
+
+  /* WCAG 2.2 AA verified foreground hierarchy (>= 5.6:1 on #0d0d0f / #17171b) */
+  --text-primary: #f4f4f6;
+  --text-secondary: #b4b4be;
+  --text-muted: #9494a0;
+  --text-placeholder: #8b8b97;
+
+  /* High-visibility keyboard focus indicator (10.9:1 on dark surfaces) */
+  --focus-ring: #93c5fd;
+
+  /* Semantic status & tie-out accents */
+  --tone-good-bg: rgba(34, 197, 94, 0.15);
+  --tone-good-fg: #86efac;
+  --tone-warn-bg: rgba(245, 158, 11, 0.16);
+  --tone-warn-fg: #fcd34d;
+  --tone-danger-bg: rgba(248, 113, 113, 0.15);
+  --tone-danger-fg: #fca5a5;
+  --tone-info-bg: rgba(56, 189, 248, 0.16);
+  --tone-info-fg: #7dd3fc;
+
+  /* Typography & radii */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+}

@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
+import { Fragment } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { RendererRegistry } from '../core/renderers';
+import type { PluginCategory, RendererPlugin, RendererRegistry } from '../core/renderers';
 import type { ContentBlock } from '../core/types';
 import { SendArrowIcon } from './icons';
 
@@ -17,6 +18,15 @@ interface ComposerProps {
   readonly onSubmit: () => void;
 }
 
+const CATEGORY_ORDER: ReadonlyArray<{
+  readonly key: PluginCategory;
+  readonly label: string;
+}> = [
+  { key: 'accounting', label: 'Accounting & Audit' },
+  { key: 'documents', label: 'Contracts & Packs' },
+  { key: 'data', label: 'Data & Models' },
+];
+
 export function Composer({
   draft,
   attachments,
@@ -32,12 +42,17 @@ export function Composer({
   const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const plusBtnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const samplePlugins = (registry?.listPlugins() ?? []).filter((p) => p.sampleMenuLabel);
 
   useEffect(() => {
     if (!isAttachOpen) return;
+
+    const firstItem = menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]');
+    firstItem?.focus();
 
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
@@ -49,6 +64,7 @@ export function Composer({
       if (event.key === 'Escape') {
         event.stopPropagation();
         setIsAttachOpen(false);
+        plusBtnRef.current?.focus();
       }
     }
 
@@ -60,10 +76,43 @@ export function Composer({
     };
   }, [isAttachOpen]);
 
+  function handleMenuKeyDown(event: KeyboardEvent) {
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []
+    );
+    if (items.length === 0) return;
+    const currentIdx = items.indexOf(document.activeElement as HTMLButtonElement);
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const next = currentIdx < 0 ? 0 : (currentIdx + 1) % items.length;
+      items[next]?.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const prev = currentIdx <= 0 ? items.length - 1 : currentIdx - 1;
+      items[prev]?.focus();
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      items[0]?.focus();
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      items[items.length - 1]?.focus();
+    }
+  }
+
   function handleFileChosen(file: File) {
     setIsAttachOpen(false);
     onIngestFile?.(file);
   }
+
+  const groupedPlugins: ReadonlyArray<{
+    readonly key: PluginCategory;
+    readonly label: string;
+    readonly items: ReadonlyArray<RendererPlugin<ComponentChildren>>;
+  }> = CATEGORY_ORDER.map((group) => ({
+    ...group,
+    items: samplePlugins.filter((p) => (p.category ?? 'accounting') === group.key),
+  })).filter((g) => g.items.length > 0);
 
   return (
     <div
@@ -90,7 +139,7 @@ export function Composer({
               <button
                 type="button"
                 class="attachment-remove"
-                aria-label="Remove attachment"
+                aria-label={`Remove attachment ${item.filename ?? item.title ?? ''}`}
                 onClick={() => onRemoveAttachment(item.id)}
               >
                 ×
@@ -119,9 +168,10 @@ export function Composer({
         <div class="composer-tools-left">
           <div class="menu-anchor">
             <button
+              ref={plusBtnRef}
               type="button"
               class="composer-plus-btn"
-              aria-label="Import file or open workpaper"
+              aria-label="Import file or open new workpaper"
               aria-haspopup="menu"
               aria-expanded={isAttachOpen}
               onClick={() => setIsAttachOpen((v) => !v)}
@@ -131,8 +181,11 @@ export function Composer({
 
             {isAttachOpen && (
               <div
+                ref={menuRef}
                 class={`dropdown-popover align-left is-enterprise-menu ${compact ? 'opens-up' : 'opens-down'}`}
                 role="menu"
+                aria-label="Workpaper templates and spreadsheet import"
+                onKeyDown={handleMenuKeyDown}
               >
                 <button
                   type="button"
@@ -144,24 +197,30 @@ export function Composer({
                   <span class="popover-tier-badge">Local</span>
                 </button>
 
-                {samplePlugins.length > 0 && <div class="popover-divider" />}
-
-                {samplePlugins.map((plugin) => (
-                  <button
-                    key={plugin.id}
-                    type="button"
-                    role="menuitem"
-                    class="popover-item"
-                    onClick={() => {
-                      setIsAttachOpen(false);
-                      onLaunchPluginSample?.(plugin.id);
-                    }}
-                  >
-                    <span>{plugin.sampleMenuLabel}</span>
-                    <span class={`artifact-badge accent-${plugin.accent ?? 'neutral'}`}>
-                      {plugin.badge}
-                    </span>
-                  </button>
+                {groupedPlugins.map((group) => (
+                  <Fragment key={group.key}>
+                    <div class="popover-divider" />
+                    <div class="popover-group-heading" role="presentation">
+                      {group.label}
+                    </div>
+                    {group.items.map((plugin) => (
+                      <button
+                        key={plugin.id}
+                        type="button"
+                        role="menuitem"
+                        class="popover-item"
+                        onClick={() => {
+                          setIsAttachOpen(false);
+                          onLaunchPluginSample?.(plugin.id);
+                        }}
+                      >
+                        <span>{plugin.sampleMenuLabel}</span>
+                        <span class={`artifact-badge accent-${plugin.accent ?? 'neutral'}`}>
+                          {plugin.badge}
+                        </span>
+                      </button>
+                    ))}
+                  </Fragment>
                 ))}
               </div>
             )}
@@ -185,7 +244,7 @@ export function Composer({
           <button
             type="button"
             class="composer-send-btn"
-            aria-label="Submit"
+            aria-label="Submit prompt"
             onClick={onSubmit}
           >
             <SendArrowIcon />

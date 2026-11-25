@@ -1,10 +1,15 @@
-const CACHE_NAME = 'lucy-shell-v4';
+const CACHE_NAME = 'lucy-shell-v5';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(['/', '/index.html']))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(['/', '/index.html', '/favicon.svg']))
   );
-  self.skipWaiting();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
@@ -18,7 +23,7 @@ self.addEventListener('activate', (event) => {
 
 // Network-first for HTML navigations (instant cache fallback when offline);
 // Pure cache-hit for content-hashed immutable /assets/* bundles;
-// Stale-while-revalidate for unhashed static files.
+// Stale-while-revalidate for static assets.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || !request.url.startsWith(self.location.origin)) return;
@@ -46,7 +51,9 @@ self.addEventListener('fetch', (event) => {
         const cached = await cache.match(request);
         if (cached) return cached;
         const fresh = await fetch(request);
-        if (fresh.ok) cache.put(request, fresh.clone());
+        if (fresh.ok) {
+          cache.put(request, fresh.clone());
+        }
         return fresh;
       })
     );

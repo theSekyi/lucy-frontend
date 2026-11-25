@@ -42,25 +42,34 @@ function computeDeckDiffSummary(
 
 function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckData> }) {
   const baseline = context.block.data;
-  const [draftDeck, setDraftDeck] = useState<SlideDeckData>(() => baseline);
+  const [localDraft, setLocalDraft] = useState<SlideDeckData | null>(null);
+  const draftDeck = context.draft ?? localDraft ?? baseline;
+
   const [index, setIndex] = useState(0);
   const [mode, setMode] = useState<'slide' | 'memo'>('slide');
-  const [justSynced, setJustSynced] = useState(false);
 
   const pendingChanges = useMemo(
     () => computeDeckDiffSummary(baseline, draftDeck),
     [baseline, draftDeck]
   );
 
-  const activeSlide = draftDeck.slides[index] ?? draftDeck.slides[0];
+  const clampedIndex = Math.min(index, Math.max(0, draftDeck.slides.length - 1));
+  const activeSlide = draftDeck.slides[clampedIndex] ?? draftDeck.slides[0];
   if (!activeSlide) return null;
 
+  function applyDraft(next: SlideDeckData) {
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(next);
+    } else {
+      setLocalDraft(next);
+    }
+  }
+
   function updateSlide(slideIdx: number, recipe: (current: ExecutiveSlide) => ExecutiveSlide) {
-    setJustSynced(false);
-    setDraftDeck((prev) => ({
-      ...prev,
-      slides: prev.slides.map((s, idx) => (idx === slideIdx ? recipe(s) : s)),
-    }));
+    applyDraft({
+      ...draftDeck,
+      slides: draftDeck.slides.map((s, idx) => (idx === slideIdx ? recipe(s) : s)),
+    });
   }
 
   function addNewSlide() {
@@ -69,23 +78,25 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
       id: `slide-${Date.now()}`,
       eyebrow: `0${nextNum} · ADDITIONAL SCHEDULE`,
       title: 'Audit Committee Supplemental Note',
-      takeaway: 'Supporting workpaper detail tied to Trial Balance.',
+      takeaway: 'Supporting workpaper detail tied to Consolidated Trial Balance.',
       metrics: [
         { label: 'Scope', value: '100%', delta: 'Tested' },
-        { label: 'Materiality', value: '$25,000', delta: '5% Pre-Tax' },
+        { label: 'Materiality', value: '£25,000', delta: '5% Pre-Tax' },
         { label: 'Sign-off', value: '30 Nov', delta: 'On track' },
       ],
       bullets: ['Document key engagement conclusion or adjustment item.'],
     };
-    setJustSynced(false);
-    setDraftDeck((prev) => ({ ...prev, slides: [...prev.slides, created] }));
+    applyDraft({ ...draftDeck, slides: [...draftDeck.slides, created] });
     setIndex(draftDeck.slides.length);
   }
 
-  function commitEditsToLucy() {
-    if (pendingChanges.length === 0) return;
-    context.onCommitRevision?.(draftDeck, pendingChanges);
-    setJustSynced(true);
+  function commitDeckEdits() {
+    const summary =
+      pendingChanges.length > 0
+        ? pendingChanges
+        : [`Verified ${draftDeck.deckTitle} (${draftDeck.slides.length} slides)`];
+    context.onCommitRevision?.(draftDeck, summary);
+    setLocalDraft(null);
   }
 
   function exportMarkdownBrief() {
@@ -104,15 +115,17 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
     URL.revokeObjectURL(url);
   }
 
-  const progressPct = ((index + 1) / draftDeck.slides.length) * 100;
+  const progressPct = ((clampedIndex + 1) / draftDeck.slides.length) * 100;
 
   return (
     <div class="stage-plugin-shell">
       <div class="stage-subbar">
         <div class="stage-subbar-group">
-          <div class="seg-tabs" role="tablist">
+          <div class="seg-tabs" role="tablist" aria-label="Presentation views">
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'slide'}
               class={`seg-tab ${mode === 'slide' ? 'is-active' : ''}`}
               onClick={() => setMode('slide')}
             >
@@ -120,6 +133,8 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === 'memo'}
               class={`seg-tab ${mode === 'memo' ? 'is-active' : ''}`}
               onClick={() => setMode('memo')}
             >
@@ -133,29 +148,11 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
         </div>
 
         <div class="stage-subbar-group">
-          {pendingChanges.length > 0 ? (
-            <>
-              <button
-                type="button"
-                class="ghost-pill"
-                onClick={() => setDraftDeck(baseline)}
-              >
-                Revert
-              </button>
-              <button
-                type="button"
-                class="primary-stage-btn"
-                onClick={commitEditsToLucy}
-              >
-                Save ({pendingChanges.length})
-              </button>
-            </>
-          ) : justSynced ? (
-            <span class="cell-pill tone-good">Saved</span>
-          ) : null}
-
           <button type="button" class="ghost-pill" onClick={exportMarkdownBrief}>
-            Export
+            Export Markdown
+          </button>
+          <button type="button" class="primary-stage-btn" onClick={commitDeckEdits}>
+            {pendingChanges.length > 0 ? `Save (${pendingChanges.length})` : 'Save'}
           </button>
         </div>
       </div>
@@ -175,14 +172,14 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                   value={activeSlide.eyebrow}
                   aria-label="Slide section label"
                   onInput={(e) =>
-                    updateSlide(index, (s) => ({
+                    updateSlide(clampedIndex, (s) => ({
                       ...s,
                       eyebrow: (e.currentTarget as HTMLInputElement).value,
                     }))
                   }
                 />
                 <span class="sheet-meta-count">
-                  {draftDeck.dateLabel} · {index + 1}/{draftDeck.slides.length}
+                  {draftDeck.dateLabel} · {clampedIndex + 1}/{draftDeck.slides.length}
                 </span>
               </div>
 
@@ -192,7 +189,7 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                 value={activeSlide.title}
                 aria-label="Slide headline"
                 onInput={(e) =>
-                  updateSlide(index, (s) => ({
+                  updateSlide(clampedIndex, (s) => ({
                     ...s,
                     title: (e.currentTarget as HTMLTextAreaElement).value,
                   }))
@@ -210,7 +207,7 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                       value={metric.label}
                       aria-label={`KPI ${mIdx + 1} label`}
                       onInput={(e) =>
-                        updateSlide(index, (s) => ({
+                        updateSlide(clampedIndex, (s) => ({
                           ...s,
                           metrics: s.metrics?.map((item, k) =>
                             k === mIdx
@@ -226,7 +223,7 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                       value={metric.value}
                       aria-label={`KPI ${mIdx + 1} value`}
                       onInput={(e) =>
-                        updateSlide(index, (s) => ({
+                        updateSlide(clampedIndex, (s) => ({
                           ...s,
                           metrics: s.metrics?.map((item, k) =>
                             k === mIdx
@@ -242,7 +239,7 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                       value={metric.delta ?? ''}
                       aria-label={`KPI ${mIdx + 1} delta`}
                       onInput={(e) =>
-                        updateSlide(index, (s) => ({
+                        updateSlide(clampedIndex, (s) => ({
                           ...s,
                           metrics: s.metrics?.map((item, k) =>
                             k === mIdx
@@ -260,12 +257,11 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
             <div class="deck-takeaway-box">
               <textarea
                 rows={2}
-                class="editable-field"
-                style={{ color: '#f4f4f6', fontWeight: 500, resize: 'none', lineHeight: 1.45 }}
+                class="editable-field deck-takeaway-textarea"
                 value={activeSlide.takeaway}
                 aria-label="Executive takeaway"
                 onInput={(e) =>
-                  updateSlide(index, (s) => ({
+                  updateSlide(clampedIndex, (s) => ({
                     ...s,
                     takeaway: (e.currentTarget as HTMLTextAreaElement).value,
                   }))
@@ -275,16 +271,15 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
 
             <div class="deck-bullets-list">
               {activeSlide.bullets.map((bullet, bIdx) => (
-                <div key={bIdx} class="deck-bullet-row" style={{ alignItems: 'flex-start' }}>
-                  <span class="deck-bullet-dot" style={{ paddingTop: '2px' }}>•</span>
+                <div key={bIdx} class="deck-bullet-row">
+                  <span class="deck-bullet-dot">•</span>
                   <textarea
                     rows={2}
-                    class="editable-field"
-                    style={{ color: '#d4d4d8', resize: 'none', lineHeight: 1.42 }}
+                    class="editable-field deck-bullet-textarea"
                     value={bullet}
-                    aria-label={`Bullet ${bIdx + 1}`}
+                    aria-label={`Slide bullet ${bIdx + 1}`}
                     onInput={(e) =>
-                      updateSlide(index, (s) => ({
+                      updateSlide(clampedIndex, (s) => ({
                         ...s,
                         bullets: s.bullets.map((item, k) =>
                           k === bIdx ? (e.currentTarget as HTMLTextAreaElement).value : item
@@ -298,7 +293,7 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                       class="icon-action-btn"
                       aria-label="Remove bullet"
                       onClick={() =>
-                        updateSlide(index, (s) => ({
+                        updateSlide(clampedIndex, (s) => ({
                           ...s,
                           bullets: s.bullets.filter((_, k) => k !== bIdx),
                         }))
@@ -315,9 +310,9 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                   type="button"
                   class="ghost-pill"
                   onClick={() =>
-                    updateSlide(index, (s) => ({
+                    updateSlide(clampedIndex, (s) => ({
                       ...s,
-                      bullets: [...s.bullets, 'New executive action item…'],
+                      bullets: [...s.bullets, 'Additional audit committee observation…'],
                     }))
                   }
                 >
@@ -333,8 +328,8 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                 key={s.id}
                 type="button"
                 role="tab"
-                aria-selected={idx === index}
-                class={`deck-thumb-btn ${idx === index ? 'is-active' : ''}`}
+                aria-selected={idx === clampedIndex}
+                class={`deck-thumb-btn ${idx === clampedIndex ? 'is-active' : ''}`}
                 onClick={() => setIndex(idx)}
               >
                 <span class="deck-thumb-num">SLIDE 0{idx + 1}</span>
@@ -346,15 +341,13 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
       ) : (
         <div class="stage-scroll-area">
           {draftDeck.slides.map((s, sIdx) => (
-            <section key={s.id} class="pdf-folio-page theme-dark" style={{ padding: '20px 24px' }}>
-              <div class="deck-eyebrow-input" style={{ marginBottom: '6px' }}>
-                {s.eyebrow}
-              </div>
+            <section key={s.id} class="pdf-folio-page theme-dark deck-memo-card">
+              <div class="deck-eyebrow-input">{s.eyebrow}</div>
               <input
                 type="text"
-                class="editable-field"
-                style={{ fontSize: '15px', fontWeight: 600, marginBottom: '10px', color: '#f4f4f6' }}
+                class="editable-field deck-memo-title-input"
                 value={s.title}
+                aria-label={`Slide ${sIdx + 1} headline`}
                 onInput={(e) =>
                   updateSlide(sIdx, (curr) => ({
                     ...curr,
@@ -362,10 +355,8 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                   }))
                 }
               />
-              <div class="deck-takeaway-box" style={{ marginBottom: '10px' }}>
-                {s.takeaway}
-              </div>
-              <ul class="prose-list" style={{ marginBottom: 0 }}>
+              <div class="deck-takeaway-box">{s.takeaway}</div>
+              <ul class="prose-list">
                 {s.bullets.map((b, i) => (
                   <li key={i}>{b}</li>
                 ))}
@@ -378,7 +369,10 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
   );
 }
 
-export const slideDeckRendererModule: LoadedRenderer<preact.ComponentChildren, SlideDeckData> = {
+export const slideDeckRendererModule: LoadedRenderer<
+  preact.ComponentChildren,
+  SlideDeckData
+> = {
   render(context) {
     return <SlideDeckStageView context={context} />;
   },

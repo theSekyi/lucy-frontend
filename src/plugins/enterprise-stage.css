@@ -16,16 +16,12 @@
   gap: 8px;
   padding: 8px 14px;
   border-bottom: 1px solid var(--border-subtle);
-  background: #111115;
+  background: var(--bg-panel);
   flex-shrink: 0;
 }
 
-.stage-subbar-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex-wrap: wrap;
+.sql-filter-subbar {
+  background: #0e0e12;
 }
 
 .stage-scroll-area {
@@ -47,62 +43,19 @@
 .seg-tab {
   padding: 4px 10px;
   border-radius: 5px;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-muted);
   transition: background 120ms ease, color 120ms ease;
 }
 
 .seg-tab:hover {
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .seg-tab.is-active {
   background: #222229;
   color: var(--text-primary);
   font-weight: 600;
-}
-
-.primary-stage-btn {
-  padding: 4px 11px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
-  background: #f4f4f6;
-  color: #09090b;
-  transition: opacity 120ms ease;
-}
-
-.primary-stage-btn:hover {
-  opacity: 0.9;
-}
-
-.sheet-filter-input {
-  width: 132px;
-  height: 26px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border-subtle);
-  background: #0b0b0e;
-  color: var(--text-primary);
-  font-size: 11.5px;
-  outline: none;
-  transition: border-color 120ms ease;
-}
-
-.sheet-filter-input:focus {
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-.sheet-tabs-bar {
-  min-height: 36px;
-  padding: 6px 14px;
-  border-top: 1px solid var(--border-subtle);
-  background: #111114;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
 }
 
 .clause-title-row {
@@ -114,8 +67,9 @@
 }
 
 .clause-footnote {
-  font-size: 11.5px;
-  color: var(--text-muted);
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
   line-height: 1.45;
 }
 
@@ -130,10 +84,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 5px;
-  font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-family: var(--font-mono);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid transparent;
   color: var(--text-secondary);
@@ -142,7 +96,7 @@
 .clause-jump-pill.is-focused {
   background: rgba(245, 158, 11, 0.18);
   border-color: rgba(245, 158, 11, 0.45);
-  color: #fcd34d;
+  color: var(--tone-warn-fg);
   font-weight: 600;
 }
 
@@ -173,14 +127,14 @@
 .pdf-folio-page {
   max-width: 680px;
   margin: 0 auto 22px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 28px 34px 30px;
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
   transition: background 160ms ease, color 160ms ease;
 }
 
 .pdf-folio-page.theme-paper {
-  background: #fbfaf7;
+  background: var(--bg-paper);
   color: #1c1917;
   border: 1px solid #e7e5e4;
 }
@@ -195,23 +149,23 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  font-size: 10px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.52;
+  opacity: 0.65;
   padding-bottom: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   border-bottom: 1px solid currentColor;
 }
 
 .pdf-section-banner {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  font-size: 11px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  opacity: 0.72;
+  opacity: 0.78;
   margin-bottom: 14px;
 }
 
@@ -221,7 +175,7 @@
   gap: 10px;
   padding: 12px 14px;
   margin: 0 -14px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border-left: 3px solid transparent;
   cursor: pointer;
   transition: background 180ms ease, border-color 180ms ease;
@@ -246,11 +200,11 @@
 }
 
 .pdf-clause-num {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 700;
   padding-top: 2px;
-  opacity: 0.75;
+  opacity: 0.82;
 }
 
 .pdf-clause-heading-line {
@@ -259,13 +213,13 @@
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
 }
 
 .pdf-clause-prose {
   margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 14px;
   line-height: 1.68;
 }
@@ -274,31 +228,32 @@
   margin-top: 9px;
   padding: 7px 10px;
   border-radius: 5px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  font-size: 11.5px;
+  font-family: var(--font-sans);
+  font-size: 12px;
   display: flex;
   align-items: center;
   gap: 7px;
+  flex-wrap: wrap;
 }
 
 .theme-paper .pdf-counsel-pin {
-  background: rgba(28, 25, 23, 0.06);
-  color: #44403c;
+  background: rgba(28, 25, 23, 0.07);
+  color: #292524;
 }
 
 .theme-dark .pdf-counsel-pin {
   background: rgba(255, 255, 255, 0.06);
-  color: #d4d4d8;
+  color: #e4e4e7;
 }
 
 .pdf-page-footer {
   margin-top: 18px;
   padding-top: 10px;
-  border-top: 1px solid rgba(128, 128, 128, 0.22);
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
   display: flex;
   justify-content: space-between;
-  font-size: 10.5px;
-  opacity: 0.55;
+  font-size: 11.5px;
+  opacity: 0.72;
 }
 
 /* 2. Semantic Word-Level Redline & Diff Viewer */
@@ -306,11 +261,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 10px 14px;
   margin-bottom: 14px;
   border-radius: 9px;
   background: #141419;
   border: 1px solid var(--border-subtle);
+}
+
+.redline-doc-banner.is-bottom-banner {
+  margin-top: 14px;
+  margin-bottom: 0;
 }
 
 .redline-hunk-card {
@@ -329,7 +291,7 @@
 
 .redline-hunk-card.status-rejected {
   border-left-color: #ef4444;
-  opacity: 0.82;
+  opacity: 0.85;
 }
 
 .redline-hunk-header {
@@ -340,19 +302,20 @@
   padding: 9px 14px;
   background: #18181f;
   border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
 }
 
 .redline-rationale {
   padding: 7px 14px;
-  font-size: 11.5px;
-  color: #a1a1aa;
+  font-size: 12px;
+  color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .redline-unified-prose {
   padding: 14px 16px;
-  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 14px;
   line-height: 1.72;
   color: #e4e4e7;
@@ -360,7 +323,7 @@
 
 .diff-del {
   background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
+  color: var(--tone-danger-fg);
   text-decoration: line-through;
   text-decoration-color: #f87171;
   padding: 1px 4px;
@@ -370,7 +333,7 @@
 
 .diff-ins {
   background: rgba(34, 197, 94, 0.2);
-  color: #86efac;
+  color: var(--tone-good-fg);
   text-decoration: none;
   border-bottom: 1.5px solid #4ade80;
   padding: 1px 4px;
@@ -386,10 +349,10 @@
 
 .redline-col {
   padding: 12px 14px;
-  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 13.5px;
   line-height: 1.65;
-  color: #d4d4d8;
+  color: #e4e4e7;
 }
 
 .redline-col.is-before {
@@ -409,15 +372,14 @@
   width: 100%;
   background: transparent;
   border: 1px dashed transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 4px 6px;
   margin: -4px -6px;
-  outline: none;
   resize: none;
-  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 13.5px;
   line-height: 1.65;
-  color: #e4e4e7;
+  color: var(--text-primary);
   transition: border-color 120ms ease, background 120ms ease;
 }
 
@@ -426,41 +388,20 @@
   background: rgba(255, 255, 255, 0.025);
 }
 
-.redline-editable-prose:focus {
-  border-style: solid;
-  border-color: rgba(74, 222, 128, 0.55);
+.redline-editable-prose:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
   background: rgba(34, 197, 94, 0.06);
 }
 
 .redline-col-label {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
-  font-size: 10px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: 6px;
-}
-
-.decision-btn {
-  padding: 4px 10px;
-  border-radius: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-}
-
-.decision-btn.is-accept-active {
-  background: rgba(34, 197, 94, 0.22);
-  border-color: rgba(74, 222, 128, 0.5);
-  color: #86efac;
-}
-
-.decision-btn.is-reject-active {
-  background: rgba(239, 68, 68, 0.22);
-  border-color: rgba(248, 113, 113, 0.5);
-  color: #fca5a5;
 }
 
 /* 3. SQL + Interactive Chart + Virtualized Grid */
@@ -474,12 +415,12 @@
 .kpi-tile {
   padding: 11px 13px;
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--border-subtle);
 }
 
 .kpi-tile-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -500,21 +441,6 @@
   flex-wrap: wrap;
 }
 
-.metric-chip {
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-}
-
-.metric-chip.is-active {
-  background: #202026;
-  border-color: rgba(255, 255, 255, 0.24);
-  color: #ffffff;
-  font-weight: 500;
-}
-
 .chart-tooltip-banner {
   min-height: 32px;
   padding: 6px 11px;
@@ -525,7 +451,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .vgrid-viewport {
@@ -562,8 +488,8 @@
   height: 100%;
   padding: 0 10px;
   font-weight: 600;
-  font-size: 11.5px;
-  color: #e4e4e7;
+  font-size: 12px;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
@@ -600,7 +526,7 @@
 
 .vgrid-cell.is-num {
   text-align: right;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
 }
 
 .sql-editor-card {
@@ -608,6 +534,10 @@
   border: 1px solid var(--border-subtle);
   background: #0d0d11;
   overflow: hidden;
+}
+
+.sql-editor-card:focus-within {
+  border-color: var(--focus-ring);
 }
 
 .sql-editor-header {
@@ -618,7 +548,7 @@
   padding: 9px 14px;
   background: #141419;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-secondary);
 }
 
@@ -627,13 +557,16 @@
   min-height: 250px;
   padding: 14px;
   background: #0d0d11;
-  color: #e4e4e7;
+  color: var(--text-primary);
   border: 0;
-  outline: none;
   resize: vertical;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: 1.6;
+}
+
+.sql-editor-textarea:focus-visible {
+  outline: none;
 }
 
 /* 4. Interactive Lineage & Topology Graph */
@@ -689,7 +622,7 @@
   position: relative;
   background: linear-gradient(165deg, #16161a 0%, #101013 100%);
   border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   padding: 28px 32px 24px;
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
   display: flex;
@@ -725,7 +658,6 @@
   background: transparent;
   border: 1px dashed transparent;
   border-radius: 5px;
-  outline: none;
   width: 100%;
   padding: 2px 5px;
   margin: -2px -5px;
@@ -733,22 +665,22 @@
 }
 
 .editable-field:hover {
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.025);
 }
 
-.editable-field:focus {
-  border-style: solid;
-  border-color: rgba(255, 255, 255, 0.35);
+.editable-field:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
   background: rgba(255, 255, 255, 0.05);
 }
 
 .deck-eyebrow-input {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #a1a1aa;
+  color: var(--text-secondary);
   width: auto;
   min-width: 220px;
 }
@@ -771,7 +703,7 @@
 
 .deck-kpi-card {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
@@ -788,9 +720,9 @@
 }
 
 .deck-kpi-delta-input {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #4ade80;
+  color: var(--tone-good-fg);
 }
 
 .deck-takeaway-box {
@@ -798,6 +730,13 @@
   border-left: 2.5px solid #d4d4d8;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 0 7px 7px 0;
+}
+
+.deck-takeaway-textarea {
+  color: var(--text-primary);
+  font-weight: 500;
+  resize: none;
+  line-height: 1.45;
 }
 
 .deck-bullets-list {
@@ -808,13 +747,31 @@
 
 .deck-bullet-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 
 .deck-bullet-dot {
-  color: #71717a;
+  color: var(--text-muted);
   font-weight: 700;
+  padding-top: 2px;
+}
+
+.deck-bullet-textarea {
+  color: #e4e4ea;
+  resize: none;
+  line-height: 1.42;
+}
+
+.deck-memo-card {
+  padding: 20px 24px;
+}
+
+.deck-memo-title-input {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text-primary);
 }
 
 .deck-thumbnails-rail {
@@ -825,7 +782,7 @@
 
 .deck-thumb-btn {
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: #141418;
   border: 1px solid var(--border-subtle);
   text-align: left;
@@ -840,13 +797,13 @@
 }
 
 .deck-thumb-num {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  color: #a1a1aa;
+  color: var(--text-muted);
 }
 
 .deck-thumb-title {
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;

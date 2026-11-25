@@ -85,6 +85,14 @@ const AUTHORITY_OPTIONS: ReadonlyArray<SelectMenuOption<SigningAuthority>> = [
   { value: 'Associate', label: 'Associate' },
 ];
 
+const CLOSE_DAY_LABELS: Readonly<
+  Record<'WD+5' | 'WD+7' | 'WD+10', string>
+> = {
+  'WD+5': 'Working day 5 after month-end',
+  'WD+7': 'Working day 7 after month-end',
+  'WD+10': 'Working day 10 after month-end',
+};
+
 const CORE_ONBOARDING_CONNECTOR_IDS: ReadonlyArray<string> = [
   'gmail',
   'outlook',
@@ -133,11 +141,13 @@ export function WorkspaceOnboardingPage({
   const [newClientName, setNewClientName] = useState('');
   const [newClientLedger, setNewClientLedger] = useState('Xero');
   const [newClientYearEnd, setNewClientYearEnd] = useState('31 Dec');
+  const [clientError, setClientError] = useState<string | null>(null);
 
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLine, setInviteLine] = useState<PracticeLine>('Audit');
   const [inviteRole, setInviteRole] = useState<SigningAuthority>('Manager');
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => onboarding.subscribe(setState), [onboarding]);
   useEffect(() => firmAdmin.subscribe(setAdminState), [firmAdmin]);
@@ -170,18 +180,27 @@ export function WorkspaceOnboardingPage({
 
   function handleAddClient(e: Event) {
     e.preventDefault();
+    if (!newClientName.trim()) {
+      setClientError('Enter a client entity name to add.');
+      return;
+    }
     const id = firmAdmin.addClient({
       name: newClientName,
       ledger: newClientLedger,
       yearEnd: newClientYearEnd,
     });
     if (!id) return;
+    setClientError(null);
     onClientCountChange?.(firmAdmin.getState().clients.length);
     setNewClientName('');
   }
 
   function handleStageInvite(e: Event) {
     e.preventDefault();
+    if (!inviteName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) {
+      setInviteError('Enter both a full name and valid work email address.');
+      return;
+    }
     const staged = onboarding.stageInvite({
       fullName: inviteName,
       email: inviteEmail,
@@ -189,6 +208,7 @@ export function WorkspaceOnboardingPage({
       authority: inviteRole,
     });
     if (!staged) return;
+    setInviteError(null);
     setInviteName('');
     setInviteEmail('');
   }
@@ -236,6 +256,7 @@ export function WorkspaceOnboardingPage({
     return (
       <button
         type="button"
+        aria-pressed={selected}
         class={`onb-idp-card ${selected ? 'is-selected' : ''}`}
         onClick={() => onboarding.updateIdentity({ primaryIdp: id })}
       >
@@ -266,7 +287,7 @@ export function WorkspaceOnboardingPage({
             class="conn-open-link"
             onClick={() => onNavigate('admin')}
           >
-            Firm Admin
+            Firm Admin →
           </button>
         </div>
       </header>
@@ -281,6 +302,7 @@ export function WorkspaceOnboardingPage({
                 <button
                   key={s.id}
                   type="button"
+                  aria-current={isCurrent ? 'step' : undefined}
                   class={`onb-step-btn ${isCurrent ? 'is-current' : ''} ${
                     isDone ? 'is-done' : ''
                   }`}
@@ -380,7 +402,7 @@ export function WorkspaceOnboardingPage({
                   <h1 class="onb-title">Single sign-on</h1>
                 </header>
 
-                <div class="onb-idp-grid">
+                <div class="onb-idp-grid" role="group" aria-label="Primary identity provider">
                   {renderIdpOption('entra', 'Microsoft Entra', <EntraIdLogo size={17} />)}
                   {renderIdpOption('okta', 'Okta', <OktaLogo size={17} />)}
                   {renderIdpOption('invite', 'Email invite', <InviteEnvelopeIcon size={17} />)}
@@ -443,7 +465,7 @@ export function WorkspaceOnboardingPage({
                           })
                         }
                       />
-                      <span class="bk-task-title">Automatic directory group sync</span>
+                      <span class="bk-task-title">Automatic directory group sync (SCIM)</span>
                     </label>
                   </div>
                 </div>
@@ -503,12 +525,13 @@ export function WorkspaceOnboardingPage({
                 </header>
 
                 <div class="onb-close-sla-bar">
-                  <span class="profile-field-label">Close target</span>
+                  <span class="profile-field-label">Close target (working days after month-end)</span>
                   <div class="stage-subbar-group">
                     {(['WD+5', 'WD+7', 'WD+10'] as const).map((day) => (
                       <button
                         key={day}
                         type="button"
+                        title={CLOSE_DAY_LABELS[day]}
                         class={`conn-tab-btn ${
                           state.closeTemplate.targetCloseDay === day ? 'is-active' : ''
                         }`}
@@ -548,10 +571,12 @@ export function WorkspaceOnboardingPage({
                       type="text"
                       class="profile-input"
                       placeholder="Client entity name"
+                      aria-label="Client entity name"
                       value={newClientName}
-                      onInput={(e) =>
-                        setNewClientName((e.currentTarget as HTMLInputElement).value)
-                      }
+                      onInput={(e) => {
+                        setClientError(null);
+                        setNewClientName((e.currentTarget as HTMLInputElement).value);
+                      }}
                     />
                     <SelectMenu
                       size="md"
@@ -564,6 +589,7 @@ export function WorkspaceOnboardingPage({
                       type="text"
                       class="profile-input onb-ye-input"
                       placeholder="31 Dec"
+                      aria-label="Financial year-end"
                       value={newClientYearEnd}
                       onInput={(e) =>
                         setNewClientYearEnd((e.currentTarget as HTMLInputElement).value)
@@ -573,6 +599,12 @@ export function WorkspaceOnboardingPage({
                       Add
                     </button>
                   </form>
+
+                  {clientError && (
+                    <div class="auth-error-banner" role="alert">
+                      {clientError}
+                    </div>
+                  )}
 
                   <div class="onb-chip-cloud">
                     {adminState.clients.map((c) => (
@@ -597,19 +629,23 @@ export function WorkspaceOnboardingPage({
                     type="text"
                     class="profile-input"
                     placeholder="Full name"
+                    aria-label="Staff member full name"
                     value={inviteName}
-                    onInput={(e) =>
-                      setInviteName((e.currentTarget as HTMLInputElement).value)
-                    }
+                    onInput={(e) => {
+                      setInviteError(null);
+                      setInviteName((e.currentTarget as HTMLInputElement).value);
+                    }}
                   />
                   <input
                     type="email"
                     class="profile-input"
                     placeholder="Work email"
+                    aria-label="Staff member work email"
                     value={inviteEmail}
-                    onInput={(e) =>
-                      setInviteEmail((e.currentTarget as HTMLInputElement).value)
-                    }
+                    onInput={(e) => {
+                      setInviteError(null);
+                      setInviteEmail((e.currentTarget as HTMLInputElement).value);
+                    }}
                   />
                   <SelectMenu
                     size="md"
@@ -629,6 +665,12 @@ export function WorkspaceOnboardingPage({
                     Invite
                   </button>
                 </form>
+
+                {inviteError && (
+                  <div class="auth-error-banner" role="alert">
+                    {inviteError}
+                  </div>
+                )}
 
                 <div class="conn-list-box">
                   {state.stagedInvites.map((inv) => {

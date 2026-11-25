@@ -7,11 +7,12 @@ export const spreadsheetPlugin: RendererPlugin<ComponentChildren, SpreadsheetWor
   aliases: ['excel', 'xlsx', 'csv'],
   label: 'Financial Workbook',
   badge: 'XLSX',
+  category: 'data',
   accent: 'emerald',
-  ctaLabel: 'Open',
+  ctaLabel: 'Open →',
   placement: 'stage',
   priority: 30,
-  promptPattern: /\b(excel|xlsx|csv|spreadsheet|sheet|budget|forecast|revenue|financial)\b/i,
+  promptPattern: /\b(excel|xlsx|csv|tsv|spreadsheets?|sheets?|budgets?|forecasts?|workbooks?|models?)\b/i,
   sampleMenuLabel: 'Financial Workbook',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');

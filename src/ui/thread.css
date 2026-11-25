@@ -1,0 +1,153 @@
+/* Thread & Artifact Split Workspace (lazy-loaded with ThreadView) */
+.thread-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.thread-topbar {
+  min-height: 46px;
+  padding: 6px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.thread-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.thread-topbar-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-split-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.thread-turns-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 24px 12px;
+}
+
+.thread-turns-column {
+  max-width: 700px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.turn-item {
+  margin-bottom: 22px;
+}
+
+.turn-item.is-user .turn-blocks {
+  border-left: 2px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 7px 12px;
+  border-radius: 0 6px 6px 0;
+}
+
+.turn-author-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.turn-status-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--tone-warn-bg);
+  color: var(--tone-warn-fg);
+}
+
+.turn-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.thread-composer-dock {
+  padding: 8px 24px 18px;
+}
+
+.revision-stamp-label {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.artifact-stage-header {
+  min-height: 44px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.artifact-stage-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.artifact-stage-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-stage-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.artifact-stage-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 860px) {
+  .thread-topbar {
+    padding-left: 48px;
+  }
+
+  .thread-split-layout.has-stage {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .thread-turns-scroll,
+  .thread-composer-dock {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}

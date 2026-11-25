@@ -36,6 +36,7 @@ interface SidebarProps {
   readonly queuedCount: number;
   readonly onToggleSidebar: () => void;
   readonly onSelectSection: (section: NavSection) => void;
+  readonly onOpenCommandPalette?: () => void;
   readonly onToggleSearch: () => void;
   readonly onSearchChange: (query: string) => void;
   readonly onToggleRecents: () => void;
@@ -66,6 +67,7 @@ export function Sidebar({
   queuedCount,
   onToggleSidebar,
   onSelectSection,
+  onOpenCommandPalette,
   onToggleSearch,
   onSearchChange,
   onToggleRecents,
@@ -136,7 +138,7 @@ export function Sidebar({
             <button
               type="button"
               class="icon-action-btn"
-              aria-label="Inbox alerts"
+              aria-label={`Inbox alerts (${unreadInboxCount} unread)`}
               onClick={() => navigateSection('inbox')}
             >
               <BellIcon />
@@ -152,6 +154,7 @@ export function Sidebar({
                 type="search"
                 class="sidebar-search-input"
                 placeholder="Filter workpapers… (Esc)"
+                aria-label="Filter workpapers"
                 value={searchQuery}
                 autoFocus
                 onInput={(e) => onSearchChange((e.currentTarget as HTMLInputElement).value)}
@@ -161,14 +164,26 @@ export function Sidebar({
               />
             </div>
           ) : (
-            <button type="button" class="nav-row" onClick={onToggleSearch}>
+            <button
+              type="button"
+              class="nav-row"
+              onClick={() => {
+                if (onOpenCommandPalette) {
+                  onOpenCommandPalette();
+                } else {
+                  onToggleSearch();
+                }
+              }}
+            >
               <SearchIcon />
               <span>Search</span>
+              <kbd class="sidebar-kbd">⌘K</kbd>
             </button>
           )}
 
           <button
             type="button"
+            aria-current={isHomeActive ? 'page' : undefined}
             class={`nav-row ${isHomeActive ? 'is-active' : ''}`}
             onClick={() => navigateSection('home')}
           >
@@ -178,6 +193,7 @@ export function Sidebar({
 
           <button
             type="button"
+            aria-current={isInboxActive ? 'page' : undefined}
             class={`nav-row ${isInboxActive ? 'is-active' : ''}`}
             onClick={() => navigateSection('inbox')}
           >
@@ -190,6 +206,7 @@ export function Sidebar({
 
           <button
             type="button"
+            aria-current={isClientsActive ? 'page' : undefined}
             class={`nav-row ${isClientsActive ? 'is-active' : ''}`}
             onClick={() => navigateSection('clients')}
           >
@@ -200,6 +217,7 @@ export function Sidebar({
 
           <button
             type="button"
+            aria-current={isConnectorsActive ? 'page' : undefined}
             class={`nav-row ${isConnectorsActive ? 'is-active' : ''}`}
             onClick={() => navigateSection('connectors')}
           >
@@ -210,6 +228,7 @@ export function Sidebar({
 
           <button
             type="button"
+            aria-current={isAdminActive ? 'page' : undefined}
             class={`nav-row ${isAdminActive ? 'is-active' : ''}`}
             onClick={() => navigateSection('admin')}
           >
@@ -218,43 +237,64 @@ export function Sidebar({
           </button>
         </nav>
 
-        <section class="sidebar-section" aria-label="Recent workpapers">
-          <button
-            type="button"
-            class="sidebar-section-header"
-            aria-expanded={isRecentsOpen}
-            onClick={onToggleRecents}
-          >
-            <span>Workpapers</span>
-            <span class="section-caret">{isRecentsOpen ? '▾' : '▸'}</span>
-          </button>
+        <section class="sidebar-section" aria-label="Workpapers">
+          <div class="sidebar-section-header-row">
+            <button
+              type="button"
+              class="sidebar-section-header"
+              aria-expanded={isRecentsOpen}
+              onClick={onToggleRecents}
+            >
+              <span>Workpapers</span>
+              <span class="section-caret">{isRecentsOpen ? '▾' : '▸'}</span>
+            </button>
+            <button
+              type="button"
+              class="sidebar-filter-mini-btn"
+              aria-label={isSearchOpen ? 'Close workpaper filter' : 'Filter workpaper list'}
+              title="Filter workpapers"
+              onClick={onToggleSearch}
+            >
+              Filter
+            </button>
+          </div>
 
           {isRecentsOpen && (
             <div class="sidebar-recents-list">
-              {recentTopics.map((topic) => (
-                <button
-                  key={topic.id}
-                  type="button"
-                  class={`recent-sidebar-item ${activeTopicId === topic.id ? 'is-active' : ''}`}
-                  onClick={() => {
-                    onOpenTopic(topic.id);
-                    closeOnMobile();
-                  }}
-                  title={topic.title}
-                >
-                  <span class="recent-item-icon">{renderRecentPrefix(topic.sidebarIcon)}</span>
-                  <span class="recent-item-label">{topic.title}</span>
-                </button>
-              ))}
+              {recentTopics.length === 0 ? (
+                <div class="sidebar-empty-note">No matching workpapers.</div>
+              ) : (
+                recentTopics.map((topic) => {
+                  const isActive = activeTopicId === topic.id;
+                  return (
+                    <button
+                      key={topic.id}
+                      type="button"
+                      aria-current={isActive ? 'page' : undefined}
+                      class={`recent-sidebar-item ${isActive ? 'is-active' : ''}`}
+                      onClick={() => {
+                        onOpenTopic(topic.id);
+                        closeOnMobile();
+                      }}
+                      title={topic.title}
+                    >
+                      <span class="recent-item-icon">
+                        {renderRecentPrefix(topic.sidebarIcon)}
+                      </span>
+                      <span class="recent-item-label">{topic.title}</span>
+                    </button>
+                  );
+                })
+              )}
 
-              {!searchQuery && (
+              {!searchQuery && recentTopics.length > 0 && (
                 <button
                   type="button"
                   class="recent-sidebar-item is-more"
                   onClick={onToggleMoreRecents}
                 >
                   <span class="recent-dots">•••</span>
-                  <span>{showAllRecents ? 'Less' : 'More'}</span>
+                  <span>{showAllRecents ? 'Show fewer' : 'Show all workpapers'}</span>
                 </button>
               )}
             </div>
@@ -275,6 +315,7 @@ export function Sidebar({
 
           <button
             type="button"
+            aria-current={isProfileActive ? 'page' : undefined}
             class={`sidebar-profile-footer ${isProfileActive ? 'is-active' : ''}`}
             onClick={() => navigateSection('profile')}
           >

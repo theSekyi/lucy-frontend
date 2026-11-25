@@ -1,5 +1,6 @@
 import type { JSX } from 'preact';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'preact/hooks';
+import './select-menu.css';
 
 export interface SelectMenuOption<T extends string = string> {
   readonly value: T;
@@ -26,6 +27,7 @@ export function SelectMenu<T extends string = string>({
   align = 'left',
   fullWidth = false,
 }: SelectMenuProps<T>) {
+  const listboxId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<JSX.CSSProperties | null>(null);
   const [highlightIdx, setHighlightIdx] = useState(0);
@@ -147,6 +149,8 @@ export function SelectMenu<T extends string = string>({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={isOpen ? listboxId : undefined}
+        aria-activedescendant={isOpen ? `${listboxId}-opt-${highlightIdx}` : undefined}
         class={`ui-select-trigger is-${size} ${isOpen ? 'is-active' : ''}`}
         onClick={(e) => {
           e.stopPropagation();
@@ -177,6 +181,7 @@ export function SelectMenu<T extends string = string>({
 
       {isOpen && coords && (
         <div
+          id={listboxId}
           ref={menuRef}
           role="listbox"
           aria-label={ariaLabel}
@@ -188,6 +193,7 @@ export function SelectMenu<T extends string = string>({
             const isHighlighted = idx === highlightIdx;
             return (
               <button
+                id={`${listboxId}-opt-${idx}`}
                 key={opt.value}
                 type="button"
                 role="option"
@@ -200,6 +206,7 @@ export function SelectMenu<T extends string = string>({
                   e.stopPropagation();
                   onChange(opt.value);
                   setIsOpen(false);
+                  triggerRef.current?.focus();
                 }}
               >
                 <span class="ui-select-option-text">

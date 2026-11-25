@@ -28,6 +28,29 @@ export function ConnectorsPage({
 
   const q = query.trim().toLowerCase();
 
+  const visibleGroups = CONNECTOR_GROUPS.map((group) => {
+    if (
+      filterCat !== 'all' &&
+      filterCat !== 'connected' &&
+      filterCat !== 'disconnected' &&
+      filterCat !== group.id
+    ) {
+      return { group, items: [] };
+    }
+
+    const items = CONNECTOR_CATALOG.filter((item) => {
+      if (item.category !== group.id) return false;
+      if (filterCat === 'connected' && !connectedIds.includes(item.id)) return false;
+      if (filterCat === 'disconnected' && !disconnectedIds.includes(item.id)) {
+        return false;
+      }
+      if (q && !item.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+    return { group, items };
+  }).filter((entry) => entry.items.length > 0);
+
   return (
     <div class="launchpad-scroll">
       <div class="connectors-sleek-wrap">
@@ -37,7 +60,8 @@ export function ConnectorsPage({
           <input
             type="search"
             class="connectors-minimal-search"
-            placeholder="Search…"
+            placeholder="Search connectors…"
+            aria-label="Search connectors"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
           />
@@ -79,30 +103,29 @@ export function ConnectorsPage({
           ))}
         </nav>
 
-        <div class="connectors-groups-stack">
-          {CONNECTOR_GROUPS.map((group) => {
-            if (
-              filterCat !== 'all' &&
-              filterCat !== 'connected' &&
-              filterCat !== 'disconnected' &&
-              filterCat !== group.id
-            ) {
-              return null;
-            }
-
-            const items = CONNECTOR_CATALOG.filter((item) => {
-              if (item.category !== group.id) return false;
-              if (filterCat === 'connected' && !connectedIds.includes(item.id)) return false;
-              if (filterCat === 'disconnected' && !disconnectedIds.includes(item.id)) {
-                return false;
-              }
-              if (q && !item.name.toLowerCase().includes(q)) return false;
-              return true;
-            });
-
-            if (items.length === 0) return null;
-
-            return (
+        {visibleGroups.length === 0 ? (
+          <div class="dashboard-empty-box">
+            <span>
+              {q
+                ? `No connectors match “${query}”.`
+                : 'No connectors in this filter.'}
+            </span>
+            {(q || filterCat !== 'all') && (
+              <button
+                type="button"
+                class="ghost-pill"
+                onClick={() => {
+                  setQuery('');
+                  setFilterCat('all');
+                }}
+              >
+                Reset filter
+              </button>
+            )}
+          </div>
+        ) : (
+          <div class="connectors-groups-stack">
+            {visibleGroups.map(({ group, items }) => (
               <section key={group.id} class="conn-group">
                 <h2 class="conn-group-label">{group.label}</h2>
 
@@ -128,7 +151,7 @@ export function ConnectorsPage({
                               class="conn-open-link"
                               onClick={() => onOpenInboxProvider(item.inboxTarget!)}
                             >
-                              Inbox ↗
+                              Inbox →
                             </button>
                           )}
 
@@ -163,9 +186,9 @@ export function ConnectorsPage({
                   })}
                 </div>
               </section>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

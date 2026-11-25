@@ -7,11 +7,12 @@ export const slideDeckPlugin: RendererPlugin<ComponentChildren, SlideDeckData> =
   aliases: ['deck', 'slides'],
   label: 'Audit Committee Deck',
   badge: 'DECK',
+  category: 'documents',
   accent: 'neutral',
-  ctaLabel: 'Open',
+  ctaLabel: 'Open →',
   placement: 'stage',
   priority: 31,
-  promptPattern: /\b(slide|deck|pptx|qbr|board\s*memo|presentation|executive\s*brief)\b/i,
+  promptPattern: /\b(slides?|decks?|pptx|qbr|board\s*memos?|presentations?|audit\s*committee)\b/i,
   sampleMenuLabel: 'Audit Committee Deck',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');

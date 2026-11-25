@@ -7,11 +7,12 @@ export const codeWorkspacePlugin: RendererPlugin<ComponentChildren, CodeSnippetD
   aliases: ['code'],
   label: 'ERP Validation Scripts',
   badge: 'CODE',
+  category: 'data',
   accent: 'sky',
-  ctaLabel: 'Open',
+  ctaLabel: 'Open →',
   placement: 'stage',
   priority: 25,
-  promptPattern: /\b(code|patch|typescript|python|refactor|function|snippet)\b/i,
+  promptPattern: /\b(code|patch\w*|typescript|python|scripts?|validators?|snippets?)\b/i,
   sampleMenuLabel: 'ERP Validation Scripts',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');

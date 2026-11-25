@@ -1,53 +1,83 @@
 import { useState } from 'preact/hooks';
+import { evaluateJournalEntryTieOut } from '../../core/ledger';
+import { formatAuditTimestamp, formatMoneyMinor } from '../../core/money';
 import type { LoadedRenderer, RendererContext } from '../../core/renderers';
+import { MoneyInput } from '../../ui/primitives/MoneyInput';
 import '../accounting.css';
-import type { JournalEntryGateData, JournalLine } from './sample';
-
-function fmtJe(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import type { JournalEntryGateData } from './sample';
 
 function JournalEntryInlineCard({
   context,
 }: {
   context: RendererContext<JournalEntryGateData>;
 }) {
-  const entry = context.block.data;
-  const [lines, setLines] = useState<JournalLine[]>(() => [...entry.lines]);
-  const [approved, setApproved] = useState(false);
+  const baseline = context.block.data;
+  const [localDraft, setLocalDraft] = useState<JournalEntryGateData | null>(null);
+  const entry = context.draft ?? localDraft ?? baseline;
+  const currency = entry.currency ?? 'GBP';
+  const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£';
 
-  const totalDebit = Number(lines.reduce((s, l) => s + l.debit, 0).toFixed(2));
-  const totalCredit = Number(lines.reduce((s, l) => s + l.credit, 0).toFixed(2));
-  const variance = Number((totalDebit - totalCredit).toFixed(2));
-  const isBalanced = Math.abs(variance) < 0.005 && totalDebit > 0;
+  const tieOut = evaluateJournalEntryTieOut(entry.lines);
+  const baselineLines = new Map(baseline.lines.map((l) => [l.id, l]));
+  const isPosted = Boolean(entry.posted);
 
-  function updateAmount(idx: number, field: 'debit' | 'credit', raw: string) {
-    setApproved(false);
-    const val = Math.max(0, Number(raw) || 0);
-    setLines((prev) =>
-      prev.map((l, i) => (i === idx ? { ...l, [field]: val } : l))
-    );
+  function applyDraft(next: JournalEntryGateData) {
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(next);
+    } else {
+      setLocalDraft(next);
+    }
+  }
+
+  function updateAmount(idx: number, field: 'debit' | 'credit', nextVal: number) {
+    applyDraft({
+      ...entry,
+      posted: false,
+      lines: entry.lines.map((line, i) =>
+        i === idx ? { ...line, [field]: Math.max(0, nextVal) } : line
+      ),
+    });
   }
 
   function addLine() {
-    setApproved(false);
-    setLines((prev) => [
-      ...prev,
-      {
-        id: `jl-${Date.now()}`,
-        account: '6890 · Bank & Merchant Charges',
-        entity: 'US Parent',
-        debit: 0,
-        credit: 0,
-        memo: 'Additional adjustment line',
-      },
+    applyDraft({
+      ...entry,
+      posted: false,
+      lines: [
+        ...entry.lines,
+        {
+          id: `jl-${entry.lines.length + 1}-${Date.now()}`,
+          account: '6890 · Bank & Merchant Charges',
+          entity: entry.lines[0]?.entity ?? 'UK Parent',
+          debit: 0,
+          credit: 0,
+          memo: 'Additional adjustment line',
+        },
+      ],
+    });
+  }
+
+  function postJournalToErp() {
+    if (!tieOut.isBalanced) return;
+    const nowIso = new Date().toISOString();
+    const actor = context.actorName ?? 'Elena Carter';
+    const nextData: JournalEntryGateData = {
+      ...entry,
+      posted: true,
+      approvedBy: actor,
+      approvedAt: nowIso,
+    };
+    const totalFmt = formatMoneyMinor(tieOut.totalDebitMinor, { currency, decimals: 2 });
+    context.onCommitRevision?.(nextData, [
+      `Posted ${entry.entryNumber} (${totalFmt} balanced across ${entry.lines.length} lines) to ${entry.erpTarget}`,
     ]);
+    setLocalDraft(nextData);
   }
 
   return (
     <div class="inline-control-card">
       <div class="inline-control-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div class="inline-header-meta">
           <span class="artifact-badge accent-emerald">AJE</span>
           <strong>{entry.entryNumber}</strong>
           <span class="sheet-meta-count">
@@ -55,62 +85,69 @@ function JournalEntryInlineCard({
           </span>
         </div>
 
-        <span class={`tickmark-pill ${isBalanced ? 'tick-tied' : 'tick-exception'}`}>
-          {isBalanced
-            ? 'Balanced ($0.00)'
-            : `Imbalance: $${fmtJe(Math.abs(variance))}`}
+        <span class={`tickmark-pill ${tieOut.isBalanced ? 'tick-tied' : 'tick-exception'}`}>
+          {tieOut.isBalanced
+            ? `Balanced (${symbol}0.00)`
+            : `Imbalance: ${formatMoneyMinor(Math.abs(tieOut.imbalanceMinor), { currency, decimals: 2 })}`}
         </span>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
+      <div class="acct-table-scroll">
         <table class="acct-table">
           <thead>
             <tr>
-              <th>Account</th>
-              <th>Memo</th>
-              <th class="is-num">Debit ($)</th>
-              <th class="is-num">Credit ($)</th>
+              <th scope="col">Account</th>
+              <th scope="col">Memo</th>
+              <th scope="col" class="is-num">
+                Debit ({symbol})
+              </th>
+              <th scope="col" class="is-num">
+                Credit ({symbol})
+              </th>
             </tr>
           </thead>
           <tbody>
-            {lines.map((line, idx) => (
-              <tr key={line.id}>
-                <td>
-                  <strong>{line.account}</strong>
-                </td>
-                <td style={{ color: '#a1a1aa' }}>{line.memo}</td>
-                <td class="is-num">
-                  <input
-                    type="number"
-                    step="100"
-                    class="acct-inline-num-input"
-                    value={line.debit || ''}
-                    placeholder="0.00"
-                    aria-label={`Debit line ${idx + 1}`}
-                    onInput={(e) =>
-                      updateAmount(idx, 'debit', (e.currentTarget as HTMLInputElement).value)
-                    }
-                  />
-                </td>
-                <td class="is-num">
-                  <input
-                    type="number"
-                    step="100"
-                    class="acct-inline-num-input"
-                    value={line.credit || ''}
-                    placeholder="0.00"
-                    aria-label={`Credit line ${idx + 1}`}
-                    onInput={(e) =>
-                      updateAmount(idx, 'credit', (e.currentTarget as HTMLInputElement).value)
-                    }
-                  />
-                </td>
-              </tr>
-            ))}
-            <tr style={{ background: '#15151b', fontWeight: 700 }}>
+            {entry.lines.map((line, idx) => {
+              const orig = baselineLines.get(line.id);
+              return (
+                <tr key={line.id}>
+                  <td>
+                    <strong>{line.account}</strong>
+                  </td>
+                  <td class="acct-muted-cell">{line.memo}</td>
+                  <td class="is-num">
+                    <MoneyInput
+                      value={line.debit}
+                      baselineValue={orig?.debit}
+                      decimals={2}
+                      allowNegative={false}
+                      placeholder="0.00"
+                      ariaLabel={`Debit amount for ${line.account}`}
+                      onChange={(val) => updateAmount(idx, 'debit', val)}
+                    />
+                  </td>
+                  <td class="is-num">
+                    <MoneyInput
+                      value={line.credit}
+                      baselineValue={orig?.credit}
+                      decimals={2}
+                      allowNegative={false}
+                      placeholder="0.00"
+                      ariaLabel={`Credit amount for ${line.account}`}
+                      onChange={(val) => updateAmount(idx, 'credit', val)}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+            <tr class="acct-totals-row">
               <td colSpan={2}>Totals</td>
-              <td class="is-num">${fmtJe(totalDebit)}</td>
-              <td class="is-num">${fmtJe(totalCredit)}</td>
+              <td class="is-num">
+                {formatMoneyMinor(tieOut.totalDebitMinor, { currency, decimals: 2 })}
+              </td>
+              <td class="is-num">
+                {formatMoneyMinor(tieOut.totalCreditMinor, { currency, decimals: 2 })}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -121,16 +158,26 @@ function JournalEntryInlineCard({
           + Add line
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span class="sheet-meta-count">{entry.preparer}</span>
+        <div class="stage-subbar-group">
+          {!tieOut.isBalanced ? (
+            <span class="guard-reason-hint">
+              Debits must equal credits before posting
+            </span>
+          ) : isPosted && entry.approvedBy ? (
+            <span class="sheet-meta-count">
+              Posted by {entry.approvedBy}
+              {entry.approvedAt ? ` · ${formatAuditTimestamp(entry.approvedAt)}` : ''}
+            </span>
+          ) : (
+            <span class="sheet-meta-count">{entry.preparer}</span>
+          )}
           <button
             type="button"
             class="primary-stage-btn"
-            disabled={!isBalanced}
-            style={!isBalanced ? { opacity: 0.35, cursor: 'not-allowed' } : undefined}
-            onClick={() => setApproved(true)}
+            disabled={!tieOut.isBalanced}
+            onClick={postJournalToErp}
           >
-            {approved ? 'Staged to ERP' : 'Post to ERP'}
+            {isPosted ? 'Posted to ERP' : 'Post to ERP'}
           </button>
         </div>
       </div>

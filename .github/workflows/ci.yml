@@ -1,0 +1,41 @@
+name: Frontend Quality Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Typecheck, Unit & DOM Tests, Build, Bundle Budget
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Strict TypeScript check
+        run: pnpm typecheck
+
+      - name: Run unit, architectural, hygiene, and Preact DOM tests
+        run: pnpm test
+
+      - name: Build production bundle
+        run: pnpm build
+
+      - name: Enforce <= 30 KB Brotli critical boot budget
+        run: node scripts/benchmark.mjs

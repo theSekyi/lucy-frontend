@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact';
-import { useCallback, useEffect, useState } from 'preact/hooks';
-import { loadWithRetry } from '../../core/renderers';
+import { ErrorBoundary, reloadForUpdatedVersion } from './ErrorBoundary';
+import { useAsyncResource } from './useAsyncResource';
 
 const resolvedPageCache = new Map<string, unknown>();
 
@@ -21,67 +21,54 @@ export function LazyPageSlot<TModule>({
   loader,
   render,
 }: LazyPageSlotProps<TModule>) {
-  const [loadedModule, setLoadedModule] = useState<TModule | null>(() => {
-    return (resolvedPageCache.get(slotKey) as TModule | undefined) ?? null;
-  });
-  const [failed, setFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-
-  const retry = useCallback(() => {
-    setFailed(false);
-    setAttempt((n) => n + 1);
-  }, []);
-
-  useEffect(() => {
-    const cached = resolvedPageCache.get(slotKey) as TModule | undefined;
-    if (cached) {
-      setLoadedModule(() => cached);
-      setFailed(false);
-      return;
+  const { status, data, isVersionMismatch, retry } = useAsyncResource<TModule>(
+    slotKey,
+    loader,
+    {
+      cache: resolvedPageCache,
+      retries: 1,
+      retryDelayMs: 220,
     }
+  );
 
-    let cancelled = false;
-    setLoadedModule(null);
-    setFailed(false);
-
-    loadWithRetry(loader, 2, 220)
-      .then((mod) => {
-        resolvedPageCache.set(slotKey, mod);
-        if (!cancelled) {
-          setLoadedModule(() => mod);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [slotKey, loader, attempt]);
-
-  useEffect(() => {
-    if (!failed) return;
-    window.addEventListener('online', retry);
-    return () => window.removeEventListener('online', retry);
-  }, [failed, retry]);
-
-  const active = (resolvedPageCache.get(slotKey) as TModule | undefined) ?? loadedModule;
-
-  if (active) {
-    return <>{render(active)}</>;
+  if (status === 'ready' && data !== null) {
+    return (
+      <ErrorBoundary boundaryKey={slotKey} label={label}>
+        {render(data)}
+      </ErrorBoundary>
+    );
   }
 
-  if (failed) {
+  if (status === 'error') {
     return (
       <div class="launchpad-scroll">
         <div class="renderer-skeleton is-retry-box" role="alert">
-          <span>Connection interrupted while loading {label.toLowerCase()}.</span>
-          <button type="button" class="primary-action-pill is-sm" onClick={retry}>
-            Retry
-          </button>
+          <div class="error-boundary-copy">
+            <strong>
+              {isVersionMismatch
+                ? 'A new version of Lucy is available.'
+                : `Connection interrupted while loading ${label.toLowerCase()}.`}
+            </strong>
+            <span class="error-boundary-detail">
+              {isVersionMismatch
+                ? 'Reload to finish updating your workspace assets.'
+                : 'Your saved drafts remain intact. Retry when online or reload the page.'}
+            </span>
+          </div>
+          <div class="error-boundary-actions">
+            {!isVersionMismatch && (
+              <button type="button" class="ghost-pill" onClick={retry}>
+                Retry
+              </button>
+            )}
+            <button
+              type="button"
+              class="primary-action-pill is-sm"
+              onClick={reloadForUpdatedVersion}
+            >
+              Reload
+            </button>
+          </div>
         </div>
       </div>
     );

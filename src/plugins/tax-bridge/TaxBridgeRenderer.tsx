@@ -1,59 +1,63 @@
 import { useState } from 'preact/hooks';
+import { evaluateTaxBridgeTieOut } from '../../core/ledger';
+import { formatMoneyMinor } from '../../core/money';
 import type { LoadedRenderer, RendererContext } from '../../core/renderers';
+import { MoneyInput } from '../../ui/primitives/MoneyInput';
 import '../enterprise-stage.css';
 import '../accounting.css';
 import type { TaxBridgeData } from './sample';
 
-function fmtTaxUsd(n: number): string {
-  const abs = `$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
-  return n < 0 ? `(${abs})` : abs;
-}
-
 function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeData> }) {
-  const data = context.block.data;
+  const baseline = context.block.data;
+  const [localDraft, setLocalDraft] = useState<TaxBridgeData | null>(null);
+  const data = context.draft ?? localDraft ?? baseline;
+  const currency = data.currency ?? 'USD';
+  const symbol = currency === 'GBP' ? '£' : currency === 'EUR' ? '€' : '$';
+  const ratePct = data.taxRatePct ?? 21;
+
   const [tab, setTab] = useState<'m1' | 'k1'>('m1');
-  const [amounts, setAmounts] = useState<Record<string, number>>(() =>
-    Object.fromEntries(data.adjustments.map((a) => [a.id, a.amount]))
-  );
   const [selectedId, setSelectedId] = useState<string>(data.adjustments[0]?.id ?? '');
-  const [saved, setSaved] = useState(false);
 
-  const permTotal = data.adjustments
-    .filter((a) => a.type === 'permanent')
-    .reduce((sum, a) => sum + (amounts[a.id] ?? a.amount), 0);
-  const tempTotal = data.adjustments
-    .filter((a) => a.type === 'temporary')
-    .reduce((sum, a) => sum + (amounts[a.id] ?? a.amount), 0);
-  const taxableIncome = data.bookNetIncome + permTotal + tempTotal;
-  const estCorpTax21 = Math.max(0, Math.round(taxableIncome * 0.21));
-
+  const tieOut = evaluateTaxBridgeTieOut(data);
+  const partnerAllocations = data.partners.map((p) => ({
+    ...p,
+    allocatedMinor: Math.round((tieOut.taxableMinor * p.ownershipPct) / 100),
+  }));
+  const baselineMap = new Map(baseline.adjustments.map((a) => [a.id, a]));
   const selectedLine =
     data.adjustments.find((a) => a.id === selectedId) ?? data.adjustments[0];
 
+  function updateAdjustment(id: string, nextAmount: number) {
+    const next: TaxBridgeData = {
+      ...data,
+      adjustments: data.adjustments.map((a) =>
+        a.id === id ? { ...a, amount: Math.round(nextAmount) } : a
+      ),
+    };
+    if (context.onUpdateDraft) {
+      context.onUpdateDraft(next);
+    } else {
+      setLocalDraft(next);
+    }
+  }
+
   function saveTaxBridge() {
     const summary = [
-      `Taxable Income reconciled at ${fmtTaxUsd(taxableIncome)} (Est. 21% Federal: ${fmtTaxUsd(estCorpTax21)})`,
+      `Taxable income reconciled at ${formatMoneyMinor(tieOut.taxableMinor, { currency })} (Est. ${ratePct}% tax: ${formatMoneyMinor(tieOut.estTaxMinor, { currency })})`,
     ];
-    context.onCommitRevision?.(
-      {
-        ...data,
-        adjustments: data.adjustments.map((a) => ({
-          ...a,
-          amount: amounts[a.id] ?? a.amount,
-        })),
-      },
-      summary
-    );
-    setSaved(true);
+    context.onCommitRevision?.(data, summary);
+    setLocalDraft(null);
   }
 
   return (
     <div class="stage-plugin-shell">
       <div class="stage-subbar">
         <div class="stage-subbar-group">
-          <div class="seg-tabs" role="tablist">
+          <div class="seg-tabs" role="tablist" aria-label="Tax workpaper schedules">
             <button
               type="button"
+              role="tab"
+              aria-selected={tab === 'm1'}
               class={`seg-tab ${tab === 'm1' ? 'is-active' : ''}`}
               onClick={() => setTab('m1')}
             >
@@ -61,17 +65,22 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={tab === 'k1'}
               class={`seg-tab ${tab === 'k1' ? 'is-active' : ''}`}
               onClick={() => setTab('k1')}
             >
               Schedule K-1 ({data.partners.length})
             </button>
           </div>
-          <span class="sheet-meta-count">Est. Tax: {fmtTaxUsd(estCorpTax21)}</span>
+          <span class="sheet-meta-count">
+            Est. {ratePct}% Tax:{' '}
+            <strong>{formatMoneyMinor(tieOut.estTaxMinor, { currency })}</strong>
+          </span>
         </div>
 
         <button type="button" class="primary-stage-btn" onClick={saveTaxBridge}>
-          {saved ? 'Saved' : 'Save'}
+          Save
         </button>
       </div>
 
@@ -79,19 +88,27 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
         <div class="tax-waterfall-grid">
           <div class="kpi-tile">
             <div class="kpi-tile-label">Book Net Income</div>
-            <div class="kpi-tile-value">{fmtTaxUsd(data.bookNetIncome)}</div>
+            <div class="kpi-tile-value">
+              {formatMoneyMinor(tieOut.bookMinor, { currency, accounting: true })}
+            </div>
           </div>
           <div class="kpi-tile">
             <div class="kpi-tile-label">Permanent Diffs</div>
-            <div class="kpi-tile-value">{fmtTaxUsd(permTotal)}</div>
+            <div class="kpi-tile-value">
+              {formatMoneyMinor(tieOut.permMinor, { currency, accounting: true })}
+            </div>
           </div>
           <div class="kpi-tile">
             <div class="kpi-tile-label">Temporary Diffs</div>
-            <div class="kpi-tile-value">{fmtTaxUsd(tempTotal)}</div>
+            <div class="kpi-tile-value">
+              {formatMoneyMinor(tieOut.tempMinor, { currency, accounting: true })}
+            </div>
           </div>
           <div class="kpi-tile">
             <div class="kpi-tile-label">Taxable Income</div>
-            <div class="kpi-tile-value">{fmtTaxUsd(taxableIncome)}</div>
+            <div class="kpi-tile-value">
+              {formatMoneyMinor(tieOut.taxableMinor, { currency, accounting: true })}
+            </div>
           </div>
         </div>
 
@@ -100,20 +117,32 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
             <table class="acct-table">
               <thead>
                 <tr>
-                  <th>Adjustment</th>
-                  <th>Type</th>
-                  <th>Authority</th>
-                  <th class="is-num">M-1 Amount ($)</th>
+                  <th scope="col">Adjustment</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Authority</th>
+                  <th scope="col" class="is-num">
+                    M-1 Amount ({symbol})
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {data.adjustments.map((adj) => {
-                  const val = amounts[adj.id] ?? adj.amount;
+                  const orig = baselineMap.get(adj.id);
+                  const isSelected = adj.id === selectedLine?.id;
                   return (
                     <tr
                       key={adj.id}
-                      class={`acct-row-clickable ${adj.id === selectedLine?.id ? 'is-selected' : ''}`}
+                      tabIndex={0}
+                      aria-selected={isSelected}
+                      class={`acct-row-clickable ${isSelected ? 'is-selected' : ''}`}
                       onClick={() => setSelectedId(adj.id)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedId(adj.id);
+                        }
+                      }}
                     >
                       <td>
                         <strong>{adj.description}</strong>
@@ -122,27 +151,17 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
                         <span
                           class={`cell-pill ${adj.type === 'permanent' ? 'tone-warn' : 'tone-neutral'}`}
                         >
-                          {adj.type === 'permanent' ? 'Perm' : 'Temp'}
+                          {adj.type === 'permanent' ? 'Permanent' : 'Temporary'}
                         </span>
                       </td>
-                      <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: '11.5px' }}>
-                        {adj.ircSection}
-                      </td>
+                      <td class="acct-mono-cell">{adj.ircSection}</td>
                       <td class="is-num" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="number"
-                          step="1000"
-                          class="acct-inline-num-input"
-                          value={val}
-                          aria-label={adj.description}
-                          onInput={(e) => {
-                            setSaved(false);
-                            setAmounts((prev) => ({
-                              ...prev,
-                              [adj.id]:
-                                Number((e.currentTarget as HTMLInputElement).value) || 0,
-                            }));
-                          }}
+                        <MoneyInput
+                          value={adj.amount}
+                          baselineValue={orig?.amount}
+                          allowNegative
+                          ariaLabel={`${adj.description} amount`}
+                          onChange={(val) => updateAdjustment(adj.id, val)}
                         />
                       </td>
                     </tr>
@@ -152,16 +171,20 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
             </table>
 
             {selectedLine && (
-              <div class="redline-doc-banner" style={{ marginTop: '14px', marginBottom: 0 }}>
+              <div class="redline-doc-banner is-bottom-banner">
                 <div>
                   <strong>
-                    Form Trace: {selectedLine.formBox} ({selectedLine.ircSection})
+                    Form trace: {selectedLine.formBox} ({selectedLine.ircSection})
                   </strong>
-                  <div class="clause-footnote" style={{ marginTop: '3px' }}>
-                    Source Trial Balance Account: {selectedLine.tbAccounts}
+                  <div class="clause-footnote">
+                    Source Trial Balance account: {selectedLine.tbAccounts}
                   </div>
                 </div>
-                <span class="tickmark-pill tick-tied">Tied to TB</span>
+                <span class={`tickmark-pill ${tieOut.isTiedToBaselineTb ? 'tick-tied' : 'tick-pbc'}`}>
+                  {tieOut.isTiedToBaselineTb
+                    ? 'Tied to TB'
+                    : `${tieOut.modifiedIds.length} Override${tieOut.modifiedIds.length === 1 ? '' : 's'}`}
+                </span>
               </div>
             )}
           </>
@@ -169,22 +192,28 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
           <table class="acct-table">
             <thead>
               <tr>
-                <th>Partner / Member</th>
-                <th>Classification</th>
-                <th class="is-num">Ownership %</th>
-                <th class="is-num">Box 1 Ordinary Income</th>
+                <th scope="col">Partner / Member</th>
+                <th scope="col">Classification</th>
+                <th scope="col" class="is-num">
+                  Ownership %
+                </th>
+                <th scope="col" class="is-num">
+                  Box 1 Ordinary Income
+                </th>
               </tr>
             </thead>
             <tbody>
-              {data.partners.map((p) => (
+              {partnerAllocations.map((p) => (
                 <tr key={p.partner}>
                   <td>
                     <strong>{p.partner}</strong>
                   </td>
-                  <td style={{ color: '#a1a1aa' }}>{p.entityType}</td>
+                  <td class="acct-muted-cell">{p.entityType}</td>
                   <td class="is-num">{p.ownershipPct.toFixed(1)}%</td>
                   <td class="is-num">
-                    <strong>{fmtTaxUsd((taxableIncome * p.ownershipPct) / 100)}</strong>
+                    <strong>
+                      {formatMoneyMinor(p.allocatedMinor, { currency, accounting: true })}
+                    </strong>
                   </td>
                 </tr>
               ))}
@@ -196,7 +225,10 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
   );
 }
 
-export const taxBridgeRendererModule: LoadedRenderer<preact.ComponentChildren, TaxBridgeData> = {
+export const taxBridgeRendererModule: LoadedRenderer<
+  preact.ComponentChildren,
+  TaxBridgeData
+> = {
   render(context) {
     return <TaxBridgeStageView context={context} />;
   },
