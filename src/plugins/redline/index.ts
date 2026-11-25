@@ -8,11 +8,11 @@ export const redlinePlugin: RendererPlugin<ComponentChildren, RedlineDocumentDat
   label: 'Contract Redline',
   badge: 'DIFF',
   accent: 'rose',
-  ctaLabel: 'Open redlines →',
+  ctaLabel: 'Open',
   placement: 'stage',
   priority: 34,
   promptPattern: /\b(redline|diff|iam|terraform|accept|reject|amendment)\b/i,
-  sampleMenuLabel: 'Editable Contract Redline (.diff)',
+  sampleMenuLabel: 'Contract Redline',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');
     return createEnterprisePresetTurn('redline', nextId);

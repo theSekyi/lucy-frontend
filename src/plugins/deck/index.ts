@@ -5,14 +5,14 @@ import type { SlideDeckData } from '../../core/types';
 export const slideDeckPlugin: RendererPlugin<ComponentChildren, SlideDeckData> = {
   id: 'slide-deck',
   aliases: ['deck', 'slides'],
-  label: 'Executive Deck',
+  label: 'Audit Committee Deck',
   badge: 'DECK',
   accent: 'neutral',
-  ctaLabel: 'Open deck →',
+  ctaLabel: 'Open',
   placement: 'stage',
   priority: 31,
   promptPattern: /\b(slide|deck|pptx|qbr|board\s*memo|presentation|executive\s*brief)\b/i,
-  sampleMenuLabel: 'Editable Executive Deck (16:9)',
+  sampleMenuLabel: 'Audit Committee Deck',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');
     return createEnterprisePresetTurn('slide-deck', nextId);

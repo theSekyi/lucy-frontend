@@ -29,9 +29,7 @@ export function LoginPage({
 }: LoginPageProps) {
   const [mode, setMode] = useState<AuthProviderId>(initialMode);
   const [email, setEmail] = useState(defaultEmail || 'e.carter@cartervance.co.uk');
-  const [tenantInput, setTenantInput] = useState(
-    initialMode === 'okta' ? 'cartervance.okta.com' : 'cartervance.co.uk'
-  );
+  const [oktaDomain, setOktaDomain] = useState('cartervance.okta.com');
   const [inviteCode, setInviteCode] = useState('CV-2026-PARTNER');
   const [fullName, setFullName] = useState('Elena Carter');
   const [error, setError] = useState<string | null>(null);
@@ -39,19 +37,12 @@ export function LoginPage({
   useEffect(() => {
     setMode(initialMode);
     setError(null);
-    if (initialMode === 'okta' && !tenantInput.includes('okta')) {
-      setTenantInput('cartervance.okta.com');
-    } else if (initialMode === 'entra' && tenantInput.includes('okta')) {
-      setTenantInput('cartervance.co.uk');
-    }
   }, [initialMode]);
 
   function selectProvider(next: AuthProviderId) {
     setMode(next);
     setError(null);
     onModeChange?.(next);
-    if (next === 'okta') setTenantInput('cartervance.okta.com');
-    else if (next === 'entra') setTenantInput('cartervance.co.uk');
   }
 
   function handleSubmit(e: Event) {
@@ -59,7 +50,7 @@ export function LoginPage({
     const check = validateEnterpriseAuth({
       provider: mode,
       email,
-      tenantOrIssuer: tenantInput,
+      tenantOrIssuer: mode === 'okta' ? oktaDomain : undefined,
       inviteCode,
       fullName,
     });
@@ -84,18 +75,18 @@ export function LoginPage({
     <div class="auth-viewport">
       <header class="auth-topbar">
         <button type="button" class="brand-button" onClick={onReturnWorkspace}>
-          <LucyBrandMark size={22} />
+          <LucyBrandMark size={20} />
           <span class="brand-name">Lucy</span>
         </button>
 
         <div class="stage-subbar-group">
           {isAlreadyAuthenticated && (
-            <button type="button" class="ghost-pill" onClick={onReturnWorkspace}>
-              ← Workspace
+            <button type="button" class="conn-open-link" onClick={onReturnWorkspace}>
+              Workspace
             </button>
           )}
-          <button type="button" class="ghost-pill" onClick={onStartOnboarding}>
-            Admin Onboarding →
+          <button type="button" class="conn-open-link" onClick={onStartOnboarding}>
+            Workspace setup
           </button>
         </div>
       </header>
@@ -103,83 +94,48 @@ export function LoginPage({
       <main class="auth-center-stage">
         <div class="auth-card">
           <div class="auth-card-head">
-            <h1 class="auth-heading">Sign in to Lucy</h1>
-            <p class="auth-meta">Carter &amp; Vance Chartered Accountants</p>
+            <h1 class="auth-heading">Sign in</h1>
+            <p class="auth-meta">{defaultFirm}</p>
           </div>
 
-          <div class="auth-provider-list" role="tablist" aria-label="Authentication method">
+          <div class="auth-method-tabs" role="tablist" aria-label="Sign-in method">
             <button
               type="button"
               role="tab"
               aria-selected={mode === 'entra'}
-              class={`auth-provider-btn ${mode === 'entra' ? 'is-active' : ''}`}
+              class={`auth-method-tab ${mode === 'entra' ? 'is-active' : ''}`}
               onClick={() => selectProvider('entra')}
             >
-              <span class="auth-provider-left">
-                <EntraIdLogo size={18} />
-                <span>Microsoft Entra ID</span>
-              </span>
-              <span class="auth-provider-tag">OIDC</span>
+              <EntraIdLogo size={15} />
+              <span>Microsoft</span>
             </button>
 
             <button
               type="button"
               role="tab"
               aria-selected={mode === 'okta'}
-              class={`auth-provider-btn ${mode === 'okta' ? 'is-active' : ''}`}
+              class={`auth-method-tab ${mode === 'okta' ? 'is-active' : ''}`}
               onClick={() => selectProvider('okta')}
             >
-              <span class="auth-provider-left">
-                <OktaLogo size={18} />
-                <span>Okta Workforce</span>
-              </span>
-              <span class="auth-provider-tag">SAML 2.0</span>
+              <OktaLogo size={15} />
+              <span>Okta</span>
             </button>
 
             <button
               type="button"
               role="tab"
               aria-selected={mode === 'invite'}
-              class={`auth-provider-btn ${mode === 'invite' ? 'is-active' : ''}`}
+              class={`auth-method-tab ${mode === 'invite' ? 'is-active' : ''}`}
               onClick={() => selectProvider('invite')}
             >
-              <span class="auth-provider-left">
-                <InviteEnvelopeIcon size={18} />
-                <span>Email Invite</span>
-              </span>
-              <span class="auth-provider-tag">Token</span>
+              <InviteEnvelopeIcon size={15} />
+              <span>Invite</span>
             </button>
           </div>
 
           <form class="auth-form" onSubmit={handleSubmit}>
-            {mode === 'invite' && (
-              <>
-                <label class="profile-field">
-                  <span class="profile-field-label">Invite Token</span>
-                  <input
-                    type="text"
-                    class="profile-input auth-mono-input"
-                    placeholder="CV-2026-PARTNER"
-                    value={inviteCode}
-                    onInput={(e) => setInviteCode((e.currentTarget as HTMLInputElement).value)}
-                  />
-                </label>
-
-                <label class="profile-field">
-                  <span class="profile-field-label">Full Name</span>
-                  <input
-                    type="text"
-                    class="profile-input"
-                    placeholder="Elena Carter"
-                    value={fullName}
-                    onInput={(e) => setFullName((e.currentTarget as HTMLInputElement).value)}
-                  />
-                </label>
-              </>
-            )}
-
             <label class="profile-field">
-              <span class="profile-field-label">Work Email</span>
+              <span class="profile-field-label">Work email</span>
               <input
                 type="email"
                 class="profile-input"
@@ -189,30 +145,43 @@ export function LoginPage({
               />
             </label>
 
-            {mode === 'entra' && (
+            {mode === 'okta' && (
               <label class="profile-field">
-                <span class="profile-field-label">Azure Tenant Domain</span>
+                <span class="profile-field-label">Okta domain</span>
                 <input
                   type="text"
                   class="profile-input"
-                  placeholder="cartervance.co.uk"
-                  value={tenantInput}
-                  onInput={(e) => setTenantInput((e.currentTarget as HTMLInputElement).value)}
+                  placeholder="firm.okta.com"
+                  value={oktaDomain}
+                  onInput={(e) => setOktaDomain((e.currentTarget as HTMLInputElement).value)}
                 />
               </label>
             )}
 
-            {mode === 'okta' && (
-              <label class="profile-field">
-                <span class="profile-field-label">Okta Organization Domain</span>
-                <input
-                  type="text"
-                  class="profile-input"
-                  placeholder="cartervance.okta.com"
-                  value={tenantInput}
-                  onInput={(e) => setTenantInput((e.currentTarget as HTMLInputElement).value)}
-                />
-              </label>
+            {mode === 'invite' && (
+              <>
+                <label class="profile-field">
+                  <span class="profile-field-label">Full name</span>
+                  <input
+                    type="text"
+                    class="profile-input"
+                    placeholder="Elena Carter"
+                    value={fullName}
+                    onInput={(e) => setFullName((e.currentTarget as HTMLInputElement).value)}
+                  />
+                </label>
+
+                <label class="profile-field">
+                  <span class="profile-field-label">Invite code</span>
+                  <input
+                    type="text"
+                    class="profile-input auth-mono-input"
+                    placeholder="CV-2026-PARTNER"
+                    value={inviteCode}
+                    onInput={(e) => setInviteCode((e.currentTarget as HTMLInputElement).value)}
+                  />
+                </label>
+              </>
             )}
 
             {error && (
@@ -223,17 +192,17 @@ export function LoginPage({
 
             <button type="submit" class="primary-action-pill auth-submit-btn">
               {mode === 'entra'
-                ? 'Continue with Microsoft Entra →'
+                ? 'Continue with Microsoft'
                 : mode === 'okta'
-                  ? 'Continue with Okta →'
-                  : 'Accept Invite & Enter Workspace →'}
+                  ? 'Continue with Okta'
+                  : 'Accept invite'}
             </button>
           </form>
 
           <footer class="auth-card-footer">
-            <span>Setting up a new accounting firm?</span>
+            <span>New firm workspace?</span>
             <button type="button" class="conn-open-link" onClick={onStartOnboarding}>
-              Provision workspace →
+              Set up workspace
             </button>
           </footer>
         </div>

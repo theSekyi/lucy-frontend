@@ -5,14 +5,14 @@ import type { CodeSnippetData } from '../../core/types';
 export const codeWorkspacePlugin: RendererPlugin<ComponentChildren, CodeSnippetData> = {
   id: 'code-workspace',
   aliases: ['code'],
-  label: 'Code Workbench',
+  label: 'ERP Validation Scripts',
   badge: 'CODE',
   accent: 'sky',
-  ctaLabel: 'Open files →',
+  ctaLabel: 'Open',
   placement: 'stage',
   priority: 25,
   promptPattern: /\b(code|patch|typescript|python|refactor|function|snippet)\b/i,
-  sampleMenuLabel: 'Code Workbench (.ts, .py, .sql, .yaml)',
+  sampleMenuLabel: 'ERP Validation Scripts',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');
     return createEnterprisePresetTurn('code-workspace', nextId);

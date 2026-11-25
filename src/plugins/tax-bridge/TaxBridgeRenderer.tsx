@@ -57,21 +57,21 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
               class={`seg-tab ${tab === 'm1' ? 'is-active' : ''}`}
               onClick={() => setTab('m1')}
             >
-              Schedule M-1 / M-3 Bridge
+              Schedule M-1
             </button>
             <button
               type="button"
               class={`seg-tab ${tab === 'k1' ? 'is-active' : ''}`}
               onClick={() => setTab('k1')}
             >
-              Schedule K-1 Allocations ({data.partners.length})
+              Schedule K-1 ({data.partners.length})
             </button>
           </div>
-          <span class="sheet-meta-count">21% Est. Tax: {fmtTaxUsd(estCorpTax21)}</span>
+          <span class="sheet-meta-count">Est. Tax: {fmtTaxUsd(estCorpTax21)}</span>
         </div>
 
         <button type="button" class="primary-stage-btn" onClick={saveTaxBridge}>
-          {saved ? '✓ Saved' : 'Save tax workpaper'}
+          {saved ? 'Saved' : 'Save'}
         </button>
       </div>
 
@@ -89,11 +89,9 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
             <div class="kpi-tile-label">Temporary Diffs</div>
             <div class="kpi-tile-value">{fmtTaxUsd(tempTotal)}</div>
           </div>
-          <div class="kpi-tile" style={{ borderColor: 'rgba(74, 222, 128, 0.4)' }}>
+          <div class="kpi-tile">
             <div class="kpi-tile-label">Taxable Income</div>
-            <div class="kpi-tile-value" style={{ color: '#86efac' }}>
-              {fmtTaxUsd(taxableIncome)}
-            </div>
+            <div class="kpi-tile-value">{fmtTaxUsd(taxableIncome)}</div>
           </div>
         </div>
 
@@ -163,7 +161,7 @@ function TaxBridgeStageView({ context }: { context: RendererContext<TaxBridgeDat
                     Source Trial Balance Account: {selectedLine.tbAccounts}
                   </div>
                 </div>
-                <span class="tickmark-pill tick-tied">✓ Traced to TB</span>
+                <span class="tickmark-pill tick-tied">Tied to TB</span>
               </div>
             )}
           </>

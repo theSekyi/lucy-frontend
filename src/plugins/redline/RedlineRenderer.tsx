@@ -148,31 +148,31 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
               class={`seg-tab ${mode === 'inline' ? 'is-active' : ''}`}
               onClick={() => setMode('inline')}
             >
-              Word Redline
+              Inline
             </button>
             <button
               type="button"
               class={`seg-tab ${mode === 'clean' ? 'is-active' : ''}`}
               onClick={() => setMode('clean')}
             >
-              Final Text
+              Clean
             </button>
           </div>
 
-          <span class="cell-pill tone-good">{acceptedCount} Accepted</span>
-          {rejectedCount > 0 && <span class="cell-pill tone-warn">{rejectedCount} Rejected</span>}
-          {pendingCount > 0 && <span class="cell-pill tone-neutral">{pendingCount} Pending</span>}
+          <span class="sheet-meta-count">
+            {acceptedCount} accepted · {pendingCount} pending
+          </span>
         </div>
 
         <div class="stage-subbar-group">
           {pendingCount > 0 && (
             <button type="button" class="ghost-pill" onClick={acceptAllPending}>
-              Accept remaining
+              Accept all
             </button>
           )}
           {(hasChanges || !savedFlag) && (
             <button type="button" class="primary-stage-btn" onClick={commitRedlines}>
-              {savedFlag ? '✓ Saved' : 'Apply redlines'}
+              {savedFlag ? 'Saved' : 'Save'}
             </button>
           )}
         </div>
@@ -183,10 +183,10 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
           <div>
             <strong>{doc.documentName}</strong>
             <div class="clause-footnote" style={{ marginTop: '2px' }}>
-              {doc.author} · Click inside Proposed Redline to edit directly
+              {doc.author}
             </div>
           </div>
-          <span class="sheet-meta-count">{doc.hunks.length} Clauses</span>
+          <span class="sheet-meta-count">{doc.hunks.length} clauses</span>
         </div>
 
         {doc.hunks.map((hunk) => {
@@ -221,14 +221,14 @@ function RedlineDiffView({ context }: { context: RendererContext<RedlineDocument
                     class={`decision-btn ${status === 'accepted' ? 'is-accept-active' : ''}`}
                     onClick={() => setHunkDecision(hunk.id, 'accepted')}
                   >
-                    {status === 'accepted' ? '✓ Accepted' : 'Accept'}
+                    {status === 'accepted' ? 'Accepted' : 'Accept'}
                   </button>
                   <button
                     type="button"
                     class={`decision-btn ${status === 'rejected' ? 'is-reject-active' : ''}`}
                     onClick={() => setHunkDecision(hunk.id, 'rejected')}
                   >
-                    {status === 'rejected' ? '✕ Rejected' : 'Reject'}
+                    {status === 'rejected' ? 'Rejected' : 'Reject'}
                   </button>
                 </div>
               </div>

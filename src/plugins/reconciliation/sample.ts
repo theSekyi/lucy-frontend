@@ -76,7 +76,7 @@ export const RECON_SAMPLE: ReconciliationData = {
 export function buildReconSampleTurn(nextId: (p: string) => string): SampleTurnPayload {
   return {
     prose:
-      'Reconciled **Chase Operating #4821 ↔ NetSuite GL 1010**.\n\n• **142 transactions ($1.42M — 97.3%) auto-matched** and collapsed out of view.\n• **4 exceptions ($3,442.10 net variance)** isolated for review — resolve each with **Match**, **Book AJE**, or **Flag PBC**.',
+      '**Chase Operating #4821 ↔ NetSuite GL 1010**: `142` transactions ($1.42M) matched; `4` open items (**$3,442.10** net variance).',
     artifact: {
       id: nextId('block-recon'),
       kind: 'reconciliation',

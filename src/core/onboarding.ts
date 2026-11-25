@@ -66,11 +66,11 @@ export const ONBOARDING_STEPS: ReadonlyArray<{
   readonly number: string;
   readonly label: string;
 }> = [
-  { id: 'firm', number: '01', label: 'Firm & Jurisdiction' },
-  { id: 'identity', number: '02', label: 'Identity & SSO' },
-  { id: 'stack', number: '03', label: 'Accounting Stack' },
-  { id: 'templates', number: '04', label: 'Close Standards' },
-  { id: 'team', number: '05', label: 'Team & Roles' },
+  { id: 'firm', number: '1', label: 'Firm' },
+  { id: 'identity', number: '2', label: 'Single sign-on' },
+  { id: 'stack', number: '3', label: 'Integrations' },
+  { id: 'templates', number: '4', label: 'Close standard' },
+  { id: 'team', number: '5', label: 'Team' },
 ];
 
 export function createInitialOnboardingState(): EnterpriseOnboardingState {
@@ -87,7 +87,7 @@ export function createInitialOnboardingState(): EnterpriseOnboardingState {
     identity: {
       primaryIdp: 'entra',
       verifiedDomain: 'cartervance.co.uk',
-      tenantOrIssuer: '72f988bf-86f1-41af-91ab-cartervance',
+      tenantOrIssuer: 'cartervance.onmicrosoft.com',
       enforceScimSync: true,
       sessionDuration: '12 hours',
     },

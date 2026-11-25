@@ -130,9 +130,9 @@
 }
 
 .sheet-cell.is-selected {
-  outline: 1.5px solid #4ade80;
+  outline: 1.5px solid rgba(255, 255, 255, 0.48);
   outline-offset: -1.5px;
-  background: rgba(74, 222, 128, 0.08);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .cell-pill {
@@ -181,8 +181,8 @@
 }
 
 .sheet-tab.is-active {
-  background: #1f1f25;
-  color: #4ade80;
+  background: #1e1e24;
+  color: #f4f4f6;
   font-weight: 600;
 }
 

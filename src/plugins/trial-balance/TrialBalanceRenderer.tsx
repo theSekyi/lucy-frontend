@@ -62,8 +62,8 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
             class={`tickmark-pill ${netAdjusted === 0 ? 'tick-tied' : 'tick-exception'}`}
           >
             {netAdjusted === 0
-              ? '✓ TB Balanced ($0)'
-              : `⊗ Out of Balance: $${fmtAcct(netAdjusted)}`}
+              ? 'Balanced ($0)'
+              : `Imbalance: $${fmtAcct(netAdjusted)}`}
           </span>
 
           <span class="sheet-meta-count">PM ($):</span>
@@ -87,7 +87,7 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
           style={netAdjusted !== 0 ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
           onClick={saveAdjustments}
         >
-          {saved ? '✓ Posted' : 'Save TB & AJEs'}
+          {saved ? 'Saved' : 'Save TB'}
         </button>
       </div>
 
@@ -197,9 +197,11 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
 
       <div class="acct-footer-bar">
         <span class="sheet-meta-count">
-          {tb.entity} · {tb.period} · Net AJE: <strong>{fmtAcct(netAje)}</strong>
+          {tb.entity} · {tb.period}
         </span>
-        <span class="sheet-meta-count">Click any account row to drill into GL entries</span>
+        <span class="sheet-meta-count">
+          Net AJE: <strong>{fmtAcct(netAje)}</strong>
+        </span>
       </div>
     </div>
   );

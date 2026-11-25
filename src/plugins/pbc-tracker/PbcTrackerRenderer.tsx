@@ -33,7 +33,7 @@ function PbcInlineCard({ context }: { context: RendererContext<PbcTrackerData> }
         </div>
 
         <span class={`tickmark-pill ${openCount === 0 ? 'tick-tied' : 'tick-pbc'}`}>
-          {openCount === 0 ? '✓ All PBC Received' : `${openCount} Open`}
+          {openCount === 0 ? 'Complete' : `${openCount} Open`}
         </span>
       </div>
 
@@ -55,12 +55,7 @@ function PbcInlineCard({ context }: { context: RendererContext<PbcTrackerData> }
                 : st === 'overdue'
                   ? 'tick-exception'
                   : 'tick-pbc';
-            const label =
-              st === 'received'
-                ? '✓ Received'
-                : st === 'overdue'
-                  ? item.aging
-                  : item.aging;
+            const label = st === 'received' ? 'Received' : item.aging;
 
             return (
               <tr key={item.id}>
@@ -85,7 +80,7 @@ function PbcInlineCard({ context }: { context: RendererContext<PbcTrackerData> }
       </table>
 
       <div class="inline-control-footer">
-        <span class="sheet-meta-count">Click any status badge to update receipt state</span>
+        <span class="sheet-meta-count">{data.items.length} items</span>
         <button
           type="button"
           class="primary-stage-btn"
@@ -94,8 +89,8 @@ function PbcInlineCard({ context }: { context: RendererContext<PbcTrackerData> }
           onClick={() => setReminded(true)}
         >
           {reminded
-            ? `✓ Portal reminder sent (${openCount})`
-            : `Request ${openCount} open from client`}
+            ? `Reminder sent (${openCount})`
+            : `Send reminder (${openCount})`}
         </button>
       </div>
     </div>

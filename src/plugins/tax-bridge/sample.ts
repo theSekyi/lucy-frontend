@@ -85,7 +85,7 @@ export const TAX_BRIDGE_SAMPLE: TaxBridgeData = {
 export function buildTaxBridgeSampleTurn(nextId: (p: string) => string): SampleTurnPayload {
   return {
     prose:
-      'Prepared the **TY 2026 Schedule M-1 / M-3 Book-to-Tax Bridge & K-1 Allocation**.\n\n• Reconciles **$1,636,500 Book Net Income** through **-$5,600 Permanent** and **+$17,500 Temporary** adjustments to **$1,648,400 Taxable Income**.\n• Click any adjustment line to trace its Form box and Trial Balance source, or edit amounts to recompute K-1 allocations live.',
+      '**TY26 Schedule M-1 & K-1 Bridge**: Book net income **$1,636,500** reconciled via **-$5,600** permanent and **+$17,500** temporary differences to **$1,648,400** taxable income.',
     artifact: {
       id: nextId('block-tax'),
       kind: 'tax-bridge',

@@ -49,22 +49,28 @@
    ========================================================================== */
 .inbox-bottom-ask-dock {
   flex-shrink: 0;
-  background: #0c0d10;
-  border-top: 1px solid rgba(255, 255, 255, 0.09);
-  padding: 8px 14px;
+  background: var(--bg-surface-bottom);
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 18px 12px;
+}
+
+.inbox-composer-shell {
+  max-width: 740px;
+  width: 100%;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .inbox-ask-drawer {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #13151a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: #141418;
+  border: 1px solid var(--border-strong);
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   max-height: 200px;
   overflow-y: auto;
 }
@@ -76,11 +82,17 @@
   gap: 10px;
 }
 
+.inbox-ask-question {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #f4f4f6;
+}
+
 .inbox-ask-answer-text {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #e4e4e7;
+  font-size: 12.5px;
+  line-height: 1.52;
+  color: #d4d4d8;
 }
 
 .inbox-ask-links-row {
@@ -88,52 +100,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.inbox-ask-bar-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.inbox-ask-form {
-  flex: 1;
-  min-width: 240px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 9px;
-  border-radius: 7px;
-  background: #14151a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: border-color 120ms ease;
-}
-
-.inbox-ask-form:focus-within {
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-.inbox-ask-input {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  outline: none;
-  font-size: 12px;
-  color: #f4f4f6;
-}
-
-.inbox-ask-input::placeholder {
-  color: #71717a;
-}
-
-.inbox-ask-quick-pills {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 
 /* ==========================================================================
@@ -1316,29 +1282,17 @@
 }
 
 .mail-term-q {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
+  font-size: 12px;
+  font-weight: 500;
   color: #f4f4f6;
 }
 
-.mail-term-prompt {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 700;
-  color: #a1a1aa;
-  flex-shrink: 0;
-}
-
 .mail-term-a {
-  padding-left: 14px;
   color: #d4d4d8;
   line-height: 1.5;
 }
 
 .mail-term-actions {
-  padding-left: 14px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1347,32 +1301,31 @@
 }
 
 .mail-term-insert-btn {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10.5px;
-  padding: 2px 7px;
-  border-radius: 4px;
-  background: #23252b;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #202227;
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: #f4f4f6;
 }
 
 .mail-term-insert-btn:hover {
-  background: #2e3139;
+  background: #2a2d34;
 }
 
 .mail-terminal-form {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 6px;
-  background: #121317;
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  height: 36px;
+  padding: 0 6px 0 11px;
+  border-radius: 10px;
+  background: var(--bg-composer);
+  border: 1px solid var(--border-subtle);
 }
 
 .mail-terminal-form:focus-within {
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: var(--border-strong);
 }
 
 .mail-terminal-input {
@@ -1381,48 +1334,17 @@
   background: transparent;
   border: 0;
   outline: none;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: #f4f4f6;
 }
 
 .mail-terminal-input::placeholder {
-  color: #6b7280;
+  color: #666670;
 }
 
-.mail-term-run-btn {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.09);
-  color: #f4f4f6;
-  flex-shrink: 0;
-}
-
-.mail-term-run-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-}
-
-.mail-term-suggestions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.mail-term-chip {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10.5px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #9ca3af;
-}
-
-.mail-term-chip:hover {
-  color: #f4f4f6;
-  border-color: rgba(255, 255, 255, 0.22);
+.composer-send-btn.is-xs {
+  width: 24px;
+  height: 24px;
 }
 
 .decision-btn {
@@ -1541,7 +1463,7 @@
     padding: 16px 14px 24px;
   }
 
-  .inbox-ask-quick-pills {
-    display: none;
+  .inbox-bottom-ask-dock {
+    padding: 8px 10px 10px;
   }
 }

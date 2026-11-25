@@ -5,14 +5,14 @@ import type { CitedDocumentData } from '../../core/types';
 export const contractPlugin: RendererPlugin<ComponentChildren, CitedDocumentData> = {
   id: 'cited-document',
   aliases: ['pdf', 'contract'],
-  label: 'Cited Contract Inspector',
+  label: 'Contract Review',
   badge: 'PDF',
   accent: 'amber',
-  ctaLabel: 'Open document →',
+  ctaLabel: 'Open',
   placement: 'stage',
   priority: 35,
   promptPattern: /\b(contract|msa|soc2|clause|pdf|10-k|rfp|indemnif|liability)\b/i,
-  sampleMenuLabel: 'Cited Contract Folio (PDF)',
+  sampleMenuLabel: 'Contract Review (PDF)',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');
     return createEnterprisePresetTurn('contract', nextId);

@@ -61,7 +61,7 @@ export const AJE_GATE_SAMPLE: JournalEntryGateData = {
 export function buildJournalEntrySampleTurn(nextId: (p: string) => string): SampleTurnPayload {
   return {
     prose:
-      'Staged adjusting journal entry **`AJE-2026-042`** for NetSuite review. Approval is mathematically locked unless `∑ Debits = ∑ Credits` (`$0.00` variance) — try editing any Debit or Credit cell to test the out-of-balance guard:',
+      'Adjusting journal **`AJE-2026-042`** (**$60,058.00** balanced across `GL 2400`, `4010`, `6510`, `2120`):',
     artifact: {
       id: nextId('block-aje'),
       kind: 'journal-entry',

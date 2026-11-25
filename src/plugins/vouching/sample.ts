@@ -92,7 +92,7 @@ export const VOUCHING_SAMPLE: VouchingWorkpaperData = {
       id: 'v-5',
       sampleCode: 'S-05',
       glDate: '2026-11-22',
-      vendor: ' Hudson Yards Property LLC',
+      vendor: 'Hudson Yards Property LLC',
       glAccount: '6310 · Facilities Lease',
       ledgerAmount: 14200.0,
       docAmount: 14200.0,
@@ -109,7 +109,7 @@ export const VOUCHING_SAMPLE: VouchingWorkpaperData = {
 export function buildVouchingSampleTurn(nextId: (p: string) => string): SampleTurnPayload {
   return {
     prose:
-      'Completed substantive vouching across **5 AP & OpEx selections ($279,192.10)** on workpaper `WP E-40`.\n\n• **3 selections tied (`✓`)** directly to vendor invoices and payroll registers.\n• **1 variance exception (`⊗`)** on Selection `S-02` (**$42.10** FX fee difference between GL and receipt).\n• **1 PBC item** open on `S-05` (CAM schedule). Click any ledger row to inspect its source bounding boxes.',
+      '**WP E-40 Substantive Vouching** (`5` selections, **$279,192.10** tested): `3` agreed to source, `1` FX fee variance (`S-02`, **$42.10**), `1` open PBC (`S-05` CAM schedule).',
     artifact: {
       id: nextId('block-vouch'),
       kind: 'vouching',

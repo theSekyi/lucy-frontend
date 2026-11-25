@@ -76,9 +76,9 @@ function RollforwardStageView({ context }: { context: RendererContext<Rollforwar
         </div>
 
         <div class="stage-subbar-group">
-          <span class="tickmark-pill tick-tied">✓ Rollforward Tied</span>
+          <span class="tickmark-pill tick-tied">Tied</span>
           <button type="button" class="primary-stage-btn" onClick={stagePeriodEndAje}>
-            {stagedAje ? '✓ Staged AJE' : `Stage ${lastRow.period} AJE`}
+            {stagedAje ? 'Staged' : `Stage ${lastRow.period} AJE`}
           </button>
         </div>
       </div>

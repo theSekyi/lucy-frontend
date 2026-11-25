@@ -4,10 +4,10 @@ import '../enterprise-stage.css';
 import '../accounting.css';
 import type { TickmarkState, VouchingWorkpaperData } from './sample';
 
-const TICK_META: Record<TickmarkState, { symbol: string; label: string; cls: string }> = {
-  tied: { symbol: '✓', label: 'Agreed to source', cls: 'tick-tied' },
-  exception: { symbol: '⊗', label: 'Variance', cls: 'tick-exception' },
-  pbc: { symbol: 'PBC', label: 'PBC Open', cls: 'tick-pbc' },
+const TICK_META: Record<TickmarkState, { label: string; cls: string }> = {
+  tied: { label: 'Agreed', cls: 'tick-tied' },
+  exception: { label: 'Variance', cls: 'tick-exception' },
+  pbc: { label: 'PBC', cls: 'tick-pbc' },
 };
 
 const TICK_ORDER: TickmarkState[] = ['tied', 'exception', 'pbc'];
@@ -57,17 +57,14 @@ function VouchingStageView({ context }: { context: RendererContext<VouchingWorkp
     <div class="stage-plugin-shell">
       <div class="stage-subbar">
         <div class="stage-subbar-group">
-          <span class="tickmark-pill tick-tied">✓ {tiedCount} Tied</span>
-          {excCount > 0 && <span class="tickmark-pill tick-exception">⊗ {excCount} Exception</span>}
-          {pbcCount > 0 && <span class="tickmark-pill tick-pbc">PBC {pbcCount}</span>}
+          <span class="tickmark-pill tick-tied">{tiedCount} Agreed</span>
+          {excCount > 0 && <span class="tickmark-pill tick-exception">{excCount} Variance</span>}
+          {pbcCount > 0 && <span class="tickmark-pill tick-pbc">{pbcCount} PBC</span>}
         </div>
 
-        <div class="stage-subbar-group">
-          <span class="sheet-meta-count">Click tickmark pill to reclassify</span>
-          <button type="button" class="primary-stage-btn" onClick={saveWorkpaper}>
-            {saved ? '✓ Signed off' : 'Sign off workpaper'}
-          </button>
-        </div>
+        <button type="button" class="primary-stage-btn" onClick={saveWorkpaper}>
+          {saved ? 'Signed off' : 'Sign off'}
+        </button>
       </div>
 
       <div class="vouch-split">
@@ -109,7 +106,7 @@ function VouchingStageView({ context }: { context: RendererContext<VouchingWorkp
                           cycleTick(item.id);
                         }}
                       >
-                        {meta.symbol} {meta.label}
+                        {meta.label}
                       </button>
                     </td>
                   </tr>
@@ -207,8 +204,8 @@ function VouchingStageView({ context }: { context: RendererContext<VouchingWorkp
               <span>GL Posted ({active.glAccount}): {fmtUsd(active.ledgerAmount)}</span>
               <span>
                 {diff === 0
-                  ? '✓ $0.00 Variance — Tied to General Ledger'
-                  : `⊗ Variance: ${fmtUsd(diff)} vs General Ledger`}
+                  ? 'Tied to General Ledger ($0.00)'
+                  : `Variance vs GL: ${fmtUsd(diff)}`}
               </span>
             </div>
           </article>

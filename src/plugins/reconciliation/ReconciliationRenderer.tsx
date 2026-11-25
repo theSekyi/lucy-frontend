@@ -53,14 +53,14 @@ function ReconciliationStageView({ context }: { context: RendererContext<Reconci
               class={`seg-tab ${tab === 'exceptions' ? 'is-active' : ''}`}
               onClick={() => setTab('exceptions')}
             >
-              Exceptions ({openItems.length} open)
+              Exceptions ({openItems.length})
             </button>
             <button
               type="button"
               class={`seg-tab ${tab === 'matched' ? 'is-active' : ''}`}
               onClick={() => setTab('matched')}
             >
-              Matched ({data.autoMatchedCount + resolvedItems.length} collapsed)
+              Matched ({data.autoMatchedCount + resolvedItems.length})
             </button>
           </div>
 
@@ -68,13 +68,13 @@ function ReconciliationStageView({ context }: { context: RendererContext<Reconci
             class={`tickmark-pill ${Math.abs(remainingVariance) < 0.01 ? 'tick-tied' : 'tick-exception'}`}
           >
             {Math.abs(remainingVariance) < 0.01
-              ? '✓ $0.00 Reconciled'
-              : `Unreconciled: ${fmtSignedUsd(remainingVariance)}`}
+              ? 'Reconciled ($0.00)'
+              : `Variance: ${fmtSignedUsd(remainingVariance)}`}
           </span>
         </div>
 
         <button type="button" class="primary-stage-btn" onClick={finalizeRecon}>
-          {saved ? '✓ Saved' : 'Save reconciliation'}
+          {saved ? 'Saved' : 'Save'}
         </button>
       </div>
 

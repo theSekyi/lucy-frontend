@@ -11,13 +11,8 @@ import type { InboxProvider } from '../../core/types';
 import type { GmailInboxRenderer as GmailComp } from './GmailInboxRenderer';
 import type { DeepLinkTarget } from './MailIntelligencePanel';
 import type { OutlookInboxRenderer as OutlookComp } from './OutlookInboxRenderer';
+import { SendArrowIcon } from '../icons';
 import './inbox.css';
-
-const INBOX_QUICK_QUERIES: ReadonlyArray<{ readonly label: string; readonly prompt: string }> = [
-  { label: 'Unread sign-offs', prompt: 'What unread items need partner sign-off today?' },
-  { label: 'HMRC & tax deadlines', prompt: 'Summarize upcoming HMRC & statutory tax deadlines' },
-  { label: 'Variances & PBC', prompt: 'List open bank variances and missing PBC items' },
-];
 
 interface InboxWorkspaceProps {
   readonly provider: InboxProvider;
@@ -202,105 +197,99 @@ export function InboxWorkspace({
         )}
       </div>
 
-      {/* Persistent Cross-Inbox Ask Dock */}
+      {/* Persistent Cross-Inbox Ask Dock (consistent with Composer) */}
       <section class="inbox-bottom-ask-dock" aria-label="Ask across inbox">
-        {activeAnswer && (
-          <div class="inbox-ask-drawer" role="region" aria-label="Inbox query answer">
-            <div class="inbox-ask-drawer-top">
-              <span class="mail-term-q">
-                <span class="mail-term-prompt">›</span>
-                <span>{activeAnswer.question}</span>
-              </span>
-              <button
-                type="button"
-                class="ghost-pill"
-                onClick={() => setActiveAnswer(null)}
-              >
-                Close ×
-              </button>
-            </div>
-
-            <p class="inbox-ask-answer-text">{activeAnswer.answer}</p>
-
-            {(activeAnswer.matchedThreads.length > 0 || activeAnswer.sources.length > 0) && (
-              <div class="inbox-ask-links-row">
-                {activeAnswer.matchedThreads.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    class="mail-deeplink-chip"
-                    onClick={() => jumpToMatchedThread(item.id)}
-                  >
-                    <span class="mail-deeplink-kind">EMAIL</span>
-                    <span>{item.senderName}</span>
-                    <span>→</span>
-                  </button>
-                ))}
-
-                {activeAnswer.sources.map((src) => (
-                  <button
-                    key={src.id}
-                    type="button"
-                    class="mail-deeplink-chip"
-                    onClick={() =>
-                      onNavigateSource({
-                        pluginRoute: src.pluginRoute,
-                        anchor: src.anchor,
-                        connectorId: src.connectorId,
-                      })
-                    }
-                  >
-                    <span class="mail-deeplink-kind">{src.kindLabel}</span>
-                    <span>{src.label}</span>
-                    <span>↗</span>
-                  </button>
-                ))}
+        <div class="inbox-composer-shell">
+          {activeAnswer && (
+            <div class="inbox-ask-drawer" role="region" aria-label="Inbox query answer">
+              <div class="inbox-ask-drawer-top">
+                <strong class="inbox-ask-question">{activeAnswer.question}</strong>
+                <button
+                  type="button"
+                  class="ghost-pill"
+                  onClick={() => setActiveAnswer(null)}
+                >
+                  Close
+                </button>
               </div>
-            )}
-          </div>
-        )}
 
-        <div class="inbox-ask-bar-row">
+              <p class="inbox-ask-answer-text">{activeAnswer.answer}</p>
+
+              {(activeAnswer.matchedThreads.length > 0 || activeAnswer.sources.length > 0) && (
+                <div class="inbox-ask-links-row">
+                  {activeAnswer.matchedThreads.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      class="mail-deeplink-chip"
+                      onClick={() => jumpToMatchedThread(item.id)}
+                    >
+                      <span class="mail-deeplink-kind">Email</span>
+                      <span>{item.senderName}</span>
+                    </button>
+                  ))}
+
+                  {activeAnswer.sources.map((src) => (
+                    <button
+                      key={src.id}
+                      type="button"
+                      class="mail-deeplink-chip"
+                      onClick={() =>
+                        onNavigateSource({
+                          pluginRoute: src.pluginRoute,
+                          anchor: src.anchor,
+                          connectorId: src.connectorId,
+                        })
+                      }
+                    >
+                      <span class="mail-deeplink-kind">{src.kindLabel}</span>
+                      <span>{src.label} ↗</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <form
-            class="inbox-ask-form"
+            class="composer-card is-compact"
             onSubmit={(e) => {
               e.preventDefault();
               runInboxAsk(askInput);
             }}
           >
-            <span class="mail-term-prompt" aria-hidden="true">
-              ›
-            </span>
-            <input
-              type="text"
-              class="inbox-ask-input"
+            <textarea
+              rows={2}
+              class="composer-textarea"
               aria-label="Ask across your inbox"
-              placeholder="Ask across inbox — unread sign-offs, HMRC deadlines, variances, or clauses…"
+              placeholder="Ask across inbox — filings, variances, or open sign-offs…"
               value={askInput}
-              onInput={(e) => setAskInput((e.currentTarget as HTMLInputElement).value)}
+              onInput={(e) => setAskInput((e.currentTarget as HTMLTextAreaElement).value)}
               onKeyDown={(e) => {
-                if (e.key === 'Escape' && activeAnswer) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  runInboxAsk(askInput);
+                } else if (e.key === 'Escape' && activeAnswer) {
                   setActiveAnswer(null);
                 }
               }}
             />
-            <button type="submit" class="mail-term-run-btn">
-              Ask ↵
-            </button>
-          </form>
 
-          <div class="inbox-ask-quick-pills">
-            {INBOX_QUICK_QUERIES.map((q) => (
-              <button
-                key={q.label}
-                type="button"
-                class="mail-term-chip"
-                onClick={() => runInboxAsk(q.prompt)}
-              >
-                {q.label}
-              </button>
-            ))}
-          </div>
+            <div class="composer-toolbar">
+              <div class="composer-tools-left">
+                <span class="composer-hint-text">Inbox · Threads &amp; linked workpapers</span>
+              </div>
+              <div class="composer-tools-right">
+                <button
+                  type="submit"
+                  class="composer-send-btn"
+                  aria-label="Ask across inbox"
+                >
+                  <SendArrowIcon />
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       </section>
     </div>

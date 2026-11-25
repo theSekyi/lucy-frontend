@@ -5,14 +5,14 @@ import type { SqlCanvasData } from '../../core/types';
 export const sqlCanvasPlugin: RendererPlugin<ComponentChildren, SqlCanvasData> = {
   id: 'sql-canvas',
   aliases: ['sql'],
-  label: 'SQL & Cohort Workbench',
+  label: 'Revenue Subledger Query',
   badge: 'SQL',
   accent: 'sky',
-  ctaLabel: 'Open workbench →',
+  ctaLabel: 'Open',
   placement: 'stage',
   priority: 33,
   promptPattern: /\b(sql|snowflake|bigquery|warehouse|cohort|pivot|chart|query)\b/i,
-  sampleMenuLabel: 'SQL + Chart + 2.4k-Row Grid',
+  sampleMenuLabel: 'Revenue Subledger Query',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');
     return createEnterprisePresetTurn('sql-canvas', nextId);

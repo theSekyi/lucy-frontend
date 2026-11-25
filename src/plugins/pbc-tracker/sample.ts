@@ -58,8 +58,7 @@ export const PBC_SAMPLE: PbcTrackerData = {
 
 export function buildPbcSampleTurn(nextId: (p: string) => string): SampleTurnPayload {
   return {
-    prose:
-      'Current **PBC (Provided-By-Client) Open-Item Tracker** for Q4 fieldwork — click any status pill to mark support received or send a single consolidated client reminder:',
+    prose: '**Q4 Fieldwork PBC Request List** (`3` open, `1` received):',
     artifact: {
       id: nextId('block-pbc'),
       kind: 'pbc-tracker',

@@ -24,8 +24,8 @@ export interface GeneratedEnterpriseTurn {
 }
 
 const CONTRACT_SAMPLE: CitedDocumentData = {
-  documentTitle: 'Master Cloud Services Agreement — Acme Global Corp',
-  partySummary: 'Between Lucy Enterprise Inc. ("Provider") and Acme Global ("Customer") · Effective Q4',
+  documentTitle: 'Master Cloud Services Agreement — Acme Holdings Ltd',
+  partySummary: 'Between CloudHost Europe GmbH ("Vendor") and Acme Holdings Ltd ("Client") · FY27',
   totalPages: 42,
   pages: [
     {
@@ -34,17 +34,17 @@ const CONTRACT_SAMPLE: CitedDocumentData = {
       clauses: [
         {
           section: '§2.1',
-          heading: 'Primary EU & US Data Residency',
+          heading: 'Primary EU & UK Data Residency',
           riskLevel: 'low',
-          text: 'Customer Content originating from EEA member states shall remain encrypted at rest (AES-256) within Frankfurt (eu-central-1) and Dublin (eu-west-1) regions unless explicitly routed by Customer.',
-          note: 'Complies with SOC2 CC6.1 & GDPR Art. 44.',
+          text: 'Client Content originating from UK and EEA entities shall remain encrypted at rest (AES-256) within London, Frankfurt, and Dublin regions unless explicitly instructed in writing.',
+          note: 'Meets GDPR Art. 44 & ICAEW tech assurance guidance.',
         },
         {
           section: '§2.4',
           heading: 'Subprocessor Notice Window',
           riskLevel: 'watch',
-          text: 'Provider shall provide fourteen (14) calendar days written notice prior to authorizing any new subprocessor handling Customer PII.',
-          note: 'Standard enterprise threshold is 30 days.',
+          text: 'Vendor shall provide fourteen (14) calendar days written notice prior to authorizing any new subprocessor handling Client financial records.',
+          note: 'Firm policy threshold is 30 calendar days.',
         },
       ],
     },
@@ -57,13 +57,13 @@ const CONTRACT_SAMPLE: CitedDocumentData = {
           heading: 'Super-Cap Limitation of Liability',
           riskLevel: 'high',
           text: 'Aggregate liability for Data Protection or Confidentiality breaches shall not exceed three times (3x) the trailing twelve-month (TTM) Subscription Fees paid or payable under the applicable Order Form.',
-          note: 'Key negotiation clause: Customer requested uncapped; 3x TTM is mutually market-standard.',
+          note: 'Flagged for disclosure review: 3x TTM cap vs uncapped indemnity request.',
         },
         {
           section: '§4.5',
           heading: 'IP Infringement Indemnity',
           riskLevel: 'low',
-          text: 'Provider shall defend Customer against third-party intellectual property claims arising directly from unmodified use of the Platform.',
+          text: 'Vendor shall defend Client against third-party intellectual property claims arising directly from unmodified use of the hosted service.',
         },
       ],
     },
@@ -75,8 +75,8 @@ const CONTRACT_SAMPLE: CitedDocumentData = {
           section: '§7.4',
           heading: 'Breach Notification Window',
           riskLevel: 'low',
-          text: 'Provider will notify Customer Security Operations without undue delay and in no event later than thirty-six (36) hours after confirming unauthorized access to Customer Data.',
-          note: 'Beats 72-hour regulatory baseline.',
+          text: 'Vendor will notify Client Finance & Security Operations without undue delay and no later than thirty-six (36) hours after confirming unauthorized access.',
+          note: 'Within 72-hour statutory reporting window.',
         },
       ],
     },
@@ -85,12 +85,12 @@ const CONTRACT_SAMPLE: CitedDocumentData = {
 
 const REDLINE_SAMPLE: RedlineDocumentData = {
   documentName: 'Acme_MSA_v4_Legal_Redline.diff',
-  author: 'General Counsel Review · 3 Clauses Proposed',
+  author: 'General Counsel Review · 3 Clauses',
   hunks: [
     {
       id: 'hunk-1',
       section: '§2.4 Subprocessor Notice Period',
-      rationale: 'Aligns subprocessor notice period with Acme procurement policy (30 days vs 14 days).',
+      rationale: 'Aligns subprocessor notice period with procurement policy (30 days vs 14 days).',
       before: 'Provider shall provide fourteen (14) calendar days written notice prior to authorizing any new subprocessor.',
       after: 'Provider shall provide thirty (30) calendar days prior written notice and an objection window before authorizing any new subprocessor.',
       initialDecision: 'pending',
@@ -106,7 +106,7 @@ const REDLINE_SAMPLE: RedlineDocumentData = {
     {
       id: 'hunk-3',
       section: '§9.1 Renewal Price Uplift Cap',
-      rationale: 'Prevents uncapped CPI adjustments on multi-year enterprise seats.',
+      rationale: 'Caps annual renewal rate increases at 5% on multi-year commitments.',
       before: 'Renewal Subscription Fees may increase at Provider’s then-current list price.',
       after: 'Renewal Subscription Fees shall not increase by more than five percent (5%) over the prior term’s per-unit rate.',
       initialDecision: 'pending',
@@ -115,12 +115,12 @@ const REDLINE_SAMPLE: RedlineDocumentData = {
 };
 
 const SQL_CANVAS_SAMPLE: SqlCanvasData = {
-  warehouse: 'Snowflake · PROD_FINANCE.MART_ARR',
-  executionMs: 184,
-  scannedMb: 42.6,
+  warehouse: 'Snowflake · GL_REVENUE_COHORTS',
+  executionMs: 142,
+  scannedMb: 38.4,
   labelColumn: 'Quarter',
-  metricColumns: ['Enterprise ARR ($K)', 'Expansion ($K)'],
-  columns: ['Quarter', 'Enterprise ARR ($K)', 'Expansion ($K)', 'Net Retention (%)', 'Gross Margin (%)'],
+  metricColumns: ['Recognized Rev ($K)', 'Deferred Add ($K)'],
+  columns: ['Quarter', 'Recognized Rev ($K)', 'Deferred Add ($K)', 'Net Retention (%)', 'Gross Margin (%)'],
   rows: [
     ['Q1 26', 3420, 480, 118.4, 81.2],
     ['Q2 26', 3980, 610, 121.0, 82.5],
@@ -129,30 +129,30 @@ const SQL_CANVAS_SAMPLE: SqlCanvasData = {
   ],
   query: `SELECT
   fiscal_quarter                        AS "Quarter",
-  ROUND(SUM(enterprise_arr) / 1000, 0)  AS "Enterprise ARR ($K)",
-  ROUND(SUM(expansion_arr) / 1000, 0)   AS "Expansion ($K)",
-  ROUND(AVG(net_dollar_retention), 1)   AS "Net Retention (%)",
+  ROUND(SUM(recognized_rev) / 1000, 0)  AS "Recognized Rev ($K)",
+  ROUND(SUM(deferred_add) / 1000, 0)    AS "Deferred Add ($K)",
+  ROUND(AVG(net_retention_pct), 1)      AS "Net Retention (%)",
   ROUND(AVG(gross_margin_pct), 1)       AS "Gross Margin (%)"
-FROM prod_finance.mart_arr_cohorts
-WHERE segment = 'Enterprise'
+FROM prod_audit.gl_4010_revenue_cohorts
+WHERE entity_group = 'Acme Consolidated'
   AND fiscal_year = 2026
 GROUP BY 1
 ORDER BY 1 ASC;`,
 };
 
 const TOPOLOGY_SAMPLE: TopologyGraphData = {
-  subtitle: 'Incident & Data Lineage · Real-time blast radius across 6 production nodes',
+  subtitle: 'Subledger & Consolidation Feed Lineage · 6 systems',
   nodes: [
     {
       id: 'edge-gw',
-      label: 'Edge Gateway',
+      label: 'Open Banking Feeds',
       layer: 0,
       lane: 1,
       kind: 'source',
       status: 'healthy',
-      owner: 'Platform Net',
-      latency: '9 ms p95',
-      note: 'TLS termination & regional WAF routing; 0% packet drop.',
+      owner: 'Treasury',
+      latency: 'Daily 06:00',
+      note: 'Chase #4821 & NatWest statement ingestion; 142 transactions matched.',
     },
     {
       id: 'auth-sso',
@@ -161,113 +161,113 @@ const TOPOLOGY_SAMPLE: TopologyGraphData = {
       lane: 0,
       kind: 'service',
       status: 'degraded',
-      owner: 'Identity Core',
-      latency: '214 ms p95',
-      note: 'Token introspection cache miss spike after IdP key rotation; auto-mitigation active.',
+      owner: 'IT Controls',
+      latency: 'Delayed 18m',
+      note: 'Certificate rotation pending on secondary ERP connector token.',
     },
     {
       id: 'policy-opa',
-      label: 'RBAC Policy Engine',
+      label: 'Approval Matrix',
       layer: 1,
       lane: 2,
       kind: 'policy',
       status: 'healthy',
-      owner: 'Security Eng',
-      latency: '4 ms p95',
-      note: 'Row-level tenant isolation & PII redaction rules enforced.',
+      owner: 'Assurance',
+      latency: 'Enforced',
+      note: 'Dual-control partner sign-off required prior to GL posting.',
     },
     {
-      id: 'lucy-orch',
-      label: 'Lucy Orchestrator',
+      id: 'erp-consol',
+      label: 'NetSuite Consolidation',
       layer: 2,
       lane: 1,
       kind: 'service',
       status: 'impacted',
-      owner: 'Core Services',
-      latency: '260 ms p95',
-      note: 'Inherits +180 ms upstream auth tail latency on uncached session handshakes.',
+      owner: 'Controllership',
+      latency: 'Sync queued',
+      note: 'Awaiting token refresh before posting AJE-2026-042 ($60,058.00).',
     },
     {
       id: 'snowflake-dw',
-      label: 'Snowflake Warehouse',
+      label: 'Snowflake Subledger',
       layer: 3,
       lane: 0,
       kind: 'warehouse',
       status: 'healthy',
-      owner: 'Data Platform',
-      latency: '184 ms p95',
-      note: 'Read-only service principal with query result caching.',
+      owner: 'Data Audit',
+      latency: 'Tied $0',
+      note: 'Read-only audit extract reconciled to November Trial Balance.',
     },
     {
       id: 'audit-lake',
-      label: 'SOC2 Audit Ledger',
+      label: 'Statutory Audit Trail',
       layer: 3,
       lane: 2,
       kind: 'warehouse',
       status: 'healthy',
       owner: 'Compliance',
-      latency: '18 ms p95',
-      note: 'Immutable append-only provenance stream (7-year retention).',
+      latency: '7-yr lock',
+      note: 'Immutable workpaper revision log (ICAEW /PCAOB retention).',
     },
   ],
   edges: [
-    { from: 'edge-gw', to: 'auth-sso', label: 'JWT verify' },
-    { from: 'edge-gw', to: 'policy-opa', label: 'Tenant ACL' },
-    { from: 'auth-sso', to: 'lucy-orch', label: '+180ms tail' },
-    { from: 'policy-opa', to: 'lucy-orch', label: 'Scoped claims' },
-    { from: 'lucy-orch', to: 'snowflake-dw', label: 'SQL read' },
-    { from: 'lucy-orch', to: 'audit-lake', label: 'Audit emit' },
+    { from: 'edge-gw', to: 'auth-sso', label: 'OAuth token' },
+    { from: 'edge-gw', to: 'policy-opa', label: 'Rule check' },
+    { from: 'auth-sso', to: 'erp-consol', label: 'Delayed' },
+    { from: 'policy-opa', to: 'erp-consol', label: 'Dual sign-off' },
+    { from: 'erp-consol', to: 'snowflake-dw', label: 'GL extract' },
+    { from: 'erp-consol', to: 'audit-lake', label: 'Audit log' },
   ],
 };
 
 const SLIDE_DECK_SAMPLE: SlideDeckData = {
-  deckTitle: 'Q4 Enterprise Business Review & FY27 Plan',
-  audience: 'Executive Staff & Board of Directors',
-  dateLabel: 'Nov 2026 · Confidential',
+  deckTitle: 'Acme Holdings Ltd — Q4 Audit Committee Close Pack',
+  audience: 'Audit Committee & Statutory Directors',
+  dateLabel: 'Nov 2026 · Draft',
   slides: [
     {
       id: 'slide-1',
-      eyebrow: '01 · EXECUTIVE SUMMARY',
-      title: 'Enterprise ARR Reached $5.64M (+65% YoY) With Best-in-Class Efficiency',
-      takeaway: 'Net Dollar Retention expanded 980 bps to 128.2% driven by multi-department seat adoption.',
+      eyebrow: '01 · FINANCIAL SUMMARY',
+      title: 'FY26 Consolidated Revenue Reached $5.64M With $0 Unreconciled TB Variance',
+      takeaway: 'ASC 606 deferred revenue waterfall and Chase #4821 cash accounts tie to the Consolidated Trial Balance.',
       metrics: [
-        { label: 'Ending ARR', value: '$5.64M', delta: '+65% YoY' },
-        { label: 'Net Dollar Retention', value: '128.2%', delta: '+9.8 pts' },
-        { label: 'Gross Margin', value: '85.1%', delta: '+3.9 pts' },
+        { label: 'Q4 Recognized Rev', value: '$5.64M', delta: '+20.3% QoQ' },
+        { label: 'Performance Mat.', value: '$25,000', delta: '5% Pre-Tax' },
+        { label: 'Gross Margin', value: '85.1%', delta: '+1.3 pts' },
       ],
       bullets: [
-        'Closed 14 new Fortune-1000 logos with average initial deployment under 11 days.',
-        'Zero Sev-1 compliance or data-residency incidents across EU & US sovereign regions.',
+        'AJE-2026-042 ($60,058.00) recorded for November earned revenue release and external audit accrual.',
+        'All UK & EEA subsidiary ledgers translated at closing spot rates under FRS 102 / ASC 830.',
       ],
     },
     {
       id: 'slide-2',
-      eyebrow: '02 · PRODUCT VELOCITY',
-      title: 'Modular Stage Architecture Cut Low-Bandwidth Load Time by 5.9×',
-      takeaway: 'APAC & emerging-market field teams saw +27% weekly active usage after shipping <19 KB boot shell.',
+      eyebrow: '02 · SUBSTANTIVE TESTING',
+      title: 'AP Vouching & Bank Cutoff Exceptions Below Clearly Trivial Threshold',
+      takeaway: '4 cash timing differences ($3,442.10 net) and 1 FX receipt variance ($42.10) isolated on WP E-40.',
       metrics: [
-        { label: 'Initial Boot Payload', value: '18.6 KB', delta: 'Brotli' },
-        { label: 'Slow-3G Interactive', value: '1.19 s', delta: '4.5× faster' },
-        { label: 'Lazy Plugin Overhead', value: '0 KB', delta: 'Until opened' },
+        { label: 'OpEx Vouched', value: '$279.2K', delta: '5 selections' },
+        { label: 'Receipt Variance', value: '$42.10', delta: 'Below $1.25K CTT' },
+        { label: 'Open PBC Items', value: '3', delta: '2 overdue' },
       ],
       bullets: [
-        '6 enterprise stage renderers (Excel, Contracts, Redlines, SQL BI, Lineage, Decks) load on demand.',
-        'Offline outbox guarantees zero lost prompts for traveling executives and field ops.',
+        'Awaiting signed Hudson Yards Suite 810 CAM escalation notice ($14,200) prior to final sign-off.',
+        'Chase #4821 December 1–5 cutoff bank statement requested from Controller.',
       ],
     },
     {
       id: 'slide-3',
-      eyebrow: '03 · FY27 CAPITAL ALLOCATION',
-      title: 'Focused Investment in Regulated Verticals & Transactional Connectors',
-      takeaway: 'Targeting $12.5M ARR by Q4 FY27 while maintaining positive free cash flow.',
+      eyebrow: '03 · TAX & FILINGS',
+      title: 'CT600 & Schedule M-1 Taxable Income Reconciled at $1,648,400',
+      takeaway: 'Permanent (-$5,600) and temporary (+$17,500) book-to-tax adjustments traced to Trial Balance accounts.',
       metrics: [
-        { label: 'FY27 ARR Target', value: '$12.5M', delta: '2.2×' },
-        { label: 'CAC Payback', value: '9.4 mos', delta: '-2.1 mos' },
-        { label: 'Security Certs', value: 'SOC2 + ISO', delta: 'FedRAMP Q2' },
+        { label: 'Book Net Income', value: '$1.637M', delta: 'Audited TB' },
+        { label: 'Taxable Income', value: '$1.648M', delta: 'Sch M-1' },
+        { label: 'Filing Deadline', value: '30 Nov', delta: 'UTR 4918204110' },
       ],
       bullets: [
-        'Expand governed write-back approvals across Salesforce, Jira, Coupa, and Snowflake.',
-        'Maintain strict zero-bloat performance budget in CI on every pull request.',
+        'HMRC Making Tax Digital CT600 computation validated and queued for Partner EQCR sign-off.',
+        'Partner K-1 allocations reconciled across all 3 institutional and founder capital accounts.',
       ],
     },
   ],
@@ -282,14 +282,14 @@ export function createEnterprisePresetTurn(
       return {
         defaultAnchor: '§4.2',
         prose:
-          'I reviewed the **Acme Global Master Cloud Services Agreement** (42 pages). Click any section citation to jump straight to the verified clause on the page:\n\n• **Data Residency** [§2.1] locks EEA customer data to Frankfurt & Dublin with AES-256 encryption, while subprocessor notice in [§2.4] is currently 14 days (watch item).\n• **Liability Cap** [§4.2] sets a **3× TTM super-cap** on data protection breaches — flagged as the primary negotiation clause.\n• **Incident SLA** [§7.4] commits to a **36-hour breach notice**, beating the 72-hour baseline.',
+          '**Acme Holdings Ltd — CloudHost MSA** (42 pages):\n\n• **Data residency** [§2.1] restricts storage to London, Frankfurt, and Dublin; subprocessor notice in [§2.4] is 14 days vs 30-day policy.\n• **Liability super-cap** [§4.2] limits data-protection claims to **3× TTM fees**; breach notice in [§7.4] is **36 hours**.',
         artifact: {
           id: idFactory('block-contract'),
           kind: 'cited-document',
           title: 'Acme Master Cloud Services Agreement',
           filename: 'Acme_Global_MSA_FY27.pdf',
           mimeType: 'application/pdf',
-          summary: '42 pages · 5 grounded clauses indexed ([§2.1], [§2.4], [§4.2], [§7.4])',
+          summary: '42 pages · Clauses [§2.1], [§2.4], [§4.2], [§7.4]',
           data: CONTRACT_SAMPLE,
         },
       };
@@ -297,13 +297,13 @@ export function createEnterprisePresetTurn(
     case 'redline':
       return {
         prose:
-          'Prepared **3 surgical contract redlines** on `Acme_MSA_v4` ready for General Counsel sign-off.\n\n• Extended subprocessor notice from 14 → **30 calendar days** (`§2.4`).\n• Capped data-protection super-cap at **3× TTM fees** (`§4.2`).\n• Added a **5% renewal uplift cap** (`§9.1`).\n\nUse **Accept** / **Reject** on each hunk in the redline stage to finalize the audit log.',
+          '**Acme_MSA_v4** legal redline (3 clauses):\n\n• Extended subprocessor notice from 14 to **30 calendar days** (`§2.4`).\n• Capped data-protection liability at **3× TTM fees** (`§4.2`) and renewal uplift at **5%** (`§9.1`).',
         artifact: {
           id: idFactory('block-redline'),
           kind: 'redline',
           title: 'Acme MSA v4 Legal Redline',
           filename: 'Acme_MSA_v4_Legal_Redline.diff',
-          summary: '3 clause diffs · Per-section Accept / Reject with live decision tally',
+          summary: '3 clause diffs · 1 accepted, 2 pending',
           data: REDLINE_SAMPLE,
         },
       };
@@ -311,13 +311,13 @@ export function createEnterprisePresetTurn(
     case 'sql-canvas':
       return {
         prose:
-          'Queried `PROD_FINANCE.MART_ARR` in **184 ms** (42.6 MB scanned).\n\n• **Enterprise ARR grew +64.9% across FY26** ($3.42M → **$5.64M**), while Net Retention climbed to **128.2%**.\n• Switch between **Chart**, **Data Grid**, and **SQL Query** in the stage to verify the cohort aggregation.',
+          'Extracted `GL_REVENUE_COHORTS` (`4` quarters, `2,400` subledger rows):\n\n• **Q4 recognized revenue** reached **$5,640K** (+20.3% QoQ) with **85.1%** gross margin.',
         artifact: {
           id: idFactory('block-sql'),
           kind: 'sql-canvas',
-          title: 'FY26 Enterprise ARR Cohort Query',
-          filename: 'enterprise_arr_cohorts.sql',
-          summary: 'Snowflake · 4 quarters · Chart + Grid + Verified SQL (184 ms)',
+          title: 'FY26 Recognized Revenue Cohorts',
+          filename: 'gl_4010_revenue_cohorts.sql',
+          summary: 'Snowflake · 4 quarters · 2,400 subledger rows',
           data: SQL_CANVAS_SAMPLE,
         },
       };
@@ -326,13 +326,13 @@ export function createEnterprisePresetTurn(
       return {
         defaultAnchor: 'auth-sso',
         prose:
-          'Mapped the live **service & data lineage blast radius** across 6 production nodes.\n\n• Root cause isolated to **OIDC / SAML Auth** (`214 ms p95` after IdP key rotation), adding `+180 ms` tail latency to **Lucy Orchestrator** while **Snowflake Warehouse** and **SOC2 Audit Ledger** remain healthy.\n• Pan, zoom, or click any node in the topology stage to inspect its owner, SLA, and downstream dependencies.',
+          '**Subledger & ERP consolidation lineage** (6 nodes):\n\n• **OIDC / SAML Auth** token rotation is delayed (`18m`), holding **NetSuite Consolidation** batch sync while **Snowflake Subledger** and **Statutory Audit Trail** remain tied.',
         artifact: {
           id: idFactory('block-topology'),
           kind: 'topology',
-          title: 'Auth Latency Blast Radius & Lineage',
-          filename: 'prod_service_lineage.dag',
-          summary: '6 nodes · 6 edges · 1 degraded upstream (OIDC Auth) impacting orchestrator',
+          title: 'Subledger & Consolidation Lineage',
+          filename: 'erp_consolidation_lineage.dag',
+          summary: '6 systems · 1 delayed connector holding ERP batch',
           data: TOPOLOGY_SAMPLE,
         },
       };
@@ -340,13 +340,13 @@ export function createEnterprisePresetTurn(
     case 'slide-deck':
       return {
         prose:
-          'Drafted the **Q4 Enterprise Business Review & FY27 Plan** as a 3-slide executive deck.\n\n• Formatted in crisp `16:9` presentation layout with headline KPIs, board takeaways, and `Export Brief` support.',
+          '**Acme Holdings Ltd — Q4 Audit Committee Close Pack** (3 slides: Financial Summary, Substantive Testing, and Tax & Filings).',
         artifact: {
           id: idFactory('block-deck'),
           kind: 'slide-deck',
-          title: 'Q4 Enterprise Business Review',
-          filename: 'Q4_Enterprise_Board_Deck.pptx',
-          summary: '3 slides · 16:9 Executive QBR ($5.64M ARR, 128.2% NDR, FY27 Plan)',
+          title: 'Audit Committee Q4 Close Pack',
+          filename: 'Audit_Committee_Q4_Deck.pptx',
+          summary: '3 slides · Financial Summary, WP E-40 & CT600 / M-1',
           data: SLIDE_DECK_SAMPLE,
         },
       };
@@ -354,13 +354,13 @@ export function createEnterprisePresetTurn(
     case 'code-workspace':
       return {
         prose:
-          'Prepared the **4-file ERP webhook & reconciliation validation patch** across TypeScript, Python QA checks, SQL telemetry, and canary rollout config.',
+          '**ERP journal batch validator & subledger tie-out scripts** (`normalizeJournalBatch.ts`, `reconcile_subledger.py`, `unmatched_payouts.sql`, `netsuite-sync.yaml`).',
         artifact: {
           id: idFactory('block-code-ws'),
           kind: 'code-workspace',
           title: 'ERP Webhook & Batch Validator',
           filename: 'erp-sync-patch (4 files)',
-          summary: 'TS · PY · SQL · YAML — Ledger normalizer, validator & canary config',
+          summary: 'TS · PY · SQL · YAML — Journal validator & subledger scripts',
           data: {
             files: [
               {
@@ -396,14 +396,14 @@ export function createEnterprisePresetTurn(
     default:
       return {
         prose:
-          'Here is the structured Q4 financial & regional latency workbook. Key takeaway: **Net Contribution grew +31.0% YoY ($1.64M)** while APAC low-bandwidth retention led all regions at **127%**.\n\nClick any cell to inspect formulas (`=SUM(B2:D2)`) or sort columns.',
+          '**Q4 Practice Revenue & Regional Workbook** (`=SUM(B2:D2)`): Net contribution **$1.64M** (+31.0% YoY) across Audit, Tax, and Subledger lines.',
         artifact: {
           id: idFactory('block-sheet'),
           kind: 'spreadsheet',
           title: 'Q4 Revenue & Regional Model',
           filename: 'Q4_Revenue_Model.xlsx',
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          summary: '2 sheets · Q4 Forecast ($1.64M net, +31% YoY) & Region Breakdown',
+          summary: '2 sheets · Q4 Forecast ($1.64M net) & Entity Breakdown',
           data: SAMPLE_FINANCIAL_WORKBOOK,
         },
       };

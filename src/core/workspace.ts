@@ -110,7 +110,7 @@ export function createWorkspace<TView = unknown>(
           {
             id: nextWorkspaceId('block'),
             kind: 'prose',
-            data: `Opened **${attachedStage.filename ?? attachedStage.title ?? 'your workpaper'}** in the side-by-side stage so you can inspect, filter, or verify figures directly alongside this thread.`,
+            data: `Loaded **${attachedStage.filename ?? attachedStage.title ?? 'workpaper'}**.`,
           },
           attachedStage,
         ],
@@ -131,7 +131,7 @@ export function createWorkspace<TView = unknown>(
         {
           id: nextWorkspaceId('block'),
           kind: 'prose',
-          data: `Prepared workspace note for **"${prompt}"**.\n\n• Open a **Trial Balance**, **Bank Reconciliation**, **Schedule M-1 Tax Bridge**, **Vouching Workpaper**, **Contract Redline**, or **Excel Model** anytime from the **+** menu.`,
+          data: `Note recorded for **${prompt}**. Use **+** to attach a spreadsheet or open a workpaper.`,
         },
       ],
     };
@@ -522,7 +522,7 @@ export function createWorkspace<TView = unknown>(
           {
             id: nextWorkspaceId('block'),
             kind: 'prose',
-            data: `Open ${plugin.sampleMenuLabel ?? plugin.label}`,
+            data: plugin.label,
           },
         ],
       };

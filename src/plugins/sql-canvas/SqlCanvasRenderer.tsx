@@ -186,15 +186,15 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
         <div class="stage-scroll-area">
           <div class="sql-kpi-strip">
             <div class="kpi-tile">
-              <div class="kpi-tile-label">Ending Q4 ARR</div>
+              <div class="kpi-tile-label">Q4 Recognized Rev</div>
               <div class="kpi-tile-value">$5.64M</div>
             </div>
             <div class="kpi-tile">
-              <div class="kpi-tile-label">Net Dollar Retention</div>
-              <div class="kpi-tile-value">128.2%</div>
+              <div class="kpi-tile-label">Gross Margin</div>
+              <div class="kpi-tile-value">85.1%</div>
             </div>
             <div class="kpi-tile">
-              <div class="kpi-tile-label">Filtered Accounts</div>
+              <div class="kpi-tile-label">Subledger Rows</div>
               <div class="kpi-tile-value">{filteredGridRows.length.toLocaleString()}</div>
             </div>
           </div>
@@ -237,19 +237,16 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
           <div class="chart-tooltip-banner">
             <span>
               <strong>{String(activeRow[0])}</strong> · {metricName}:{' '}
-              <strong style={{ color: '#38bdf8' }}>
-                {Number(activeRow[metricIdx]).toLocaleString('en-US')}
-              </strong>{' '}
-              <span style={{ color: '#4ade80' }}>({qoqDelta})</span>
+              <strong>{Number(activeRow[metricIdx]).toLocaleString('en-US')}</strong>
             </span>
-            <span class="sheet-meta-count">Click any quarter to cross-filter 2,400 rows</span>
+            <span class="sheet-meta-count">{qoqDelta}</span>
           </div>
 
           <svg viewBox="0 0 520 225" width="100%" role="img" aria-label={metricName}>
             <defs>
               <linearGradient id="sqlAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4" />
-                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02" />
+                <stop offset="0%" stop-color="#e4e4e7" stop-opacity="0.22" />
+                <stop offset="100%" stop-color="#e4e4e7" stop-opacity="0.01" />
               </linearGradient>
             </defs>
 
@@ -259,7 +256,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
               const label = rawVal >= 1000 ? `${(rawVal / 1000).toFixed(1)}k` : rawVal.toFixed(0);
               return (
                 <g key={step}>
-                  <line x1="46" y1={y} x2="500" y2={y} stroke="rgba(255,255,255,0.07)" />
+                  <line x1="46" y1={y} x2="500" y2={y} stroke="rgba(255,255,255,0.06)" />
                   <text x="38" y={y + 4} text-anchor="end" fill="#6e6e77" font-size="10">
                     {label}
                   </text>
@@ -276,8 +273,8 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
                 <polyline
                   points={areaPoints}
                   fill="none"
-                  stroke="#38bdf8"
-                  stroke-width="2.5"
+                  stroke="#e4e4e7"
+                  stroke-width="2"
                 />
               </>
             )}
@@ -302,19 +299,19 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
                 >
                   {chartKind === 'bars' ? (
                     <rect
-                      x={xCenter - 22}
+                      x={xCenter - 20}
                       y={185 - h}
-                      width="44"
+                      width="40"
                       height={h}
-                      rx="6"
-                      fill={isSelected ? '#34d399' : isHovered ? '#7dd3fc' : '#38bdf8'}
+                      rx="4"
+                      fill={isSelected ? '#ffffff' : isHovered ? '#e4e4e7' : '#a1a1aa'}
                     />
                   ) : (
                     <circle
                       cx={xCenter}
                       cy={185 - h}
-                      r={isHovered || isSelected ? 6 : 4.5}
-                      fill={isSelected ? '#34d399' : '#38bdf8'}
+                      r={isHovered || isSelected ? 5.5 : 4}
+                      fill={isSelected ? '#ffffff' : '#d4d4d8'}
                       stroke="#0b0b0e"
                       stroke-width="2"
                     />
@@ -323,9 +320,9 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
                     x={xCenter}
                     y={177 - h}
                     text-anchor="middle"
-                    fill="#f4f4f6"
+                    fill="#e4e4e7"
                     font-size="10.5"
-                    font-weight="600"
+                    font-weight="500"
                   >
                     {val.toLocaleString('en-US')}
                   </text>
@@ -333,9 +330,9 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
                     x={xCenter}
                     y="204"
                     text-anchor="middle"
-                    fill={isSelected ? '#4ade80' : '#a1a1aa'}
+                    fill={isSelected ? '#ffffff' : '#a1a1aa'}
                     font-size="11"
-                    font-weight={isSelected ? '700' : '500'}
+                    font-weight={isSelected ? '600' : '400'}
                   >
                     {quarterLabel}
                   </text>
@@ -457,15 +454,12 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
 
       {tab === 'sql' && (
         <div class="stage-scroll-area">
-          <div class="code-block-card" style={{ borderLeft: '3px solid #22d3ee' }}>
+          <div class="code-block-card">
             <div class="code-block-header">
-              <span>{data.warehouse} · Interactive SQL</span>
-              <div class="stage-subbar-group">
-                <span class="sheet-meta-count">Tip: add LIMIT 50 or Healthcare</span>
-                <button type="button" class="sync-llm-btn" onClick={runInteractiveQuery}>
-                  ▶ Run Query
-                </button>
-              </div>
+              <span>{data.warehouse}</span>
+              <button type="button" class="primary-stage-btn" onClick={runInteractiveQuery}>
+                Run query
+              </button>
             </div>
             <textarea
               class="sql-editor-textarea"

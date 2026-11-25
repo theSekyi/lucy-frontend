@@ -7,6 +7,7 @@ import {
   type MailThreadItem,
   type ReplyDraftTone,
 } from '../../core/inbox';
+import { SendArrowIcon } from '../icons';
 
 export interface DeepLinkTarget {
   readonly pluginRoute?: string;
@@ -171,13 +172,13 @@ export function MailIntelligencePanel({
             <span class="mail-reply-recipient">{thread.senderEmail}</span>
           </div>
 
-          <div class="mail-tone-tabs" role="group" aria-label="Generate response">
+          <div class="mail-tone-tabs" role="group" aria-label="Reply format">
             <button
               type="button"
               class={`mail-tone-btn ${tone === 'standard' && draftText ? 'is-active' : ''}`}
               onClick={() => handleToneSelect('standard')}
             >
-              Generate response
+              Standard
             </button>
             <button
               type="button"
@@ -191,7 +192,7 @@ export function MailIntelligencePanel({
               class={`mail-tone-btn ${tone === 'pushback' && draftText ? 'is-active' : ''}`}
               onClick={() => handleToneSelect('pushback')}
             >
-              Request backup
+              Request support
             </button>
           </div>
         </div>
@@ -200,7 +201,7 @@ export function MailIntelligencePanel({
           ref={textareaRef}
           rows={5}
           class="mail-draft-textarea"
-          placeholder="Write your reply or click Generate response…"
+          placeholder="Write reply…"
           value={draftText}
           onInput={(e) => {
             setSentNotice(false);
@@ -245,10 +246,7 @@ export function MailIntelligencePanel({
           <div class="mail-terminal-log">
             {exchanges.map((ex) => (
               <div key={ex.id} class="mail-terminal-entry">
-                <div class="mail-term-q">
-                  <span class="mail-term-prompt">›</span>
-                  <span>{ex.question}</span>
-                </div>
+                <div class="mail-term-q">{ex.question}</div>
                 <div class="mail-term-a">{ex.answer}</div>
                 <div class="mail-term-actions">
                   {ex.citations.map((cit) => (
@@ -277,7 +275,7 @@ export function MailIntelligencePanel({
                       )
                     }
                   >
-                    Insert into reply ↵
+                    Insert into reply
                   </button>
                 </div>
               </div>
@@ -286,35 +284,17 @@ export function MailIntelligencePanel({
         )}
 
         <form class="mail-terminal-form" onSubmit={handleTerminalSubmit}>
-          <span class="mail-term-prompt" aria-hidden="true">
-            ›
-          </span>
           <input
             type="text"
             class="mail-terminal-input"
-            placeholder="Ask terminal about figures, clauses, or tied ledgers…"
+            placeholder="Ask about figures, clauses, or tied ledgers…"
             value={terminalInput}
             onInput={(e) => setTerminalInput((e.currentTarget as HTMLInputElement).value)}
           />
-          <button type="submit" class="mail-term-run-btn">
-            Ask ↵
+          <button type="submit" class="composer-send-btn is-xs" aria-label="Ask">
+            <SendArrowIcon />
           </button>
         </form>
-
-        {intel && intel.quickPrompts.length > 0 && exchanges.length === 0 && (
-          <div class="mail-term-suggestions">
-            {intel.quickPrompts.map((qp) => (
-              <button
-                key={qp}
-                type="button"
-                class="mail-term-chip"
-                onClick={() => runTerminalQuery(qp)}
-              >
-                › {qp}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </section>
   );

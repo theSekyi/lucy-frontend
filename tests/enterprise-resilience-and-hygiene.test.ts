@@ -49,6 +49,15 @@ describe('UI Hygiene, Zero Native <select>, Zero AI Clichés & Zero Dead CSS', (
       'Seedance',
       'BotItemIcon',
       'AI Runtime',
+      'Lucy Enterprise Inc',
+      'Lucy Orchestrator',
+      'Simulate Outage',
+      'sync-llm-btn',
+      'INBOX_QUICK_QUERIES',
+      'Generate response',
+      'Ask terminal',
+      'Click any ',
+      '⚡',
     ];
 
     for (const file of allSrcFiles) {

@@ -202,7 +202,16 @@ describe('Workspace idempotency, attachment lifecycle, and responsive/a11y invar
   it('locks down accessibility, reduced-motion, mobile flex-column height bounds, and Service Worker caching', () => {
     const coreCss = readFileSync(join(process.cwd(), 'src/styles.css'), 'utf8');
     expect(coreCss).toContain('prefers-reduced-motion: reduce');
-    expect(coreCss).toContain(':focus-visible');
+    expect(coreCss).toContain('button:focus-visible');
+    expect(coreCss).toMatch(/textarea:focus-visible\s*\{\s*outline:\s*none;/);
+
+    //Inbox bottom ask dock reuses Composer card & SendArrowIcon (consistent with Home/Thread Composer)
+    const inboxSource = readFileSync(
+      join(process.cwd(), 'src/ui/inbox/InboxWorkspace.tsx'),
+      'utf8'
+    );
+    expect(inboxSource).toContain('composer-card is-compact');
+    expect(inboxSource).toContain('SendArrowIcon');
 
     // Prevent mobile flex-column stage blowout (must keep min-height: 0 on both panes)
     expect(coreCss).toMatch(/\.thread-conversation-pane\s*\{[^}]*min-height:\s*0;/);

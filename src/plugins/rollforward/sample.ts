@@ -50,7 +50,7 @@ export const ROLLFORWARD_SAMPLE: RollforwardData = {
 export function buildRollforwardSampleTurn(nextId: (p: string) => string): SampleTurnPayload {
   return {
     prose:
-      'Built the **ASC 606 Deferred Revenue & ASC 842 Lease Rollforward Schedules**.\n\n• Enforces `Opening + Additions − Recognized = Ending` across all quarters automatically.\n• Edit any quarterly Billings/Additions or Amortization cell to cascade ending balances forward and stage the Q4 journal entry.',
+      '**ASC 606 Deferred Revenue & ASC 842 Lease Rollforwards** (`Q1 26`–`Q4 26` ending **$1,185,000** deferred revenue).',
     artifact: {
       id: nextId('block-rf'),
       kind: 'rollforward',

@@ -34,11 +34,16 @@ button {
   padding: 0;
 }
 
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
+button:focus-visible {
   outline: 1.5px solid var(--focus-ring);
   outline-offset: 1px;
+}
+
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1021,40 +1026,26 @@ textarea:focus-visible {
 }
 
 .artifact-badge {
-  padding: 3px 6px;
-  border-radius: 5px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
   flex-shrink: 0;
 }
 
 .artifact-badge.badge-xlsx,
-.artifact-badge.accent-emerald {
-  background: rgba(22, 163, 74, 0.22);
-  color: #4ade80;
-}
-
-.artifact-badge.accent-amber {
-  background: rgba(245, 158, 11, 0.22);
-  color: #fcd34d;
-}
-
-.artifact-badge.accent-rose {
-  background: rgba(244, 63, 94, 0.22);
-  color: #fda4af;
-}
-
-.artifact-badge.accent-sky {
-  background: rgba(14, 165, 233, 0.22);
-  color: #7dd3fc;
-}
-
+.artifact-badge.accent-emerald,
+.artifact-badge.accent-amber,
+.artifact-badge.accent-rose,
+.artifact-badge.accent-sky,
 .artifact-badge.accent-violet {
-  background: rgba(139, 92, 246, 0.24);
-  color: #ddd6fe;
+  background: rgba(255, 255, 255, 0.055);
+  color: #c4c4cc;
 }
 
 .artifact-card-body {

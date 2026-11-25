@@ -2,7 +2,7 @@
 .auth-viewport {
   width: 100vw;
   height: 100vh;
-  background: #050507;
+  background: #070709;
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
@@ -10,7 +10,7 @@
 }
 
 .auth-topbar {
-  height: 56px;
+  height: 52px;
   padding: 0 24px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
@@ -30,25 +30,25 @@
 
 .auth-card {
   width: 100%;
-  max-width: 416px;
-  background: #0f0f13;
+  max-width: 384px;
+  background: #0e0e11;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
-  padding: 26px 24px 22px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .auth-card-head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .auth-heading {
   margin: 0;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: #f4f4f6;
@@ -60,61 +60,42 @@
   color: var(--text-muted);
 }
 
-.auth-provider-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.auth-provider-btn {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
+.auth-method-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 3px;
+  gap: 3px;
   border-radius: 8px;
-  background: #141419;
+  background: #09090c;
   border: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
 
-.auth-provider-btn:hover {
-  border-color: var(--border-strong);
-  color: #f4f4f6;
-}
-
-.auth-provider-btn.is-active {
-  background: #1a1b22;
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #ffffff;
-  font-weight: 500;
-}
-
-.auth-provider-left {
+.auth-method-tab {
+  height: 32px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: background 120ms ease, color 120ms ease;
 }
 
-.auth-provider-tag {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10.5px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted);
+.auth-method-tab:hover {
+  color: var(--text-secondary);
+}
+
+.auth-method-tab.is-active {
+  background: #1a1a20;
+  color: #ffffff;
+  font-weight: 500;
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border-subtle);
 }
 
 .auth-mono-input {
@@ -125,8 +106,8 @@
 .auth-error-banner {
   padding: 8px 10px;
   border-radius: 7px;
-  background: rgba(248, 113, 113, 0.12);
-  border: 1px solid rgba(248, 113, 113, 0.28);
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.24);
   font-size: 12px;
   color: #fca5a5;
 }
@@ -134,7 +115,7 @@
 .auth-submit-btn {
   width: 100%;
   height: 36px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .auth-card-footer {
@@ -153,43 +134,31 @@
    ========================================================================== */
 .onb-layout {
   flex: 1;
-  max-width: 980px;
+  max-width: 920px;
   width: 100%;
   margin: 0 auto;
-  padding: 28px 24px 44px;
+  padding: 32px 24px 44px;
   display: flex;
   gap: 32px;
   align-items: flex-start;
 }
 
 .onb-rail {
-  width: 214px;
+  width: 184px;
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.onb-rail-heading {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  padding-left: 8px;
 }
 
 .onb-step-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 
 .onb-step-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 34px;
+  height: 33px;
   padding: 0 10px;
   border-radius: 7px;
   font-size: 12.5px;
@@ -208,15 +177,15 @@
 }
 
 .onb-step-btn.is-current {
-  background: #15151a;
+  background: #141418;
   color: #ffffff;
   font-weight: 500;
 }
 
 .onb-step-num {
-  width: 20px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  width: 16px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   flex-shrink: 0;
 }
@@ -232,7 +201,7 @@
 }
 
 .onb-panel {
-  background: #0f0f13;
+  background: #0e0e11;
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 24px 26px;
@@ -242,22 +211,13 @@
 }
 
 .onb-panel-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-subtle);
-}
-
-.onb-eyebrow {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 .onb-title {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.02em;
   color: #f4f4f6;
@@ -281,17 +241,18 @@
 .onb-idp-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .onb-idp-card {
-  padding: 13px 14px;
-  border-radius: 9px;
-  background: #141419;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #131317;
   border: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   text-align: left;
   transition: border-color 120ms ease, background 120ms ease;
 }
@@ -301,20 +262,13 @@
 }
 
 .onb-idp-card.is-selected {
-  background: #1a1b22;
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-.onb-idp-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  background: #1a1a20;
+  border-color: rgba(255, 255, 255, 0.26);
 }
 
 .onb-idp-title {
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   color: #f4f4f6;
 }
 
@@ -323,9 +277,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 9px;
-  background: #131318;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #121216;
   border: 1px solid var(--border-subtle);
   flex-wrap: wrap;
 }
@@ -334,7 +288,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-top: 6px;
+  padding-top: 4px;
 }
 
 .onb-inline-row {
@@ -364,10 +318,10 @@
 .onb-entity-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 9px;
+  gap: 5px;
+  padding: 4px 10px;
   border-radius: 6px;
-  background: #141419;
+  background: #131317;
   border: 1px solid var(--border-subtle);
   font-size: 12px;
   color: #e4e4e7;

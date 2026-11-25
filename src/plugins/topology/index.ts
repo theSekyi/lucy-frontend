@@ -5,14 +5,14 @@ import type { TopologyGraphData } from '../../core/types';
 export const topologyPlugin: RendererPlugin<ComponentChildren, TopologyGraphData> = {
   id: 'topology',
   aliases: ['dag', 'lineage'],
-  label: 'Service Lineage Graph',
+  label: 'Consolidation Lineage',
   badge: 'DAG',
   accent: 'amber',
-  ctaLabel: 'Open graph →',
+  ctaLabel: 'Open',
   placement: 'stage',
   priority: 32,
   promptPattern: /\b(lineage|topology|blast\s*radius|incident|dag|graph|mermaid|dependency)\b/i,
-  sampleMenuLabel: 'Service Lineage & Outage Graph',
+  sampleMenuLabel: 'Consolidation Lineage',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');
     return createEnterprisePresetTurn('topology', nextId);

@@ -35,7 +35,7 @@ const REGULATORY_OPTIONS: ReadonlyArray<
 const FRAMEWORK_OPTIONS: ReadonlyArray<
   SelectMenuOption<OnboardingFirmProfile['framework']>
 > = [
-  { value: 'Dual UK & US GAAP', label: 'Dual UK (FRS 102 / IFRS) & US GAAP' },
+  { value: 'Dual UK & US GAAP', label: 'UK (FRS 102 / IFRS) & US GAAP' },
   { value: 'FRS 102 & IFRS', label: 'UK FRS 102 & IFRS' },
   { value: 'US GAAP (ASC)', label: 'US GAAP (ASC)' },
 ];
@@ -51,16 +51,16 @@ const MATERIALITY_OPTIONS: ReadonlyArray<
 const RESIDENCY_OPTIONS: ReadonlyArray<
   SelectMenuOption<OnboardingFirmProfile['residencyRegion']>
 > = [
-  { value: 'UK Sovereign (London)', label: 'UK Sovereign (London)' },
-  { value: 'EU Central (Frankfurt)', label: 'EU Central (Frankfurt)' },
-  { value: 'US East (Virginia)', label: 'US East (Virginia)' },
+  { value: 'UK Sovereign (London)', label: 'UK (London)' },
+  { value: 'EU Central (Frankfurt)', label: 'EU (Frankfurt)' },
+  { value: 'US East (Virginia)', label: 'US (Virginia)' },
 ];
 
 const SESSION_OPTIONS: ReadonlyArray<
   SelectMenuOption<OnboardingIdentityConfig['sessionDuration']>
 > = [
-  { value: '8 hours', label: '8 hours (Strict Audit)' },
-  { value: '12 hours', label: '12 hours (Recommended)' },
+  { value: '8 hours', label: '8 hours' },
+  { value: '12 hours', label: '12 hours' },
   { value: '24 hours', label: '24 hours' },
 ];
 
@@ -227,10 +227,9 @@ export function WorkspaceOnboardingPage({
     });
   }
 
-  function renderIdpCard(
+  function renderIdpOption(
     id: AuthProviderId,
     title: string,
-    protocol: string,
     icon: preact.ComponentChildren
   ) {
     const selected = state.identity.primaryIdp === id;
@@ -240,11 +239,8 @@ export function WorkspaceOnboardingPage({
         class={`onb-idp-card ${selected ? 'is-selected' : ''}`}
         onClick={() => onboarding.updateIdentity({ primaryIdp: id })}
       >
-        <div class="onb-idp-top">
-          {icon}
-          <span class="auth-provider-tag">{protocol}</span>
-        </div>
-        <strong class="onb-idp-title">{title}</strong>
+        {icon}
+        <span class="onb-idp-title">{title}</span>
       </button>
     );
   }
@@ -253,32 +249,30 @@ export function WorkspaceOnboardingPage({
     <div class="auth-viewport">
       <header class="auth-topbar">
         <button type="button" class="brand-button" onClick={() => onNavigate('home')}>
-          <LucyBrandMark size={22} />
+          <LucyBrandMark size={20} />
           <span class="brand-name">Lucy</span>
         </button>
 
         <div class="stage-subbar-group">
           <button
             type="button"
-            class="ghost-pill"
+            class="conn-open-link"
             onClick={() => onNavigate('login')}
           >
-            Sign-in Page
+            Sign in
           </button>
           <button
             type="button"
-            class="ghost-pill"
+            class="conn-open-link"
             onClick={() => onNavigate('admin')}
           >
-            Firm Admin →
+            Firm Admin
           </button>
         </div>
       </header>
 
       <div class="onb-layout">
-        <aside class="onb-rail" aria-label="Onboarding steps">
-          <div class="onb-rail-heading">Workspace Setup</div>
-
+        <aside class="onb-rail" aria-label="Workspace setup steps">
           <nav class="onb-step-list">
             {ONBOARDING_STEPS.map((s, idx) => {
               const isCurrent = s.id === state.currentStep;
@@ -305,13 +299,12 @@ export function WorkspaceOnboardingPage({
             {state.currentStep === 'firm' && (
               <>
                 <header class="onb-panel-head">
-                  <span class="onb-eyebrow">Step 01 of 05</span>
-                  <h1 class="onb-title">Firm &amp; Regulatory Baseline</h1>
+                  <h1 class="onb-title">Firm details</h1>
                 </header>
 
                 <div class="onb-grid-two">
                   <label class="profile-field onb-span-two">
-                    <span class="profile-field-label">Practice Legal Name</span>
+                    <span class="profile-field-label">Practice name</span>
                     <input
                       type="text"
                       class="profile-input"
@@ -325,7 +318,7 @@ export function WorkspaceOnboardingPage({
                   </label>
 
                   <div class="profile-field">
-                    <span class="profile-field-label">Regulatory Body</span>
+                    <span class="profile-field-label">Regulatory body</span>
                     <SelectMenu
                       size="md"
                       fullWidth
@@ -339,7 +332,7 @@ export function WorkspaceOnboardingPage({
                   </div>
 
                   <div class="profile-field">
-                    <span class="profile-field-label">Reporting Framework</span>
+                    <span class="profile-field-label">Reporting framework</span>
                     <SelectMenu
                       size="md"
                       fullWidth
@@ -351,7 +344,7 @@ export function WorkspaceOnboardingPage({
                   </div>
 
                   <div class="profile-field">
-                    <span class="profile-field-label">Default Materiality Basis</span>
+                    <span class="profile-field-label">Materiality benchmark</span>
                     <SelectMenu
                       size="md"
                       fullWidth
@@ -365,7 +358,7 @@ export function WorkspaceOnboardingPage({
                   </div>
 
                   <div class="profile-field">
-                    <span class="profile-field-label">Workpaper Data Residency</span>
+                    <span class="profile-field-label">Data residency</span>
                     <SelectMenu
                       size="md"
                       fullWidth
@@ -384,34 +377,18 @@ export function WorkspaceOnboardingPage({
             {state.currentStep === 'identity' && (
               <>
                 <header class="onb-panel-head">
-                  <span class="onb-eyebrow">Step 02 of 05</span>
-                  <h1 class="onb-title">Enterprise Identity &amp; Access</h1>
+                  <h1 class="onb-title">Single sign-on</h1>
                 </header>
 
                 <div class="onb-idp-grid">
-                  {renderIdpCard(
-                    'entra',
-                    'Microsoft Entra ID',
-                    'OIDC / SAML',
-                    <EntraIdLogo size={20} />
-                  )}
-                  {renderIdpCard(
-                    'okta',
-                    'Okta Workforce',
-                    'SAML / SCIM',
-                    <OktaLogo size={20} />
-                  )}
-                  {renderIdpCard(
-                    'invite',
-                    'Email Invite Only',
-                    'Token',
-                    <InviteEnvelopeIcon size={20} />
-                  )}
+                  {renderIdpOption('entra', 'Microsoft Entra', <EntraIdLogo size={17} />)}
+                  {renderIdpOption('okta', 'Okta', <OktaLogo size={17} />)}
+                  {renderIdpOption('invite', 'Email invite', <InviteEnvelopeIcon size={17} />)}
                 </div>
 
                 <div class="onb-grid-two">
                   <label class="profile-field">
-                    <span class="profile-field-label">Verified Firm Email Domain</span>
+                    <span class="profile-field-label">Verified email domain</span>
                     <input
                       type="text"
                       class="profile-input"
@@ -426,13 +403,11 @@ export function WorkspaceOnboardingPage({
 
                   <label class="profile-field">
                     <span class="profile-field-label">
-                      {state.identity.primaryIdp === 'okta'
-                        ? 'Okta Issuer Domain'
-                        : 'Directory / Tenant Identifier'}
+                      {state.identity.primaryIdp === 'okta' ? 'Okta domain' : 'Tenant domain'}
                     </span>
                     <input
                       type="text"
-                      class="profile-input auth-mono-input"
+                      class="profile-input"
                       value={state.identity.tenantOrIssuer}
                       onInput={(e) =>
                         onboarding.updateIdentity({
@@ -443,7 +418,7 @@ export function WorkspaceOnboardingPage({
                   </label>
 
                   <div class="profile-field">
-                    <span class="profile-field-label">Session Re-authentication</span>
+                    <span class="profile-field-label">Session timeout</span>
                     <SelectMenu
                       size="md"
                       fullWidth
@@ -468,9 +443,7 @@ export function WorkspaceOnboardingPage({
                           })
                         }
                       />
-                      <span class="bk-task-title">
-                        Enable SCIM 2.0 automatic group &amp; role sync
-                      </span>
+                      <span class="bk-task-title">Automatic directory group sync</span>
                     </label>
                   </div>
                 </div>
@@ -480,8 +453,7 @@ export function WorkspaceOnboardingPage({
             {state.currentStep === 'stack' && (
               <>
                 <header class="onb-panel-head">
-                  <span class="onb-eyebrow">Step 03 of 05</span>
-                  <h1 class="onb-title">Connect Firm Accounting Stack</h1>
+                  <h1 class="onb-title">Accounting &amp; storage</h1>
                 </header>
 
                 <div class="conn-list-box">
@@ -527,12 +499,11 @@ export function WorkspaceOnboardingPage({
             {state.currentStep === 'templates' && (
               <>
                 <header class="onb-panel-head">
-                  <span class="onb-eyebrow">Step 04 of 05</span>
-                  <h1 class="onb-title">Monthly Close Standard &amp; Clients</h1>
+                  <h1 class="onb-title">Monthly close &amp; clients</h1>
                 </header>
 
                 <div class="onb-close-sla-bar">
-                  <span class="profile-field-label">Target Monthly Close SLA</span>
+                  <span class="profile-field-label">Close target</span>
                   <div class="stage-subbar-group">
                     {(['WD+5', 'WD+7', 'WD+10'] as const).map((day) => (
                       <button
@@ -568,17 +539,15 @@ export function WorkspaceOnboardingPage({
                 </div>
 
                 <div class="onb-subblock">
-                  <div class="dashboard-section-bar">
-                    <span class="profile-field-label">
-                      Active Client Entities ({adminState.clients.length})
-                    </span>
-                  </div>
+                  <span class="profile-field-label">
+                    Clients ({adminState.clients.length})
+                  </span>
 
                   <form class="onb-inline-row" onSubmit={handleAddClient}>
                     <input
                       type="text"
                       class="profile-input"
-                      placeholder="Add client entity (e.g. Mayfair Logistics Ltd)"
+                      placeholder="Client entity name"
                       value={newClientName}
                       onInput={(e) =>
                         setNewClientName((e.currentTarget as HTMLInputElement).value)
@@ -601,7 +570,7 @@ export function WorkspaceOnboardingPage({
                       }
                     />
                     <button type="submit" class="primary-action-pill is-sm">
-                      + Add client
+                      Add
                     </button>
                   </form>
 
@@ -609,7 +578,7 @@ export function WorkspaceOnboardingPage({
                     {adminState.clients.map((c) => (
                       <span key={c.id} class="onb-entity-pill">
                         <span>{c.name}</span>
-                        <span class="auth-provider-tag">{c.ledger}</span>
+                        <span class="sheet-meta-count">· {c.ledger}</span>
                       </span>
                     ))}
                   </div>
@@ -620,8 +589,7 @@ export function WorkspaceOnboardingPage({
             {state.currentStep === 'team' && (
               <>
                 <header class="onb-panel-head">
-                  <span class="onb-eyebrow">Step 05 of 05</span>
-                  <h1 class="onb-title">Provision Partners &amp; Practice Staff</h1>
+                  <h1 class="onb-title">Team &amp; permissions</h1>
                 </header>
 
                 <form class="onb-invite-row" onSubmit={handleStageInvite}>
@@ -658,7 +626,7 @@ export function WorkspaceOnboardingPage({
                     onChange={setInviteRole}
                   />
                   <button type="submit" class="primary-action-pill">
-                    + Invite
+                    Invite
                   </button>
                 </form>
 
@@ -678,8 +646,9 @@ export function WorkspaceOnboardingPage({
                           <span class="sheet-meta-count">{inv.email}</span>
                         </div>
                         <div class="conn-row-right">
-                          <span class="auth-provider-tag">{inv.department}</span>
-                          <span class="auth-provider-tag">{inv.authority}</span>
+                          <span class="sheet-meta-count">
+                            {inv.department} · {inv.authority}
+                          </span>
                           <button
                             type="button"
                             class="conn-disconnect-btn"
@@ -699,8 +668,9 @@ export function WorkspaceOnboardingPage({
                         <span class="conn-row-name">{member.fullName}</span>
                       </div>
                       <div class="conn-row-right">
-                        <span class="auth-provider-tag">{member.department}</span>
-                        <span class="conn-connected-badge">{member.authority} · Active</span>
+                        <span class="sheet-meta-count">
+                          {member.department} · {member.authority}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -715,7 +685,7 @@ export function WorkspaceOnboardingPage({
                   class="ghost-pill"
                   onClick={goPreviousStep}
                 >
-                  ← Previous
+                  Back
                 </button>
               ) : (
                 <span />
@@ -727,7 +697,7 @@ export function WorkspaceOnboardingPage({
                   class="primary-action-pill"
                   onClick={goNextStep}
                 >
-                  Continue →
+                  Continue
                 </button>
               ) : (
                 <button
@@ -735,7 +705,7 @@ export function WorkspaceOnboardingPage({
                   class="primary-action-pill"
                   onClick={finishSetup}
                 >
-                  Complete Workspace Setup →
+                  Finish setup
                 </button>
               )}
             </footer>

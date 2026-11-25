@@ -67,15 +67,15 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
     const nextNum = draftDeck.slides.length + 1;
     const created: ExecutiveSlide = {
       id: `slide-${Date.now()}`,
-      eyebrow: `0${nextNum} · NEW SECTION`,
-      title: 'Click headline or metrics to customize this slide',
-      takeaway: 'Any edits you make here sync straight back into Lucy’s conversation memory.',
+      eyebrow: `0${nextNum} · ADDITIONAL SCHEDULE`,
+      title: 'Audit Committee Supplemental Note',
+      takeaway: 'Supporting workpaper detail tied to Trial Balance.',
       metrics: [
-        { label: 'Target Metric', value: '$1.2M', delta: '+18% QoQ' },
-        { label: 'Efficiency', value: '94%', delta: '+4 pts' },
-        { label: 'Timeline', value: 'Q1 FY27', delta: 'On Track' },
+        { label: 'Scope', value: '100%', delta: 'Tested' },
+        { label: 'Materiality', value: '$25,000', delta: '5% Pre-Tax' },
+        { label: 'Sign-off', value: '30 Nov', delta: 'On track' },
       ],
-      bullets: ['Add key executive decision or action item here.'],
+      bullets: ['Document key engagement conclusion or adjustment item.'],
     };
     setJustSynced(false);
     setDraftDeck((prev) => ({ ...prev, slides: [...prev.slides, created] }));
@@ -116,14 +116,14 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
               class={`seg-tab ${mode === 'slide' ? 'is-active' : ''}`}
               onClick={() => setMode('slide')}
             >
-              16:9 Editable Canvas
+              Slides
             </button>
             <button
               type="button"
               class={`seg-tab ${mode === 'memo' ? 'is-active' : ''}`}
               onClick={() => setMode('memo')}
             >
-              Board Memo
+              Memo
             </button>
           </div>
 
@@ -147,14 +147,12 @@ function SlideDeckStageView({ context }: { context: RendererContext<SlideDeckDat
                 class="primary-stage-btn"
                 onClick={commitEditsToLucy}
               >
-                Apply {pendingChanges.length} edit{pendingChanges.length === 1 ? '' : 's'}
+                Save ({pendingChanges.length})
               </button>
             </>
           ) : justSynced ? (
-            <span class="cell-pill tone-good">✓ Saved</span>
-          ) : (
-            <span class="sheet-meta-count">Click any text or KPI to edit</span>
-          )}
+            <span class="cell-pill tone-good">Saved</span>
+          ) : null}
 
           <button type="button" class="ghost-pill" onClick={exportMarkdownBrief}>
             Export

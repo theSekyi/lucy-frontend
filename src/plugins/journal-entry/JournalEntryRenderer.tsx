@@ -57,8 +57,8 @@ function JournalEntryInlineCard({
 
         <span class={`tickmark-pill ${isBalanced ? 'tick-tied' : 'tick-exception'}`}>
           {isBalanced
-            ? '✓ Balanced ($0.00)'
-            : `⊗ Out of balance: $${fmtJe(Math.abs(variance))}`}
+            ? 'Balanced ($0.00)'
+            : `Imbalance: $${fmtJe(Math.abs(variance))}`}
         </span>
       </div>
 
@@ -130,7 +130,7 @@ function JournalEntryInlineCard({
             style={!isBalanced ? { opacity: 0.35, cursor: 'not-allowed' } : undefined}
             onClick={() => setApproved(true)}
           >
-            {approved ? '✓ Approved & Staged to ERP' : 'Approve & Stage to ERP'}
+            {approved ? 'Staged to ERP' : 'Post to ERP'}
           </button>
         </div>
       </div>

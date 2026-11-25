@@ -91,7 +91,7 @@ export const TRIAL_BALANCE_SAMPLE: TrialBalanceData = {
 export function buildTrialBalanceSampleTurn(nextId: (p: string) => string): SampleTurnPayload {
   return {
     prose:
-      'Prepared the **November Consolidated Trial Balance & Flux Workpaper** (`Net TB = $0`).\n\n• **Performance Materiality (`PM`)** set at **$25,000** — 4 accounts exceed PM and are flagged for flux commentary.\n• Adjust any `AJE Dr/(Cr)` cell or lower the PM threshold in the header to recalculate Adjusted TB and materiality flags live.',
+      '**November Consolidated Trial Balance** (`Net TB = $0`, Performance Materiality **$25,000**): `4` accounts flagged above PM threshold.',
     artifact: {
       id: nextId('block-tb'),
       kind: 'trial-balance',

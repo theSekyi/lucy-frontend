@@ -371,20 +371,18 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
                 class="ghost-pill"
                 onClick={() => toggleOutage(selectedNode.id)}
               >
-                {forcedOutages[selectedNode.id] ? '✓ Restore Healthy' : '⚡ Simulate Outage'}
+                {forcedOutages[selectedNode.id] ? 'Mark healthy' : 'Mark delayed'}
               </button>
               <button
                 type="button"
                 class="primary-stage-btn"
                 onClick={sendIncidentBriefToLucy}
               >
-                {syncedIncident ? '✓ Logged' : 'Log incident state'}
+                {syncedIncident ? 'Saved' : 'Save status'}
               </button>
             </div>
           </div>
-          <div class="clause-footnote">
-            {selectedNode.note} (Drag any node to rearrange · Click Simulate Outage to test cascade)
-          </div>
+          <div class="clause-footnote">{selectedNode.note}</div>
         </div>
       )}
     </div>

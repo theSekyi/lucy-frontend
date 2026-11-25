@@ -264,12 +264,10 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
 
   if (isInlineSingle) {
     return (
-      <div class="inline-ide-card" style={{ borderLeft: `3px solid ${style.color}` }}>
+      <div class="inline-ide-card">
         <div class="inline-ide-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            <span class="ide-ext-pill" style={{ background: style.bg, color: style.color }}>
-              {style.ext}
-            </span>
+            <span class="ide-ext-pill">{style.ext}</span>
             <strong
               style={{
                 fontSize: '12px',
@@ -342,15 +340,8 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
                 setLineRange(null);
               }}
             >
-              {isActive && (
-                <span class="ide-tab-topline" style={{ background: fStyle.color }} />
-              )}
-              <span
-                class="ide-ext-pill"
-                style={{ background: fStyle.bg, color: fStyle.color }}
-              >
-                {fStyle.ext}
-              </span>
+              {isActive && <span class="ide-tab-topline" />}
+              <span class="ide-ext-pill">{fStyle.ext}</span>
               <span>{file.filename}</span>
               {isDirty && <span class="ide-dirty-dot" title="Unsaved local edits" />}
             </button>
@@ -453,13 +444,11 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
       )}
 
       <div class="ide-statusbar">
-        <span>
-          <span style={{ color: style.color, fontWeight: 600 }}>{style.ext}</span> · UTF-8 · Click gutter numbers to highlight lines
-        </span>
+        <span>{style.ext} · UTF-8</span>
         <span>
           {dirtyFiles.length > 0
-            ? `${dirtyFiles.length} modified file(s)`
-            : 'Clean working tree'}
+            ? `${dirtyFiles.length} modified`
+            : `${lines.length} lines`}
         </span>
       </div>
     </div>
