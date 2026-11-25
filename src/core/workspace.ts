@@ -90,6 +90,7 @@ export interface WorkspaceController extends ReadableStore<WorkspaceState> {
     readonly message: string;
     readonly undoRevisionId?: string;
     readonly undoSentMailId?: string;
+    readonly reloadApp?: boolean;
     readonly actionLabel?: string;
   }) => string;
   dismissNotification: (notificationId: string) => void;

@@ -22,7 +22,7 @@ import {
 } from '../core/workspace';
 import type { DeepLinkTarget } from './inbox/MailIntelligencePanel';
 import { Launchpad } from './Launchpad';
-import { ErrorBoundary } from './primitives/ErrorBoundary';
+import { ErrorBoundary, reloadForUpdatedVersion } from './primitives/ErrorBoundary';
 import { clearResolvedPageCache, LazyPageSlot } from './primitives/LazyPageSlot';
 import { ToastRegion } from './primitives/ToastRegion';
 import { Sidebar } from './Sidebar';
@@ -352,7 +352,9 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
 
   function handleToastAction(item: WorkspaceNotification) {
     workspace.dismissNotification(item.id);
-    if (item.undoRevisionId) {
+    if (item.reloadApp) {
+      reloadForUpdatedVersion();
+    } else if (item.undoRevisionId) {
       workspace.undoRevision(item.undoRevisionId);
     } else if (item.undoSentMailId) {
       workspace.undoSentMail(item.undoSentMailId);

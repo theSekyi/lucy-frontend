@@ -17,7 +17,9 @@ export function ToastRegion({
     const latest = notifications[notifications.length - 1]!;
     if (latest.kind === 'error') return;
 
-    const hasAction = Boolean(latest.undoRevisionId || latest.undoSentMailId);
+    const hasAction = Boolean(
+      latest.undoRevisionId || latest.undoSentMailId || latest.reloadApp
+    );
     const timeoutMs = hasAction ? 9000 : 5000;
     const timer = setTimeout(() => {
       onDismiss(latest.id);
@@ -34,7 +36,9 @@ export function ToastRegion({
       aria-atomic="false"
     >
       {notifications.map((item) => {
-        const hasAction = Boolean(item.undoRevisionId || item.undoSentMailId);
+        const hasAction = Boolean(
+          item.undoRevisionId || item.undoSentMailId || item.reloadApp
+        );
         return (
           <div key={item.id} class={`toast-card is-${item.kind}`}>
             <span class="toast-message">{item.message}</span>

@@ -244,6 +244,7 @@ export interface WorkspaceNotification {
   readonly createdAtIso: string;
   readonly undoRevisionId?: string;
   readonly undoSentMailId?: string;
+  readonly reloadApp?: boolean;
   readonly actionLabel?: string;
 }
 

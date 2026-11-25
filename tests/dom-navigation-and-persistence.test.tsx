@@ -94,10 +94,14 @@ async function buildXlsxZip(files: Record<string, string>): Promise<ArrayBuffer>
   return archive.buffer;
 }
 
-async function flushUi(): Promise<void> {
-  await act(async () => {
-    await new Promise((r) => setTimeout(r, 25));
-  });
+async function waitForDom(assertion: () => void): Promise<void> {
+  await vi.waitFor(
+    async () => {
+      await act(async () => {});
+      assertion();
+    },
+    { timeout: 5000 }
+  );
 }
 
 describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Tie-Out & Parser Bounds', () => {
@@ -116,7 +120,7 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
     container.remove();
   });
 
-  it('navigates across Workpapers, Clients, Home, Inbox, Admin, and Connectors with zero blank screens (A1 regression)', async () => {
+  it('navigates across Workpapers, Clients, Home, Inbox (Gmail & Outlook), Admin, and Connectors with zero blank screens (A1 regression)', async () => {
     const registry = createDefaultRendererRegistry();
     const workspace = createWorkspace({ responseDelayMs: 0, registry });
 
@@ -126,11 +130,12 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
         container
       );
     });
-    await flushUi();
 
     // 1. Starts on Home with greeting and Today work items
-    expect(container.textContent).toContain('Elena');
-    expect(document.title).toBe('Home — Lucy');
+    await waitForDom(() => {
+      expect(container.textContent).toContain('Elena');
+      expect(document.title).toBe('Home — Lucy');
+    });
 
     // 2. Reproduce exact A1 sequence: Open MSA §4.2 workpaper -> Click Clients -> Click Home
     const msaBtn = Array.from(container.querySelectorAll('button')).find((b) =>
@@ -141,12 +146,12 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
     await act(async () => {
       msaBtn!.click();
     });
-    await flushUi();
-    await flushUi();
 
-    expect(window.location.search).toContain('page=workpaper');
-    expect(window.location.search).toContain('id=wp-acme-msa-pdf');
-    expect(container.textContent).toContain('Liability Cap');
+    await waitForDom(() => {
+      expect(window.location.search).toContain('page=workpaper');
+      expect(window.location.search).toContain('id=wp-acme-msa-pdf');
+      expect(container.textContent).toContain('Liability Cap');
+    });
 
     const clickNav = async (label: string) => {
       const btn = Array.from(
@@ -156,38 +161,54 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
       await act(async () => {
         btn!.click();
       });
-      await flushUi();
-      await flushUi();
     };
 
     // Step 3 of A1: Click Clients -> must render ClientsPage, never stick on workpaper or throw
     await clickNav('Clients');
-    expect(window.location.search).toContain('page=clients');
-    expect(container.querySelector('h1')?.textContent).toContain('Clients');
-    expect(container.textContent).toContain('Acme Holdings Ltd');
+    await waitForDom(() => {
+      expect(window.location.search).toContain('page=clients');
+      expect(container.querySelector('h1')?.textContent).toContain('Clients');
+      expect(container.textContent).toContain('Acme Holdings Ltd');
+    });
 
     // Step 4 of A1: Click Home -> must render Home cleanly, never go blank
     await clickNav('Home');
-    expect(window.location.search).toBe('');
-    expect(container.textContent).toContain('Elena');
+    await waitForDom(() => {
+      expect(window.location.search).toBe('');
+      expect(container.textContent).toContain('Elena');
+    });
 
-    // Continue round-trip across Inbox, Firm Admin, and Connectors
+    // Continue round-trip across Inbox (Gmail -> Outlook), Firm Admin, and Connectors
     await clickNav('Inbox');
-    expect(window.location.search).toContain('page=inbox');
-    expect(container.textContent).toContain('Unread sign-offs');
-    expect(
-      container.querySelector('textarea[aria-label="Ask across your inbox"]')
-    ).toBeTruthy();
-    // Verify single consolidated Inbox Ask surface (no duplicate middle terminal form)
+    await waitForDom(() => {
+      expect(window.location.search).toContain('page=inbox');
+      expect(container.textContent).toContain('Unread sign-offs');
+      expect(
+        container.querySelector('textarea[aria-label="Ask across your inbox"]')
+      ).toBeTruthy();
+    });
     expect(container.querySelectorAll('.mail-terminal-form').length).toBe(0);
 
+    // Switch Inbox provider to Outlook (?page=inbox&provider=outlook)
+    await act(async () => {
+      workspace.setInboxProvider('outlook');
+    });
+    await waitForDom(() => {
+      expect(window.location.search).toContain('provider=outlook');
+      expect(container.textContent).toContain('New mail');
+    });
+
     await clickNav('Firm Admin');
-    expect(window.location.search).toContain('page=admin');
-    expect(container.querySelector('h1')?.textContent).toContain('Firm Admin');
+    await waitForDom(() => {
+      expect(window.location.search).toContain('page=admin');
+      expect(container.querySelector('h1')?.textContent).toContain('Firm Admin');
+    });
 
     await clickNav('Connectors');
-    expect(window.location.search).toContain('page=connectors');
-    expect(container.querySelector('h1')?.textContent).toContain('Connectors');
+    await waitForDom(() => {
+      expect(window.location.search).toContain('page=connectors');
+      expect(container.querySelector('h1')?.textContent).toContain('Connectors');
+    });
   });
 
   it('contains a crashing stage renderer inside its local ErrorBoundary while keeping Sidebar navigation live', async () => {
@@ -223,8 +244,7 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
       );
     });
 
-    await vi.waitFor(async () => {
-      await act(async () => {});
+    await waitForDom(() => {
       expect(container.textContent).toContain('Unable to display');
       expect(container.textContent).toContain('Simulated renderer failure');
     });
@@ -236,10 +256,10 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
     await act(async () => {
       clientsBtn!.click();
     });
-    await flushUi();
-    await flushUi();
 
-    expect(container.querySelector('h1')?.textContent).toContain('Clients');
+    await waitForDom(() => {
+      expect(container.querySelector('h1')?.textContent).toContain('Clients');
+    });
   });
 
   it('persists Trial Balance drafts across a full remount/refresh, commits revisions, and supports Undo', async () => {
@@ -257,8 +277,7 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
     });
 
     let pmInput: HTMLInputElement | null = null;
-    await vi.waitFor(async () => {
-      await act(async () => {});
+    await waitForDom(() => {
       pmInput = container.querySelector(
         'input[aria-label="Performance materiality threshold"]'
       ) as HTMLInputElement | null;
@@ -274,8 +293,7 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
       pmInput!.blur();
     });
 
-    await vi.waitFor(async () => {
-      await act(async () => {});
+    await waitForDom(() => {
       expect(container.textContent).toContain('Unsaved draft');
     });
 
@@ -294,8 +312,7 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
     });
 
     let restoredPmInput: HTMLInputElement | null = null;
-    await vi.waitFor(async () => {
-      await act(async () => {});
+    await waitForDom(() => {
       restoredPmInput = container.querySelector(
         'input[aria-label="Performance materiality threshold"]'
       ) as HTMLInputElement | null;
@@ -312,10 +329,11 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
     await act(async () => {
       saveBtn!.click();
     });
-    await flushUi();
 
-    expect(container.textContent).not.toContain('Unsaved draft');
-    expect(workspace2.getState().revisions).toHaveLength(1);
+    await waitForDom(() => {
+      expect(container.textContent).not.toContain('Unsaved draft');
+      expect(workspace2.getState().revisions).toHaveLength(1);
+    });
 
     const undoToastBtn = container.querySelector(
       '[role="status"] .toast-action-btn'
@@ -325,13 +343,14 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
     await act(async () => {
       undoToastBtn!.click();
     });
-    await flushUi();
 
-    const revertedPmInput = container.querySelector(
-      'input[aria-label="Performance materiality threshold"]'
-    ) as HTMLInputElement | null;
-    expect(revertedPmInput?.value).toBe('25,000');
-    expect(workspace2.getState().revisions).toHaveLength(0);
+    await waitForDom(() => {
+      const revertedPmInput = container.querySelector(
+        'input[aria-label="Performance materiality threshold"]'
+      ) as HTMLInputElement | null;
+      expect(revertedPmInput?.value).toBe('25,000');
+      expect(workspace2.getState().revisions).toHaveLength(0);
+    });
     workspace2.dispose();
   });
 
@@ -358,7 +377,9 @@ describe('DOM Integration: Navigation (A1 P0), Error Boundaries, Persistence, Ti
         container
       );
     });
-    await flushUi();
+    await waitForDom(() => {
+      expect(container.textContent).toContain('Elena');
+    });
 
     await act(async () => {
       window.dispatchEvent(

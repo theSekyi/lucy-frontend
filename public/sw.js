@@ -1,8 +1,27 @@
-const CACHE_NAME = 'lucy-shell-v5';
+const CACHE_NAME = 'lucy-shell-v6-__BUILD_HASH__';
+
+function isLegacyCacheName(name) {
+  return /^lucy-shell-v[1-5]\b/.test(name);
+}
+
+function isLocalhostOrigin() {
+  const host = self.location.hostname;
+  return host === '127.0.0.1' || host === 'localhost';
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(['/', '/index.html', '/favicon.svg']))
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll(['/', '/index.html', '/favicon.svg']);
+
+      // Immediately replace pre-v6 Service Workers (which lacked SKIP_WAITING UI)
+      // and always activate immediately on localhost preview builds so lazy chunks never 404.
+      const existingKeys = await caches.keys();
+      if (isLocalhostOrigin() || existingKeys.some(isLegacyCacheName)) {
+        await self.skipWaiting();
+      }
+    })()
   );
 });
 
@@ -14,16 +33,29 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    )
+    (async () => {
+      const keys = await caches.keys();
+      const staleKeys = keys.filter((key) => key !== CACHE_NAME);
+      const shouldRefreshClients = staleKeys.some(
+        (key) => isLegacyCacheName(key) || isLocalhostOrigin()
+      );
+
+      await Promise.all(staleKeys.map((key) => caches.delete(key)));
+      await self.clients.claim();
+
+      if (shouldRefreshClients) {
+        const windowClients = await self.clients.matchAll({ type: 'window' });
+        await Promise.all(
+          windowClients.map((client) => client.navigate(client.url).catch(() => {}))
+        );
+      }
+    })()
   );
-  self.clients.claim();
 });
 
-// Network-first for HTML navigations (instant cache fallback when offline);
-// Pure cache-hit for content-hashed immutable /assets/* bundles;
-// Stale-while-revalidate for static assets.
+// Network-first (no-store) for HTML navigations with offline shell fallback;
+// Immutable cache-hit for content-hashed /assets/* bundles;
+// Stale-while-revalidate for static icons/manifests.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || !request.url.startsWith(self.location.origin)) return;
@@ -32,15 +64,15 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', copy));
           }
           return response;
         })
-        .catch(() => caches.match(request).then((res) => res || caches.match('/index.html')))
+        .catch(() => caches.match('/index.html').then((res) => res || caches.match('/')))
     );
     return;
   }
