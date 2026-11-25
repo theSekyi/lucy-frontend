@@ -10,15 +10,18 @@ function isLocalhostOrigin() {
 }
 
 self.addEventListener('install', (event) => {
+  if (isLocalhostOrigin()) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       await cache.addAll(['/', '/index.html', '/favicon.svg']);
 
-      // Immediately replace pre-v6 Service Workers (which lacked SKIP_WAITING UI)
-      // and always activate immediately on localhost preview builds so lazy chunks never 404.
       const existingKeys = await caches.keys();
-      if (isLocalhostOrigin() || existingKeys.some(isLegacyCacheName)) {
+      if (existingKeys.some(isLegacyCacheName)) {
         await self.skipWaiting();
       }
     })()
@@ -35,28 +38,26 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      const staleKeys = keys.filter((key) => key !== CACHE_NAME);
-      const shouldRefreshClients = staleKeys.some(
-        (key) => isLegacyCacheName(key) || isLocalhostOrigin()
-      );
+      if (isLocalhostOrigin()) {
+        await Promise.all(keys.map((key) => caches.delete(key)));
+        await self.registration.unregister();
+        return;
+      }
 
+      const staleKeys = keys.filter((key) => key !== CACHE_NAME);
       await Promise.all(staleKeys.map((key) => caches.delete(key)));
       await self.clients.claim();
-
-      if (shouldRefreshClients) {
-        const windowClients = await self.clients.matchAll({ type: 'window' });
-        await Promise.all(
-          windowClients.map((client) => client.navigate(client.url).catch(() => {}))
-        );
-      }
     })()
   );
 });
 
+// Never intercept local preview traffic; on production origins:
 // Network-first (no-store) for HTML navigations with offline shell fallback;
 // Immutable cache-hit for content-hashed /assets/* bundles;
 // Stale-while-revalidate for static icons/manifests.
 self.addEventListener('fetch', (event) => {
+  if (isLocalhostOrigin()) return;
+
   const { request } = event;
   if (request.method !== 'GET' || !request.url.startsWith(self.location.origin)) return;
 

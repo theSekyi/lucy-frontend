@@ -114,52 +114,62 @@ render(
   document.getElementById('app')!
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
-  });
+const isLocalPreviewHost =
+  window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js', { updateViaCache: 'none' })
-      .then((reg) => {
-        void reg.update().catch(() => {});
+if ('serviceWorker' in navigator) {
+  if (isLocalPreviewHost) {
+    // Never trap localhost / 127.0.0.1 preview sessions behind stale asset caches across rebuilds
+    void navigator.serviceWorker
+      .getRegistrations()
+      .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+      .catch(() => {});
+    if ('caches' in window) {
+      void caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .catch(() => {});
+    }
+  } else if (import.meta.env.PROD) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
 
-        function promptUpdate() {
-          if (
-            window.location.hostname === '127.0.0.1' ||
-            window.location.hostname === 'localhost'
-          ) {
-            reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
-            return;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          void reg.update().catch(() => {});
+
+          function promptUpdate() {
+            workspace.notify({
+              kind: 'info',
+              message: 'A new version of Lucy is ready.',
+              reloadApp: true,
+              actionLabel: 'Reload',
+            });
           }
-          workspace.notify({
-            kind: 'info',
-            message: 'A new version of Lucy is ready.',
-            reloadApp: true,
-            actionLabel: 'Reload',
-          });
-        }
 
-        if (reg.waiting && navigator.serviceWorker.controller) {
-          promptUpdate();
-        }
+          if (reg.waiting && navigator.serviceWorker.controller) {
+            promptUpdate();
+          }
 
-        reg.addEventListener('updatefound', () => {
-          const installing = reg.installing;
-          if (!installing) return;
-          installing.addEventListener('statechange', () => {
-            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-              promptUpdate();
-            }
+          reg.addEventListener('updatefound', () => {
+            const installing = reg.installing;
+            if (!installing) return;
+            installing.addEventListener('statechange', () => {
+              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                promptUpdate();
+              }
+            });
           });
+        })
+        .catch(() => {
+          // Non-fatal in restricted preview sandboxes
         });
-      })
-      .catch(() => {
-        // Non-fatal in restricted preview sandboxes
-      });
-  });
+    });
+  }
 }
