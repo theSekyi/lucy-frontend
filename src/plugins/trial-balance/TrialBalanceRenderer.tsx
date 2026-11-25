@@ -91,7 +91,7 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
         </button>
       </div>
 
-      <div class="vgrid-viewport">
+      <div class="acct-scroll-viewport">
         <table class="acct-table">
           <thead>
             <tr>
@@ -195,7 +195,7 @@ function TrialBalanceStageView({ context }: { context: RendererContext<TrialBala
         </table>
       </div>
 
-      <div class="sheet-tabs-bar">
+      <div class="acct-footer-bar">
         <span class="sheet-meta-count">
           {tb.entity} · {tb.period} · Net AJE: <strong>{fmtAcct(netAje)}</strong>
         </span>

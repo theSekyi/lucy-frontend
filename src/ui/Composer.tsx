@@ -1,21 +1,16 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { RendererRegistry } from '../core/renderers';
-import type { ContentBlock, ModelChoice } from '../core/types';
+import type { ContentBlock } from '../core/types';
 import { SendArrowIcon } from './icons';
-
-type OpenComposerMenu = 'attach' | 'model' | null;
 
 interface ComposerProps {
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
-  readonly models: ReadonlyArray<ModelChoice>;
-  readonly selectedModelId: string;
   readonly registry?: RendererRegistry<ComponentChildren>;
   readonly placeholder?: string;
   readonly compact?: boolean;
   readonly onDraftChange: (value: string) => void;
-  readonly onModelChange: (modelId: string) => void;
   readonly onIngestFile?: (file: File) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample?: (pluginId: string) => void;
@@ -25,39 +20,35 @@ interface ComposerProps {
 export function Composer({
   draft,
   attachments,
-  models,
-  selectedModelId,
   registry,
-  placeholder = 'Ask, create, or open a file',
+  placeholder = 'Open a workpaper, reconcile accounts, or drop an .xlsx / .csv file…',
   compact = false,
   onDraftChange,
-  onModelChange,
   onIngestFile,
   onRemoveAttachment,
   onLaunchPluginSample,
   onSubmit,
 }: ComposerProps) {
-  const [openMenu, setOpenMenu] = useState<OpenComposerMenu>(null);
+  const [isAttachOpen, setIsAttachOpen] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const activeModel = models.find((m) => m.id === selectedModelId) ?? models[0]!;
   const samplePlugins = (registry?.listPlugins() ?? []).filter((p) => p.sampleMenuLabel);
 
   useEffect(() => {
-    if (!openMenu) return;
+    if (!isAttachOpen) return;
 
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
-        setOpenMenu(null);
+        setIsAttachOpen(false);
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        setOpenMenu(null);
+        setIsAttachOpen(false);
       }
     }
 
@@ -67,15 +58,11 @@ export function Composer({
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [openMenu]);
+  }, [isAttachOpen]);
 
   function handleFileChosen(file: File) {
-    setOpenMenu(null);
+    setIsAttachOpen(false);
     onIngestFile?.(file);
-  }
-
-  function toggleMenu(target: Exclude<OpenComposerMenu, null>) {
-    setOpenMenu((current) => (current === target ? null : target));
   }
 
   return (
@@ -134,15 +121,15 @@ export function Composer({
             <button
               type="button"
               class="composer-plus-btn"
-              aria-label="Upload file or open workspace view"
+              aria-label="Import file or open workpaper"
               aria-haspopup="menu"
-              aria-expanded={openMenu === 'attach'}
-              onClick={() => toggleMenu('attach')}
+              aria-expanded={isAttachOpen}
+              onClick={() => setIsAttachOpen((v) => !v)}
             >
               +
             </button>
 
-            {openMenu === 'attach' && (
+            {isAttachOpen && (
               <div
                 class={`dropdown-popover align-left is-enterprise-menu ${compact ? 'opens-up' : 'opens-down'}`}
                 role="menu"
@@ -166,7 +153,7 @@ export function Composer({
                     role="menuitem"
                     class="popover-item"
                     onClick={() => {
-                      setOpenMenu(null);
+                      setIsAttachOpen(false);
                       onLaunchPluginSample?.(plugin.id);
                     }}
                   >
@@ -191,54 +178,10 @@ export function Composer({
               }}
             />
           </div>
+          <span class="composer-hint-text">Workpapers · .xlsx / .csv</span>
         </div>
 
         <div class="composer-tools-right">
-          <div class="menu-anchor model-menu-anchor">
-            <button
-              type="button"
-              class="composer-model-btn"
-              aria-haspopup="listbox"
-              aria-expanded={openMenu === 'model'}
-              onClick={() => toggleMenu('model')}
-            >
-              <span class="model-family">{activeModel.family}</span>
-              <span class="model-tier">{activeModel.tier}</span>
-              <span class="chevron-glyph">⌄</span>
-            </button>
-
-            {openMenu === 'model' && (
-              <div
-                class={`dropdown-popover align-right is-model-list ${compact ? 'opens-up' : 'opens-down'}`}
-                role="listbox"
-                aria-label="Select model"
-              >
-                {models.map((model) => {
-                  const selected = model.id === activeModel.id;
-                  return (
-                    <button
-                      key={model.id}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      class={`popover-item ${selected ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        onModelChange(model.id);
-                        setOpenMenu(null);
-                      }}
-                    >
-                      <span class="popover-model-label">
-                        <span>{model.family}</span>
-                        <span class="popover-tier-badge">{model.tier}</span>
-                      </span>
-                      {selected && <span class="popover-check">✓</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
           <button
             type="button"
             class="composer-send-btn"

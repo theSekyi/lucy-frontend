@@ -134,6 +134,7 @@ export interface FirmAdminController extends ReadableStore<FirmAdminState> {
   setActiveBookkeepingMonth: (clientId: string, monthKey: string) => void;
   toggleBookkeepingTask: (clientId: string, monthKey: string, taskId: string) => void;
   toggleBookkeepingMonthLock: (clientId: string, monthKey: string) => void;
+  addClient: (input: { readonly name: string; readonly ledger: string; readonly yearEnd: string }) => string | null;
   addEngagement: (input: NewEngagementInput) => string | null;
 }
 
@@ -741,6 +742,46 @@ export function createFirmAdminController(
   return {
     getState: store.getState,
     subscribe: store.subscribe,
+    getListenerCount: store.getListenerCount,
+
+    addClient(input) {
+      const cleanName = input.name.trim();
+      if (!cleanName) return null;
+      const existing = store
+        .getState()
+        .clients.find((c) => c.name.toLowerCase() === cleanName.toLowerCase());
+      if (existing) return existing.id;
+
+      const clientId =
+        cleanName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 24) || nextAdminId('client');
+
+      const createdClient: ClientProfile = {
+        id: clientId,
+        name: cleanName,
+        ledger: input.ledger.trim() || 'Xero',
+        yearEnd: input.yearEnd.trim() || '31 Dec',
+        activeMonthKey: '2026-11',
+        periods: buildClientPeriods(clientId, 'Operating Bank', {
+          status: 'in-progress',
+          bankMatchPct: 92,
+          uncategorizedCount: 3,
+          tasksDone: [true, false, false, false, false],
+          apNote: 'Supplier receipt feed connected',
+          accrualNote: 'Opening close schedule ready',
+          tbNote: 'Initial TB sync complete',
+        }),
+      };
+
+      store.update((state) => ({
+        ...state,
+        clients: [...state.clients, createdClient],
+      }));
+      return clientId;
+    },
 
     addMember(input) {
       const cleanName = input.fullName.trim();

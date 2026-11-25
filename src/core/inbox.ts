@@ -160,6 +160,179 @@ export function queryMailTerminal(
   };
 }
 
+export interface InboxGlobalAnswer {
+  readonly id: string;
+  readonly question: string;
+  readonly answer: string;
+  readonly matchedThreads: ReadonlyArray<{
+    readonly id: string;
+    readonly senderName: string;
+    readonly subject: string;
+    readonly timeShort: string;
+  }>;
+  readonly sources: ReadonlyArray<MailSourceLink>;
+}
+
+let globalAskSeq = 1;
+
+/**
+ * Synthesizes grounded answers across every thread in the user's inbox,
+ * surfacing clickable deep-links to both matching emails and underlying workpapers/PDFs.
+ */
+export function queryAcrossInbox(
+  threads: ReadonlyArray<MailThreadItem>,
+  rawQuestion: string
+): InboxGlobalAnswer {
+  globalAskSeq += 1;
+  const q = rawQuestion.trim();
+  const lower = q.toLowerCase();
+  const inboxThreads = threads.filter((t) => t.folder === 'inbox');
+
+  function toSummary(list: ReadonlyArray<MailThreadItem>) {
+    return list.map((t) => ({
+      id: t.id,
+      senderName: t.senderName,
+      subject: t.subject,
+      timeShort: t.timeShort,
+    }));
+  }
+
+  function collectSources(list: ReadonlyArray<MailThreadItem>): ReadonlyArray<MailSourceLink> {
+    const seen = new Set<string>();
+    const out: MailSourceLink[] = [];
+    for (const item of list) {
+      for (const src of item.intelligence?.sources ?? []) {
+        const key = `${src.kindLabel}:${src.label}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push(src);
+        }
+      }
+    }
+    return out.slice(0, 5);
+  }
+
+  if (
+    lower.includes('unread') ||
+    lower.includes('sign-off') ||
+    lower.includes('sign off') ||
+    lower.includes('today') ||
+    lower.includes('priority') ||
+    lower.includes('urgent')
+  ) {
+    const unread = inboxThreads.filter((t) => t.unread);
+    const answer =
+      unread.length === 0
+        ? 'All inbox items are read. Zero pending partner sign-offs remain in your queue.'
+        : `${unread.length} unread threads require action: (1) HMRC CT600 & Schedule M-1 transmission ($1,648,400 taxable profit, closes 30 Nov), (2) Acme November Consolidated TB + balanced AJE-2026-042 ($60,058.00), (3) Kensington ASC 842 Regent Street lease rollforward ($98,500/qtr), (4) WP E-40 $34,500 Hudson Yards CAM PBC chaser, and (5) Chase #4821 cutoff ($3,442.10 net variance).`;
+    return {
+      id: `inbox-ask-${globalAskSeq}`,
+      question: q,
+      answer,
+      matchedThreads: toSummary(unread),
+      sources: collectSources(unread),
+    };
+  }
+
+  if (
+    lower.includes('deadline') ||
+    lower.includes('hmrc') ||
+    lower.includes('tax') ||
+    lower.includes('ct600') ||
+    lower.includes('filing') ||
+    lower.includes('m-1')
+  ) {
+    const taxThreads = inboxThreads.filter(
+      (t) =>
+        t.id === 'mail-hmrc-ct600' ||
+        t.id === 'mail-companies-house' ||
+        t.id === 'mail-xero-digest'
+    );
+    return {
+      id: `inbox-ask-${globalAskSeq}`,
+      question: q,
+      answer:
+        'Upcoming statutory deadlines in Inbox: Acme Holdings CT600 & Schedule M-1 ($1,648,400 taxable profit, UTR 4918204110) closes 30 Nov via HMRC MTD; Kensington Retail FCA 90-day Open Banking consent expires 3 Dec; Northstar UK AA01 & iXBRL accounts (#09481722) are already accepted by Companies House.',
+      matchedThreads: toSummary(taxThreads),
+      sources: collectSources(taxThreads),
+    };
+  }
+
+  if (
+    lower.includes('variance') ||
+    lower.includes('exception') ||
+    lower.includes('reconcil') ||
+    lower.includes('fx') ||
+    lower.includes('bank') ||
+    lower.includes('pbc')
+  ) {
+    const varThreads = inboxThreads.filter(
+      (t) =>
+        t.id === 'mail-chase-recon' ||
+        t.id === 'mail-dext-vouch' ||
+        t.id === 'mail-acme-cfo-tb'
+    );
+    return {
+      id: `inbox-ask-${globalAskSeq}`,
+      question: q,
+      answer:
+        'Open variances & PBC items across Inbox: Chase #4821 has 4 unreconciled items ($3,442.10 net, including a duplicate -$615.80 Datadog ACH); WP E-40 flagged a trivial $42.10 Brex FX fee (< $1,250 CTT) and a missing $34,500 Hudson Yards CAM landlord statement (> $25,000 PM); Acme TB has 1 Cloud Hosting flux note.',
+      matchedThreads: toSummary(varThreads),
+      sources: collectSources(varThreads),
+    };
+  }
+
+  if (
+    lower.includes('lease') ||
+    lower.includes('842') ||
+    lower.includes('kensington') ||
+    lower.includes('msa') ||
+    lower.includes('clause') ||
+    lower.includes('4.2')
+  ) {
+    const contractThreads = inboxThreads.filter(
+      (t) => t.id === 'mail-kensington-rollforward' || t.id === 'mail-legal-msa'
+    );
+    return {
+      id: `inbox-ask-${globalAskSeq}`,
+      question: q,
+      answer:
+        'Contracts & technical schedules in Inbox: Kensington Retail executed a 3-year Regent Street lease extension ($98,500/quarter ROU run-rate reconciled to Xero); Claire Dubois sent executed Acme Global MSA redlines locking §4.2 data-protection super-cap at 3x TTM fees and §2.4 subprocessor notice at 30 days.',
+      matchedThreads: toSummary(contractThreads),
+      sources: collectSources(contractThreads),
+    };
+  }
+
+  const tokens = lower.split(/[^a-z0-9§.]+/).filter((tok) => tok.length >= 2);
+  const scored = inboxThreads
+    .map((thread) => {
+      const hay = `${thread.senderName} ${thread.subject} ${thread.snippet} ${
+        thread.intelligence?.verdict ?? ''
+      }`.toLowerCase();
+      const hits = tokens.reduce((acc, tok) => (hay.includes(tok) ? acc + 1 : acc), 0);
+      return { thread, hits };
+    })
+    .filter((entry) => entry.hits > 0)
+    .sort((a, b) => b.hits - a.hits)
+    .map((entry) => entry.thread);
+
+  const matched = scored.length > 0 ? scored.slice(0, 4) : inboxThreads.slice(0, 3);
+  const digest = matched
+    .map((t) => `${t.senderName}: ${t.intelligence?.verdict ?? t.snippet}`)
+    .join(' · ');
+
+  return {
+    id: `inbox-ask-${globalAskSeq}`,
+    question: q,
+    answer:
+      scored.length > 0
+        ? `Found ${scored.length} matching thread${scored.length === 1 ? '' : 's'}: ${digest}`
+        : `Across ${inboxThreads.length} inbox threads (${inboxThreads.filter((t) => t.unread).length} unread): ${digest}`,
+    matchedThreads: toSummary(matched),
+    sources: collectSources(matched),
+  };
+}
+
 export const INITIAL_MAIL_THREADS: ReadonlyArray<MailThreadItem> = [
   {
     id: 'mail-hmrc-ct600',

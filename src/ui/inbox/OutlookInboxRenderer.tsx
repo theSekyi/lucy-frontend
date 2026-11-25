@@ -1,12 +1,16 @@
 import { Fragment } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import type { MailAttachmentLink, MailFolder, OutlookBucket } from '../../core/inbox';
-import type { ContentBlock } from '../../core/types';
-import { BlockSlot } from '../BlockSlot';
-import { GmailLogo, OutlookLogo } from '../connectors/connectorLogos';
+import type { MailFolder, OutlookBucket } from '../../core/inbox';
+import { OutlookLogo } from '../connectors/connectorLogos';
 import { PanelToggleIcon, SearchIcon } from '../icons';
 import type { MailProviderViewProps } from './GmailInboxRenderer';
 import { MailIntelligencePanel } from './MailIntelligencePanel';
+import {
+  InboxProviderSwitch,
+  InlineAttachmentDeck,
+  InlineNewMailForm,
+  useMailAttachmentPreview,
+} from './MailSharedParts';
 
 const DATE_GROUPS = ['Today', 'Yesterday', 'Last Week'] as const;
 
@@ -51,8 +55,9 @@ function CalendarFluentIcon() {
 
 export function OutlookInboxRenderer({
   threads,
-  initialThreadId = null,
+  focusedThreadReq = null,
   registry,
+  activeProvider,
   senderEmail,
   onSwitchProvider,
   onToggleFlag,
@@ -62,31 +67,30 @@ export function OutlookInboxRenderer({
   onNavigateSource,
 }: MailProviderViewProps) {
   const [folder, setFolder] = useState<MailFolder | 'flagged'>('inbox');
-  const [isFolderPaneOpen, setIsFolderPaneOpen] = useState(true);
+  const [isFolderPaneOpen, setIsFolderPaneOpen] = useState(
+    () => typeof window === 'undefined' || window.innerWidth > 920
+  );
   const [bucket, setBucket] = useState<OutlookBucket>('focused');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string>(
-    initialThreadId ?? threads[0]?.id ?? ''
+    focusedThreadReq?.id ?? threads[0]?.id ?? ''
   );
+  const [mobileShowReader, setMobileShowReader] = useState(Boolean(focusedThreadReq?.id));
+  const [isComposing, setIsComposing] = useState(false);
   const [replyPulse, setReplyPulse] = useState(0);
+  const [rsvpMap, setRsvpMap] = useState<Record<string, 'accepted' | 'tentative'>>({});
+
+  const { previewBlock, clearPreview, openAttachment } = useMailAttachmentPreview(registry);
 
   useEffect(() => {
-    if (!initialThreadId) return;
-    setSelectedId(initialThreadId);
-    const matched = threads.find((t) => t.id === initialThreadId);
+    if (!focusedThreadReq?.id) return;
+    setSelectedId(focusedThreadReq.id);
+    setIsComposing(false);
+    setMobileShowReader(true);
+    const matched = threads.find((t) => t.id === focusedThreadReq.id);
     if (matched) setBucket(matched.outlook.bucket);
-  }, [initialThreadId, threads]);
-  const [inlineNewMail, setInlineNewMail] = useState<{
-    to: string;
-    subject: string;
-    body: string;
-  } | null>(null);
-  const [rsvpMap, setRsvpMap] = useState<Record<string, 'accepted' | 'tentative'>>({});
-  const [previewBlock, setPreviewBlock] = useState<{
-    att: MailAttachmentLink;
-    block: ContentBlock;
-  } | null>(null);
+  }, [focusedThreadReq?.id, focusedThreadReq?.pulse, threads]);
 
   const q = query.trim().toLowerCase();
   const visibleThreads = threads.filter((t) => {
@@ -115,26 +119,8 @@ export function OutlookInboxRenderer({
     null;
 
   useEffect(() => {
-    setPreviewBlock(null);
-  }, [activeMail?.id]);
-
-  async function inspectAttachment(att: MailAttachmentLink) {
-    if (previewBlock?.att.id === att.id) {
-      setPreviewBlock(null);
-      return;
-    }
-    const plugin = registry.findByRoute(att.pluginRoute);
-    if (!plugin?.createSample) return;
-    const sample = await plugin.createSample((p) => `${p}-${Date.now()}`);
-    setPreviewBlock({ att, block: sample.artifact });
-  }
-
-  function submitOutlookNewMail(e: Event) {
-    e.preventDefault();
-    if (!inlineNewMail) return;
-    onSendMail(inlineNewMail.to, inlineNewMail.subject, inlineNewMail.body);
-    setInlineNewMail(null);
-  }
+    clearPreview();
+  }, [activeMail?.id, clearPreview]);
 
   const unreadInboxCount = threads.filter((t) => t.folder === 'inbox' && t.unread).length;
   const flaggedCount = threads.filter((t) => t.flagged).length;
@@ -142,7 +128,7 @@ export function OutlookInboxRenderer({
   return (
     <div class="outlook-frame">
       <header class="outlook-appbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '146px', flexShrink: 0 }}>
+        <div class="outlook-brand">
           <svg width="15" height="15" viewBox="0 0 16 16" fill="#c8c6c4" aria-hidden="true">
             <circle cx="3" cy="3" r="1.2" />
             <circle cx="8" cy="3" r="1.2" />
@@ -155,7 +141,7 @@ export function OutlookInboxRenderer({
             <circle cx="13" cy="13" r="1.2" />
           </svg>
           <OutlookLogo size={20} />
-          <strong style={{ fontSize: '14.5px', letterSpacing: '-0.01em' }}>Outlook</strong>
+          <strong class="outlook-wordmark">Outlook</strong>
         </div>
 
         <div class="outlook-search-box">
@@ -163,27 +149,16 @@ export function OutlookInboxRenderer({
           <input
             type="search"
             class="gmail-search-input"
-            style={{ fontSize: '13px' }}
             placeholder="Search mail and people"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
           />
         </div>
 
-        <div class="inbox-provider-switch" role="tablist" aria-label="Mail provider">
-          <button
-            type="button"
-            class="inbox-provider-btn"
-            onClick={() => onSwitchProvider('gmail')}
-          >
-            <GmailLogo size={14} />
-            <span>Gmail</span>
-          </button>
-          <button type="button" class="inbox-provider-btn is-active">
-            <OutlookLogo size={14} />
-            <span>Outlook</span>
-          </button>
-        </div>
+        <InboxProviderSwitch
+          activeProvider={activeProvider}
+          onSwitchProvider={onSwitchProvider}
+        />
       </header>
 
       <div class="outlook-command-ribbon">
@@ -200,7 +175,10 @@ export function OutlookInboxRenderer({
         <button
           type="button"
           class="outlook-newmail-btn"
-          onClick={() => setInlineNewMail({ to: '', subject: '', body: '' })}
+          onClick={() => {
+            setIsComposing(true);
+            setMobileShowReader(true);
+          }}
         >
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
             <rect x="1.5" y="3" width="13" height="10" rx="1.5" />
@@ -211,7 +189,7 @@ export function OutlookInboxRenderer({
 
         <span class="outlook-ribbon-sep" aria-hidden="true" />
 
-        {activeMail && !inlineNewMail && (
+        {activeMail && !isComposing && (
           <>
             <button
               type="button"
@@ -237,7 +215,10 @@ export function OutlookInboxRenderer({
             <button
               type="button"
               class="outlook-cmd-btn"
-              onClick={() => setReplyPulse((p) => p + 1)}
+              onClick={() => {
+                setMobileShowReader(true);
+                setReplyPulse((p) => p + 1);
+              }}
             >
               ↩ Reply
             </button>
@@ -245,7 +226,11 @@ export function OutlookInboxRenderer({
         )}
       </div>
 
-      <div class="outlook-three-pane">
+      <div
+        class={`outlook-three-pane ${
+          mobileShowReader || isComposing ? 'is-mobile-reader-open' : ''
+        }`}
+      >
         {isFolderPaneOpen && (
           <nav class="outlook-folder-pane" aria-label="Outlook folders">
             <div class="outlook-folder-group-label">▾ Favorites</div>
@@ -254,12 +239,13 @@ export function OutlookInboxRenderer({
               class={`outlook-folder-btn ${folder === 'inbox' ? 'is-active' : ''}`}
               onClick={() => {
                 setFolder('inbox');
-                setInlineNewMail(null);
+                setIsComposing(false);
+                setMobileShowReader(false);
               }}
             >
               <span>Inbox</span>
               {unreadInboxCount > 0 && (
-                <span style={{ color: '#62abf5', fontWeight: 600 }}>{unreadInboxCount}</span>
+                <span class="outlook-unread-num">{unreadInboxCount}</span>
               )}
             </button>
             <button
@@ -267,7 +253,8 @@ export function OutlookInboxRenderer({
               class={`outlook-folder-btn ${folder === 'flagged' ? 'is-active' : ''}`}
               onClick={() => {
                 setFolder('flagged');
-                setInlineNewMail(null);
+                setIsComposing(false);
+                setMobileShowReader(false);
               }}
             >
               <span>Flagged</span>
@@ -278,21 +265,21 @@ export function OutlookInboxRenderer({
               class={`outlook-folder-btn ${folder === 'sent' ? 'is-active' : ''}`}
               onClick={() => {
                 setFolder('sent');
-                setInlineNewMail(null);
+                setIsComposing(false);
+                setMobileShowReader(false);
               }}
             >
               <span>Sent Items</span>
             </button>
 
-            <div class="outlook-folder-group-label" style={{ marginTop: '10px' }}>
-              ▾ Carter & Vance LLP
-            </div>
+            <div class="outlook-folder-group-label">▾ Carter & Vance LLP</div>
             <button
               type="button"
               class={`outlook-folder-btn ${folder === 'archive' ? 'is-active' : ''}`}
               onClick={() => {
                 setFolder('archive');
-                setInlineNewMail(null);
+                setIsComposing(false);
+                setMobileShowReader(false);
               }}
             >
               <span>Archive</span>
@@ -302,7 +289,7 @@ export function OutlookInboxRenderer({
 
         <section class="outlook-list-pane" aria-label="Message list">
           <div class="outlook-focused-bar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div class="stage-subbar-group">
               <button
                 type="button"
                 class={`outlook-focus-tab ${bucket === 'focused' ? 'is-active' : ''}`}
@@ -337,15 +324,16 @@ export function OutlookInboxRenderer({
                 <Fragment key={group}>
                   <div class="outlook-date-divider">▾ {group}</div>
                   {items.map((item) => {
-                    const isSelected = activeMail?.id === item.id && !inlineNewMail;
+                    const isSelected = activeMail?.id === item.id && !isComposing;
                     return (
                       <button
                         key={item.id}
                         type="button"
                         class={`outlook-msg-card ${item.unread ? 'is-unread' : ''} ${isSelected ? 'is-selected' : ''}`}
                         onClick={() => {
-                          setInlineNewMail(null);
+                          setIsComposing(false);
                           setSelectedId(item.id);
+                          setMobileShowReader(true);
                           if (item.unread) onMarkRead(item.id, false);
                         }}
                       >
@@ -384,20 +372,11 @@ export function OutlookInboxRenderer({
 
                           <div class="outlook-card-subject">{item.subject}</div>
 
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '6px',
-                              marginTop: '3px',
-                            }}
-                          >
+                          <div class="outlook-card-snippet-row">
                             <span class="outlook-card-snippet">{item.snippet}</span>
                             {item.outlook.categoryTag && (
                               <span
                                 class={`outlook-cat-tag cat-${item.outlook.categoryTag.color}`}
-                                style={{ flexShrink: 0 }}
                               >
                                 {item.outlook.categoryTag.label}
                               </span>
@@ -424,58 +403,32 @@ export function OutlookInboxRenderer({
         </section>
 
         <section class="outlook-reading-pane" aria-label="Reading pane">
-          {inlineNewMail ? (
-            <form class="inline-pane-compose-form is-flush" onSubmit={submitOutlookNewMail}>
-              <div class="outlook-reading-subject-row">
-                <h2 class="outlook-reading-subject">New mail</h2>
-                <button
-                  type="button"
-                  class="ghost-pill"
-                  onClick={() => setInlineNewMail(null)}
-                >
-                  Discard
-                </button>
-              </div>
-              <input
-                type="text"
-                class="profile-input"
-                placeholder="To"
-                value={inlineNewMail.to}
-                onInput={(e) =>
-                  setInlineNewMail((c) =>
-                    c ? { ...c, to: (e.currentTarget as HTMLInputElement).value } : c
-                  )
-                }
-              />
-              <input
-                type="text"
-                class="profile-input"
-                placeholder="Add a subject"
-                value={inlineNewMail.subject}
-                onInput={(e) =>
-                  setInlineNewMail((c) =>
-                    c ? { ...c, subject: (e.currentTarget as HTMLInputElement).value } : c
-                  )
-                }
-              />
-              <textarea
-                rows={10}
-                class="mail-draft-textarea"
-                placeholder="Type / to insert files or write your message…"
-                value={inlineNewMail.body}
-                onInput={(e) =>
-                  setInlineNewMail((c) =>
-                    c ? { ...c, body: (e.currentTarget as HTMLTextAreaElement).value } : c
-                  )
-                }
-              />
-              <div class="mail-inline-reply-footer">
-                <span class="sheet-meta-count">From {senderEmail}</span>
-                <button type="submit" class="outlook-newmail-btn">
-                  Send
-                </button>
-              </div>
-            </form>
+          <div class="outlook-mobile-back-row">
+            <button
+              type="button"
+              class="ghost-pill"
+              onClick={() => {
+                setIsComposing(false);
+                setMobileShowReader(false);
+              }}
+            >
+              ← Messages
+            </button>
+          </div>
+
+          {isComposing ? (
+            <InlineNewMailForm
+              variant="outlook"
+              senderEmail={senderEmail}
+              onDiscard={() => {
+                setIsComposing(false);
+                setMobileShowReader(false);
+              }}
+              onSend={(to, subject, body) => {
+                onSendMail(to, subject, body);
+                setIsComposing(false);
+              }}
+            />
           ) : activeMail ? (
             <>
               <div class="outlook-reading-subject-row">
@@ -511,15 +464,13 @@ export function OutlookInboxRenderer({
 
               {activeMail.outlook.meeting && (
                 <div class="outlook-meeting-box">
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '9px', minWidth: 0 }}>
-                    <div style={{ marginTop: '2px' }}>
-                      <CalendarFluentIcon />
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <strong style={{ fontSize: '12.5px', color: '#f3f2f1', display: 'block' }}>
+                  <div class="outlook-meeting-meta">
+                    <CalendarFluentIcon />
+                    <div>
+                      <strong class="mail-sender-strong">
                         {activeMail.outlook.meeting.title}
                       </strong>
-                      <div style={{ fontSize: '11.5px', color: '#9ca3af', marginTop: '2px' }}>
+                      <div class="mail-sender-to">
                         {activeMail.outlook.meeting.when} · {activeMail.outlook.meeting.location}
                       </div>
                     </div>
@@ -562,15 +513,13 @@ export function OutlookInboxRenderer({
                   <div class="outlook-sender-addresses">
                     <div>
                       <strong>{activeMail.senderName}</strong>{' '}
-                      <span style={{ color: '#8a8886', fontSize: '12px' }}>
-                        &lt;{activeMail.senderEmail}&gt;
-                      </span>
+                      <span class="mail-sender-addr">&lt;{activeMail.senderEmail}&gt;</span>
                     </div>
-                    <div style={{ fontSize: '11.5px', color: '#a19f9d', marginTop: '2px' }}>
+                    <div class="mail-sender-to">
                       <strong>To:</strong> {activeMail.toList}
                     </div>
                     {activeMail.ccList && (
-                      <div style={{ fontSize: '11.5px', color: '#8a8886' }}>
+                      <div class="mail-sender-addr">
                         <strong>Cc:</strong> {activeMail.ccList}
                       </div>
                     )}
@@ -578,9 +527,7 @@ export function OutlookInboxRenderer({
                 </div>
 
                 <div class="outlook-sender-right">
-                  <div style={{ fontSize: '11.5px', color: '#8a8886' }}>
-                    {activeMail.fullTimestamp}
-                  </div>
+                  <div class="mail-sender-addr">{activeMail.fullTimestamp}</div>
                   <button
                     type="button"
                     class="ghost-pill"
@@ -599,70 +546,14 @@ export function OutlookInboxRenderer({
                 ))}
               </div>
 
-              {activeMail.attachments.length > 0 && (
-                <div class="mail-attachment-deck">
-                  {activeMail.attachments.map((att) => {
-                    const isOpen = previewBlock?.att.id === att.id;
-                    return (
-                      <button
-                        key={att.id}
-                        type="button"
-                        class={`mail-att-card ${isOpen ? 'is-active' : ''}`}
-                        onClick={() => void inspectAttachment(att)}
-                      >
-                        <span class="artifact-badge accent-sky">{att.badge}</span>
-                        <span>
-                          <strong style={{ display: 'block', fontSize: '12px', color: '#f3f2f1' }}>
-                            {att.filename}
-                          </strong>
-                          <span style={{ fontSize: '11px', color: '#a19f9d' }}>
-                            {att.sizeLabel}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {previewBlock && (
-                <div class="embedded-mail-stage">
-                  <div class="artifact-stage-header">
-                    <div class="artifact-stage-title-group">
-                      <span class="artifact-badge accent-sky">
-                        {previewBlock.att.badge}
-                      </span>
-                      <strong class="artifact-stage-title">
-                        {previewBlock.att.filename}
-                      </strong>
-                    </div>
-                    <div class="artifact-stage-controls">
-                      <button
-                        type="button"
-                        class="ghost-pill"
-                        onClick={() =>
-                          onNavigateSource({ pluginRoute: previewBlock.att.pluginRoute })
-                        }
-                      >
-                        Open in Split Stage ↗
-                      </button>
-                      <button
-                        type="button"
-                        class="icon-action-btn"
-                        onClick={() => setPreviewBlock(null)}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                  <BlockSlot
-                    key={previewBlock.block.id}
-                    block={previewBlock.block}
-                    registry={registry}
-                    isCompact={false}
-                  />
-                </div>
-              )}
+              <InlineAttachmentDeck
+                attachments={activeMail.attachments}
+                previewBlock={previewBlock}
+                registry={registry}
+                onToggleAttachment={(att) => void openAttachment(att)}
+                onClearPreview={clearPreview}
+                onNavigateSource={onNavigateSource}
+              />
 
               <MailIntelligencePanel
                 thread={activeMail}
@@ -673,14 +564,14 @@ export function OutlookInboxRenderer({
                   const matchedAtt = activeMail.attachments.find(
                     (a) => a.pluginRoute === route
                   );
-                  if (matchedAtt) void inspectAttachment(matchedAtt);
+                  if (matchedAtt) void openAttachment(matchedAtt);
                   else onNavigateSource({ pluginRoute: route });
                 }}
                 onSendReply={onSendMail}
               />
             </>
           ) : (
-            <div class="daily-brief-body">Select a message to read.</div>
+            <div class="sheet-meta-count">Select a message to read.</div>
           )}
         </section>
       </div>

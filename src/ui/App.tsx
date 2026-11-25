@@ -1,25 +1,30 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
-import {
-  defaultFirmAdmin,
-  selectClientEngagementGroups,
-  type FirmAdminState,
-} from '../core/admin';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import type { OnboardingStepId } from '../core/onboarding';
 import type { RendererRegistry } from '../core/renderers';
-import type { TodayWorkItem, WorkspaceState } from '../core/types';
+import type { AuthProviderId, TodayWorkItem, WorkspaceState } from '../core/types';
 import {
   selectSidebarRecentTopics,
   type WorkspaceController,
 } from '../core/workspace';
-import type { FirmAdminPage as FirmAdminPageComponent } from './admin/FirmAdminPage';
-import type { ClientsPage as ClientsPageComponent } from './clients/ClientsPage';
-import type { ConnectorsPage as ConnectorsPageComponent } from './connectors/ConnectorsPage';
-import type { InboxWorkspace as InboxWorkspaceComponent } from './inbox/InboxWorkspace';
 import type { DeepLinkTarget } from './inbox/MailIntelligencePanel';
 import { Launchpad } from './Launchpad';
-import type { ProfilePage as ProfilePageComponent } from './ProfilePage';
+import { LazyPageSlot } from './primitives/LazyPageSlot';
 import { Sidebar } from './Sidebar';
-import type { ThreadView as ThreadViewComponent } from './ThreadView';
+
+const loadThreadView = () => import('./ThreadView').then((m) => m.ThreadView);
+const loadInboxWorkspace = () =>
+  import('./inbox/InboxWorkspace').then((m) => m.InboxWorkspace);
+const loadClientsPage = () =>
+  import('./clients/ClientsPage').then((m) => m.ClientsPage);
+const loadConnectorsPage = () =>
+  import('./connectors/ConnectorsPage').then((m) => m.ConnectorsPage);
+const loadFirmAdminPage = () =>
+  import('./admin/FirmAdminPage').then((m) => m.FirmAdminPage);
+const loadProfilePage = () => import('./ProfilePage').then((m) => m.ProfilePage);
+const loadLoginPage = () => import('./auth/LoginPage').then((m) => m.LoginPage);
+const loadOnboardingPage = () =>
+  import('./auth/WorkspaceOnboardingPage').then((m) => m.WorkspaceOnboardingPage);
 
 interface AppProps {
   readonly workspace: WorkspaceController;
@@ -29,66 +34,99 @@ interface AppProps {
 
 export function App({ workspace, registry, onIngestFile }: AppProps) {
   const [state, setState] = useState<WorkspaceState>(() => workspace.getState());
-  const [adminState, setAdminState] = useState<FirmAdminState>(() =>
-    defaultFirmAdmin.getState()
+  const [loginMode, setLoginMode] = useState<AuthProviderId>('entra');
+  const [onboardingStep, setOnboardingStep] = useState<OnboardingStepId | undefined>(
+    undefined
   );
-  const [ThreadViewLoaded, setThreadViewLoaded] = useState<typeof ThreadViewComponent | null>(null);
-  const [ProfileLoaded, setProfileLoaded] = useState<typeof ProfilePageComponent | null>(null);
-  const [ClientsLoaded, setClientsLoaded] = useState<typeof ClientsPageComponent | null>(null);
-  const [ConnectorsLoaded, setConnectorsLoaded] =
-    useState<typeof ConnectorsPageComponent | null>(null);
-  const [InboxLoaded, setInboxLoaded] = useState<typeof InboxWorkspaceComponent | null>(null);
-  const [AdminLoaded, setAdminLoaded] = useState<typeof FirmAdminPageComponent | null>(null);
+  const isHydratingUrlRef = useRef(true);
 
   useEffect(() => workspace.subscribe(setState), [workspace]);
-  useEffect(() => defaultFirmAdmin.subscribe(setAdminState), []);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 860px)');
+    if (mql.matches) {
+      workspace.setSidebarOpen(false);
+    }
+    function handleBreakpoint(e: MediaQueryListEvent) {
+      if (e.matches) workspace.setSidebarOpen(false);
+    }
+    mql.addEventListener('change', handleBreakpoint);
+    return () => mql.removeEventListener('change', handleBreakpoint);
+  }, [workspace]);
 
   useEffect(() => {
     async function applyUrlParams() {
-      const params = new URLSearchParams(window.location.search);
-      const rawPage = params.get('page')?.trim().toLowerCase();
-      const rawProvider = (params.get('provider') ?? params.get('inbox'))?.trim().toLowerCase();
+      isHydratingUrlRef.current = true;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const rawPage = params.get('page')?.trim().toLowerCase();
+        const rawProvider = (params.get('provider') ?? params.get('inbox'))?.trim().toLowerCase();
 
-      if (rawPage === 'profile') {
-        workspace.selectSection('profile');
-        return;
-      }
-      if (rawPage === 'clients') {
-        const clientParam = params.get('client')?.trim() || null;
-        const engParam = params.get('eng')?.trim() || null;
-        workspace.openClient(clientParam, engParam);
-        return;
-      }
-      if (rawPage === 'connectors') {
-        workspace.selectSection('connectors');
-        return;
-      }
-      if (rawPage === 'admin') {
-        workspace.selectSection('admin');
-        return;
-      }
-      if (rawPage === 'inbox' || rawProvider === 'gmail' || rawProvider === 'outlook') {
-        const threadParam = params.get('thread')?.trim() || null;
-        const targetProvider = rawProvider === 'outlook' ? 'outlook' : 'gmail';
-        if (threadParam) {
-          workspace.openMailThread(threadParam, targetProvider);
-        } else {
-          workspace.setInboxProvider(targetProvider);
+        if (rawPage === 'login' || rawPage === 'signin') {
+          const rawMode = params.get('mode')?.trim().toLowerCase();
+          if (rawMode === 'okta' || rawMode === 'invite' || rawMode === 'entra') {
+            setLoginMode(rawMode);
+          }
+          workspace.selectSection('login');
+          return;
         }
-        return;
-      }
+        if (rawPage === 'onboarding' || rawPage === 'setup') {
+          const rawStep = params.get('step')?.trim().toLowerCase();
+          if (
+            rawStep === 'firm' ||
+            rawStep === 'identity' ||
+            rawStep === 'stack' ||
+            rawStep === 'templates' ||
+            rawStep === 'team'
+          ) {
+            setOnboardingStep(rawStep);
+          }
+          workspace.selectSection('onboarding');
+          return;
+        }
+        if (rawPage === 'profile') {
+          workspace.selectSection('profile');
+          return;
+        }
+        if (rawPage === 'clients') {
+          const clientParam = params.get('client')?.trim() || null;
+          const engParam = params.get('eng')?.trim() || null;
+          workspace.openClient(clientParam, engParam);
+          return;
+        }
+        if (rawPage === 'connectors') {
+          workspace.selectSection('connectors');
+          return;
+        }
+        if (rawPage === 'admin') {
+          workspace.selectSection('admin');
+          return;
+        }
+        if (rawPage === 'inbox' || rawProvider === 'gmail' || rawProvider === 'outlook') {
+          const threadParam = params.get('thread')?.trim() || null;
+          const targetProvider = rawProvider === 'outlook' ? 'outlook' : 'gmail';
+          if (threadParam) {
+            workspace.openMailThread(threadParam, targetProvider);
+          } else {
+            workspace.setInboxProvider(targetProvider);
+          }
+          return;
+        }
 
-      const rawStage = params.get('stage')?.trim().toLowerCase();
-      const anchor = params.get('anchor');
-      if (!rawStage) return;
+        const rawStage = params.get('stage')?.trim().toLowerCase();
+        const anchor = params.get('anchor');
+        if (!rawStage) return;
 
-      const matchedPlugin = registry.findByRoute(rawStage);
-      if (!matchedPlugin) return;
+        const matchedPlugin = registry.findByRoute(rawStage);
+        if (!matchedPlugin) return;
 
-      const topicId = await workspace.launchPluginSample(matchedPlugin.id);
-      if (topicId && anchor) {
-        const blockId = workspace.getState().inspectedBlockId;
-        if (blockId) workspace.inspectArtifact(blockId, anchor);
+        const topicId = await workspace.launchPluginSample(matchedPlugin.id);
+        if (topicId && anchor) {
+          const blockId = workspace.getState().inspectedBlockId;
+          if (blockId) workspace.inspectArtifact(blockId, anchor);
+        }
+      } finally {
+        isHydratingUrlRef.current = false;
       }
     }
 
@@ -98,16 +136,21 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
   }, [registry, workspace]);
 
   useEffect(() => {
+    if (isHydratingUrlRef.current) return;
+
     const topic = state.topics.find((t) => t.id === state.activeTopicId);
     if (topic) {
-      const block = topic.turns
-        .flatMap((t) => t.blocks)
-        .find((b) => b.id === state.inspectedBlockId);
+      const allBlocks = topic.turns.flatMap((t) => t.blocks);
+      const block =
+        allBlocks.find((b) => b.id === state.inspectedBlockId) ??
+        [...allBlocks].reverse().find((b) => b.kind !== 'prose');
       if (!block) return;
       const pluginId = registry.resolve(block).id;
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.delete('page');
       nextUrl.searchParams.delete('provider');
+      nextUrl.searchParams.delete('mode');
+      nextUrl.searchParams.delete('step');
       nextUrl.searchParams.set('stage', pluginId);
       if (state.inspectedAnchor) nextUrl.searchParams.set('anchor', state.inspectedAnchor);
       else nextUrl.searchParams.delete('anchor');
@@ -128,6 +171,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       nextUrl.searchParams.set('provider', state.inboxProvider);
       nextUrl.searchParams.delete('client');
       nextUrl.searchParams.delete('eng');
+      nextUrl.searchParams.delete('mode');
+      nextUrl.searchParams.delete('step');
       window.history.replaceState(
         null,
         '',
@@ -136,6 +181,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     } else if (state.activeSection === 'clients') {
       nextUrl.searchParams.set('page', 'clients');
       nextUrl.searchParams.delete('provider');
+      nextUrl.searchParams.delete('mode');
+      nextUrl.searchParams.delete('step');
       if (state.selectedClientId) nextUrl.searchParams.set('client', state.selectedClientId);
       else nextUrl.searchParams.delete('client');
       if (state.selectedEngagementId) nextUrl.searchParams.set('eng', state.selectedEngagementId);
@@ -145,7 +192,20 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         '',
         `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`
       );
+    } else if (state.activeSection === 'login') {
+      nextUrl.searchParams.set('page', 'login');
+      nextUrl.searchParams.set('mode', loginMode);
+      nextUrl.searchParams.delete('provider');
+      nextUrl.searchParams.delete('client');
+      nextUrl.searchParams.delete('eng');
+      nextUrl.searchParams.delete('step');
+      window.history.replaceState(
+        null,
+        '',
+        `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`
+      );
     } else if (
+      state.activeSection === 'onboarding' ||
       state.activeSection === 'profile' ||
       state.activeSection === 'connectors' ||
       state.activeSection === 'admin'
@@ -154,6 +214,12 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       nextUrl.searchParams.delete('provider');
       nextUrl.searchParams.delete('client');
       nextUrl.searchParams.delete('eng');
+      nextUrl.searchParams.delete('mode');
+      if (state.activeSection === 'onboarding') {
+        if (onboardingStep) nextUrl.searchParams.set('step', onboardingStep);
+      } else {
+        nextUrl.searchParams.delete('step');
+      }
       window.history.replaceState(
         null,
         '',
@@ -163,6 +229,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       window.history.replaceState(null, '', nextUrl.pathname);
     }
   }, [
+    loginMode,
+    onboardingStep,
     registry,
     state.activeSection,
     state.selectedClientId,
@@ -172,57 +240,6 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     state.inspectedAnchor,
     state.inspectedBlockId,
     state.topics,
-  ]);
-
-  useEffect(() => {
-    if (state.activeTopicId && !ThreadViewLoaded) {
-      void import('./ThreadView').then((mod) => setThreadViewLoaded(() => mod.ThreadView));
-      return;
-    }
-    if (state.activeSection === 'profile' && !ProfileLoaded) {
-      void import('./ProfilePage').then((mod) => setProfileLoaded(() => mod.ProfilePage));
-      return;
-    }
-    if (state.activeSection === 'clients' && !ClientsLoaded) {
-      void import('./clients/ClientsPage').then((mod) =>
-        setClientsLoaded(() => mod.ClientsPage)
-      );
-      return;
-    }
-    if (state.activeSection === 'connectors' && !ConnectorsLoaded) {
-      void import('./connectors/ConnectorsPage').then((mod) =>
-        setConnectorsLoaded(() => mod.ConnectorsPage)
-      );
-      return;
-    }
-    if (state.activeSection === 'inbox' && !InboxLoaded) {
-      void import('./inbox/InboxWorkspace').then((mod) =>
-        setInboxLoaded(() => mod.InboxWorkspace)
-      );
-      return;
-    }
-    if (state.activeSection === 'admin' && !AdminLoaded) {
-      void import('./admin/FirmAdminPage').then((mod) =>
-        setAdminLoaded(() => mod.FirmAdminPage)
-      );
-      return;
-    }
-    if (state.networkStatus === 'online' && !ThreadViewLoaded && state.activeSection === 'home') {
-      const timer = setTimeout(() => {
-        void import('./ThreadView').then((mod) => setThreadViewLoaded(() => mod.ThreadView));
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [
-    state.activeTopicId,
-    state.activeSection,
-    state.networkStatus,
-    ThreadViewLoaded,
-    ProfileLoaded,
-    ClientsLoaded,
-    ConnectorsLoaded,
-    InboxLoaded,
-    AdminLoaded,
   ]);
 
   useEffect(() => {
@@ -271,7 +288,6 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
 
   const activeTopic = state.topics.find((t) => t.id === state.activeTopicId) ?? null;
   const sidebarRecents = selectSidebarRecentTopics(state);
-  const clientGroups = selectClientEngagementGroups(adminState);
 
   async function handleNavigateDeepLink(target: DeepLinkTarget) {
     if (target.pluginRoute) {
@@ -305,6 +321,50 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     });
   }
 
+  if (state.activeSection === 'login' && !activeTopic) {
+    return (
+      <LazyPageSlot
+        slotKey="login"
+        label="sign in"
+        loader={loadLoginPage}
+        render={(LoginPage) => (
+          <LoginPage
+            initialMode={loginMode}
+            defaultEmail={state.userProfile.email}
+            defaultFirm={state.userProfile.firm}
+            isAlreadyAuthenticated={state.authSession.isAuthenticated}
+            onModeChange={setLoginMode}
+            onCompleteSignIn={(payload) => workspace.completeSignIn(payload)}
+            onStartOnboarding={() => workspace.selectSection('onboarding')}
+            onReturnWorkspace={() => workspace.selectSection('home')}
+          />
+        )}
+      />
+    );
+  }
+
+  if (state.activeSection === 'onboarding' && !activeTopic) {
+    return (
+      <LazyPageSlot
+        slotKey="onboarding"
+        label="workspace setup"
+        loader={loadOnboardingPage}
+        render={(WorkspaceOnboardingPage) => (
+          <WorkspaceOnboardingPage
+            initialStep={onboardingStep}
+            adminEmail={state.userProfile.email}
+            connectedIds={state.connectedAppIds}
+            onStepChange={setOnboardingStep}
+            onToggleConnector={(id) => workspace.toggleConnector(id)}
+            onClientCountChange={(count) => workspace.setClientCount(count)}
+            onCompleteWorkspaceSetup={(payload) => workspace.completeSignIn(payload)}
+            onNavigate={(sec) => workspace.selectSection(sec)}
+          />
+        )}
+      />
+    );
+  }
+
   return (
     <div class="app-frame">
       <Sidebar
@@ -312,7 +372,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         activeSection={state.activeSection}
         activeTopicId={state.activeTopicId}
         unreadInboxCount={state.unreadInboxCount}
-        clientCount={clientGroups.length}
+        clientCount={state.clientCount}
         connectedCount={state.connectedAppIds.length}
         userProfile={state.userProfile}
         isRecentsOpen={state.isRecentsOpen}
@@ -333,108 +393,116 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
 
       <main class="main-surface">
         {activeTopic ? (
-          ThreadViewLoaded ? (
-            <ThreadViewLoaded
-              topic={activeTopic}
-              registry={registry}
-              inspectedBlockId={state.inspectedBlockId}
-              inspectedAnchor={state.inspectedAnchor}
-              anchorPulse={state.anchorPulse}
-              isStageMaximized={state.isStageMaximized}
-              draft={state.composerDraft}
-              attachments={state.attachments}
-              models={state.models}
-              selectedModelId={state.selectedModelId}
-              onReturnHome={() => workspace.returnHome()}
-              onInspectBlock={(id, anchor) => workspace.inspectArtifact(id, anchor)}
-              onCommitRevision={(blockId, nextData, summary) =>
-                workspace.commitArtifactRevision(blockId, nextData, summary)
-              }
-              onToggleMaximizeStage={() => workspace.toggleStageMaximize()}
-              onDraftChange={(text) => workspace.updateDraft(text)}
-              onModelChange={(id) => workspace.setModel(id)}
-              onIngestFile={onIngestFile}
-              onRemoveAttachment={(id) => workspace.removeAttachment(id)}
-              onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
-              onSubmit={() => workspace.submitPrompt()}
-            />
-          ) : (
-            <div class="launchpad-scroll">
-              <div class="renderer-skeleton">Loading view…</div>
-            </div>
-          )
+          <LazyPageSlot
+            slotKey="thread-view"
+            label="workpaper thread"
+            loader={loadThreadView}
+            render={(ThreadView) => (
+              <ThreadView
+                topic={activeTopic}
+                registry={registry}
+                inspectedBlockId={state.inspectedBlockId}
+                inspectedAnchor={state.inspectedAnchor}
+                anchorPulse={state.anchorPulse}
+                isStageMaximized={state.isStageMaximized}
+                draft={state.composerDraft}
+                attachments={state.attachments}
+                onReturnHome={() => workspace.returnHome()}
+                onInspectBlock={(id, anchor) => workspace.inspectArtifact(id, anchor)}
+                onCommitRevision={(blockId, nextData, summary) =>
+                  workspace.commitArtifactRevision(blockId, nextData, summary)
+                }
+                onToggleMaximizeStage={() => workspace.toggleStageMaximize()}
+                onDraftChange={(text) => workspace.updateDraft(text)}
+                onIngestFile={onIngestFile}
+                onRemoveAttachment={(id) => workspace.removeAttachment(id)}
+                onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
+                onSubmit={() => workspace.submitPrompt()}
+              />
+            )}
+          />
         ) : state.activeSection === 'inbox' ? (
-          InboxLoaded ? (
-            <InboxLoaded
-              provider={state.inboxProvider}
-              selectedMailId={state.selectedMailId}
-              registry={registry}
-              senderEmail={state.userProfile.email}
-              senderName={state.userProfile.fullName}
-              onSwitchProvider={(provider) => workspace.setInboxProvider(provider)}
-              onUnreadCountChange={(count) => workspace.setUnreadInboxCount(count)}
-              onNavigateSource={(target) => void handleNavigateDeepLink(target)}
-            />
-          ) : (
-            <div class="launchpad-scroll">
-              <div class="renderer-skeleton">Loading inbox…</div>
-            </div>
-          )
+          <LazyPageSlot
+            slotKey="inbox"
+            label="inbox"
+            loader={loadInboxWorkspace}
+            render={(InboxWorkspace) => (
+              <InboxWorkspace
+                provider={state.inboxProvider}
+                selectedMailId={state.selectedMailId}
+                registry={registry}
+                senderEmail={state.userProfile.email}
+                senderName={state.userProfile.fullName}
+                onSwitchProvider={(provider) => workspace.setInboxProvider(provider)}
+                onUnreadCountChange={(count) => workspace.setUnreadInboxCount(count)}
+                onNavigateSource={(target) => void handleNavigateDeepLink(target)}
+              />
+            )}
+          />
         ) : state.activeSection === 'clients' ? (
-          ClientsLoaded ? (
-            <ClientsLoaded
-              selectedClientId={state.selectedClientId}
-              selectedEngagementId={state.selectedEngagementId}
-              onSelectClient={(clientId, engId) =>
-                workspace.openClient(clientId, engId)
-              }
-              onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)}
-            />
-          ) : (
-            <div class="launchpad-scroll">
-              <div class="renderer-skeleton">Loading clients…</div>
-            </div>
-          )
+          <LazyPageSlot
+            slotKey="clients"
+            label="clients"
+            loader={loadClientsPage}
+            render={(ClientsPage) => (
+              <ClientsPage
+                selectedClientId={state.selectedClientId}
+                selectedEngagementId={state.selectedEngagementId}
+                onSelectClient={(clientId, engId) =>
+                  workspace.openClient(clientId, engId)
+                }
+                onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)}
+                onClientCountChange={(count) => workspace.setClientCount(count)}
+              />
+            )}
+          />
         ) : state.activeSection === 'connectors' ? (
-          ConnectorsLoaded ? (
-            <ConnectorsLoaded
-              connectedIds={state.connectedAppIds}
-              disconnectedIds={state.disconnectedAppIds}
-              onToggleConnector={(id) => workspace.toggleConnector(id)}
-              onOpenInboxProvider={(provider) => workspace.setInboxProvider(provider)}
-              onNavigate={(sec) => workspace.selectSection(sec)}
-            />
-          ) : (
-            <div class="launchpad-scroll">
-              <div class="renderer-skeleton">Loading connectors…</div>
-            </div>
-          )
+          <LazyPageSlot
+            slotKey="connectors"
+            label="connectors"
+            loader={loadConnectorsPage}
+            render={(ConnectorsPage) => (
+              <ConnectorsPage
+                connectedIds={state.connectedAppIds}
+                disconnectedIds={state.disconnectedAppIds}
+                onToggleConnector={(id) => workspace.toggleConnector(id)}
+                onOpenInboxProvider={(provider) => workspace.setInboxProvider(provider)}
+                onNavigate={(sec) => workspace.selectSection(sec)}
+              />
+            )}
+          />
         ) : state.activeSection === 'admin' ? (
-          AdminLoaded ? (
-            <AdminLoaded
-              onOpenClientEngagement={(clientId, engId) =>
-                workspace.openClient(clientId, engId)
-              }
-              onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)}
-            />
-          ) : (
-            <div class="launchpad-scroll">
-              <div class="renderer-skeleton">Loading firm admin…</div>
-            </div>
-          )
+          <LazyPageSlot
+            slotKey="admin"
+            label="firm admin"
+            loader={loadFirmAdminPage}
+            render={(FirmAdminPage) => (
+              <FirmAdminPage
+                onOpenClientEngagement={(clientId, engId) =>
+                  workspace.openClient(clientId, engId)
+                }
+                onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)}
+                onOpenOnboarding={() => workspace.selectSection('onboarding')}
+                onClientCountChange={(count) => workspace.setClientCount(count)}
+              />
+            )}
+          />
         ) : state.activeSection === 'profile' ? (
-          ProfileLoaded ? (
-            <ProfileLoaded
-              profile={state.userProfile}
-              connectedCount={state.connectedAppIds.length}
-              onUpdateProfile={(patch) => workspace.updateUserProfile(patch)}
-              onNavigate={(sec) => workspace.selectSection(sec)}
-            />
-          ) : (
-            <div class="launchpad-scroll">
-              <div class="renderer-skeleton">Loading profile…</div>
-            </div>
-          )
+          <LazyPageSlot
+            slotKey="profile"
+            label="profile"
+            loader={loadProfilePage}
+            render={(ProfilePage) => (
+              <ProfilePage
+                profile={state.userProfile}
+                authSession={state.authSession}
+                connectedCount={state.connectedAppIds.length}
+                onUpdateProfile={(patch) => workspace.updateUserProfile(patch)}
+                onNavigate={(sec) => workspace.selectSection(sec)}
+                onSignOut={() => workspace.signOut()}
+              />
+            )}
+          />
         ) : (
           <Launchpad
             userProfile={state.userProfile}
@@ -443,11 +511,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
             disconnectedIds={state.disconnectedAppIds}
             draft={state.composerDraft}
             attachments={state.attachments}
-            models={state.models}
-            selectedModelId={state.selectedModelId}
             registry={registry}
             onDraftChange={(text) => workspace.updateDraft(text)}
-            onModelChange={(id) => workspace.setModel(id)}
             onIngestFile={onIngestFile}
             onRemoveAttachment={(id) => workspace.removeAttachment(id)}
             onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}

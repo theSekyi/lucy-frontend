@@ -1,6 +1,24 @@
-export type NavSection = 'home' | 'inbox' | 'clients' | 'connectors' | 'admin' | 'profile';
+export type NavSection =
+  | 'home'
+  | 'inbox'
+  | 'clients'
+  | 'connectors'
+  | 'admin'
+  | 'profile'
+  | 'login'
+  | 'onboarding';
 
 export type InboxProvider = 'gmail' | 'outlook';
+
+export type AuthProviderId = 'entra' | 'okta' | 'invite';
+
+export interface AuthSession {
+  readonly isAuthenticated: boolean;
+  readonly provider: AuthProviderId;
+  readonly organizationDomain: string;
+  readonly ssoTenantLabel: string;
+  readonly lastVerifiedAt: string;
+}
 
 export interface UserProfile {
   readonly fullName: string;
@@ -14,7 +32,7 @@ export interface UserProfile {
   readonly materialityBasis: string;
 }
 
-export type SidebarIconKind = 'hash' | 'bot' | 'spinner';
+export type SidebarIconKind = 'doc' | 'hash' | 'spinner';
 
 export type NetworkStatus = 'online' | 'slow' | 'offline';
 
@@ -23,7 +41,7 @@ export type RenderPlacement = 'inline' | 'stage';
 export type BadgeAccent = 'emerald' | 'amber' | 'violet' | 'sky' | 'rose' | 'neutral';
 
 /**
- * Open-ended content envelope. Adding future formats (Excel, PDF, Redlines, SQL, DAGs, Slides)
+ * Open-ended content envelope. Adding future formats (Excel, PDF, Redlines, SQL, DAGs, Slides, Workpapers)
  * never requires modifying core conversation types.
  */
 export interface ContentBlock<TData = unknown> {
@@ -173,23 +191,6 @@ export interface TopicThread {
   readonly turns: ReadonlyArray<ConversationTurn>;
 }
 
-export interface DailyBriefSlide {
-  readonly id: string;
-  readonly subtitle: string;
-  readonly body: string;
-}
-
-export interface ModelChoice {
-  readonly id: string;
-  readonly family: string;
-  readonly tier: string;
-}
-
-export interface ComposerMode {
-  readonly id: string;
-  readonly label: string;
-}
-
 export interface TodayWorkItem {
   readonly id: string;
   readonly kindLabel: 'Email' | 'Tax' | 'Close' | 'Audit';
@@ -208,6 +209,8 @@ export interface WorkspaceState {
   readonly selectedMailId: string | null;
   readonly inboxProvider: InboxProvider;
   readonly unreadInboxCount: number;
+  readonly clientCount: number;
+  readonly authSession: AuthSession;
   readonly userProfile: UserProfile;
   readonly connectedAppIds: ReadonlyArray<string>;
   readonly disconnectedAppIds: ReadonlyArray<string>;
@@ -224,12 +227,6 @@ export interface WorkspaceState {
   readonly isSearchOpen: boolean;
   readonly composerDraft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
-  readonly selectedModeId: string;
-  readonly selectedModelId: string;
-  readonly activeBriefIndex: number;
-  readonly briefs: ReadonlyArray<DailyBriefSlide>;
-  readonly modes: ReadonlyArray<ComposerMode>;
-  readonly models: ReadonlyArray<ModelChoice>;
   readonly topics: ReadonlyArray<TopicThread>;
   readonly networkStatus: NetworkStatus;
   readonly queuedTurnIds: ReadonlyArray<string>;

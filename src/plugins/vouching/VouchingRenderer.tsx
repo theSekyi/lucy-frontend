@@ -197,6 +197,8 @@ function VouchingStageView({ context }: { context: RendererContext<VouchingWorkp
                 marginTop: '12px',
                 display: 'flex',
                 justifyContent: 'space-between',
+                gap: '12px',
+                flexWrap: 'wrap',
                 fontSize: '11.5px',
                 color: diff === 0 ? '#15803d' : '#b91c1c',
                 fontWeight: 600,

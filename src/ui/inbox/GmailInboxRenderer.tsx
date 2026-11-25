@@ -7,15 +7,20 @@ import type {
   MailThreadItem,
 } from '../../core/inbox';
 import type { RendererRegistry } from '../../core/renderers';
-import type { ContentBlock, InboxProvider } from '../../core/types';
-import { BlockSlot } from '../BlockSlot';
-import { GmailLogo, OutlookLogo } from '../connectors/connectorLogos';
+import type { InboxProvider } from '../../core/types';
+import { GmailLogo } from '../connectors/connectorLogos';
 import { SearchIcon } from '../icons';
 import { MailIntelligencePanel, type DeepLinkTarget } from './MailIntelligencePanel';
+import {
+  InboxProviderSwitch,
+  InlineAttachmentDeck,
+  InlineNewMailForm,
+  useMailAttachmentPreview,
+} from './MailSharedParts';
 
 export interface MailProviderViewProps {
   readonly threads: ReadonlyArray<MailThreadItem>;
-  readonly initialThreadId?: string | null;
+  readonly focusedThreadReq?: { readonly id: string; readonly pulse: number } | null;
   readonly registry: RendererRegistry<ComponentChildren>;
   readonly activeProvider: InboxProvider;
   readonly senderEmail: string;
@@ -37,8 +42,9 @@ const GMAIL_LABELS: ReadonlyArray<{ text: string; color: string }> = [
 
 export function GmailInboxRenderer({
   threads,
-  initialThreadId = null,
+  focusedThreadReq = null,
   registry,
+  activeProvider,
   senderEmail,
   onSwitchProvider,
   onToggleStar,
@@ -50,25 +56,23 @@ export function GmailInboxRenderer({
   const [folder, setFolder] = useState<MailFolder>('inbox');
   const [category, setCategory] = useState<GmailCategory>('primary');
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
-  const [isRailCollapsed, setIsRailCollapsed] = useState(false);
+  const [isRailCollapsed, setIsRailCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 740
+  );
   const [query, setQuery] = useState('');
-  const [openedId, setOpenedId] = useState<string | null>(initialThreadId);
+  const [openedId, setOpenedId] = useState<string | null>(focusedThreadReq?.id ?? null);
+  const [isComposing, setIsComposing] = useState(false);
   const [replyPulse, setReplyPulse] = useState(0);
 
+  const { previewBlock, clearPreview, openAttachment } = useMailAttachmentPreview(registry);
+
   useEffect(() => {
-    if (initialThreadId) {
-      setOpenedId(initialThreadId);
+    if (focusedThreadReq?.id) {
+      setIsComposing(false);
+      setOpenedId(focusedThreadReq.id);
+      clearPreview();
     }
-  }, [initialThreadId]);
-  const [inlineCompose, setInlineCompose] = useState<{
-    to: string;
-    subject: string;
-    body: string;
-  } | null>(null);
-  const [previewBlock, setPreviewBlock] = useState<{
-    att: MailAttachmentLink;
-    block: ContentBlock;
-  } | null>(null);
+  }, [focusedThreadReq?.id, focusedThreadReq?.pulse, clearPreview]);
 
   const unreadInbox = threads.filter((t) => t.folder === 'inbox' && t.unread).length;
   const unreadUpdates = threads.filter(
@@ -99,32 +103,11 @@ export function GmailInboxRenderer({
 
   const openedThread = threads.find((t) => t.id === openedId) ?? null;
 
-  async function inspectAttachmentInline(att: MailAttachmentLink) {
-    if (previewBlock?.att.id === att.id) {
-      setPreviewBlock(null);
-      return;
-    }
-    const plugin = registry.findByRoute(att.pluginRoute);
-    if (!plugin?.createSample) return;
-    const sample = await plugin.createSample((p) => `${p}-${Date.now()}`);
-    setPreviewBlock({ att, block: sample.artifact });
-  }
-
-  async function openThreadWithAttachment(item: MailThreadItem, att: MailAttachmentLink) {
-    setInlineCompose(null);
+  function openThreadWithAttachment(item: MailThreadItem, att: MailAttachmentLink) {
+    setIsComposing(false);
     setOpenedId(item.id);
     if (item.unread) onMarkRead(item.id, false);
-    const plugin = registry.findByRoute(att.pluginRoute);
-    if (!plugin?.createSample) return;
-    const sample = await plugin.createSample((p) => `${p}-${Date.now()}`);
-    setPreviewBlock({ att, block: sample.artifact });
-  }
-
-  function submitInlineNewMail(e: Event) {
-    e.preventDefault();
-    if (!inlineCompose) return;
-    onSendMail(inlineCompose.to, inlineCompose.subject, inlineCompose.body);
-    setInlineCompose(null);
+    void openAttachment(att, false);
   }
 
   return (
@@ -165,39 +148,15 @@ export function GmailInboxRenderer({
             onInput={(e) => {
               setQuery((e.currentTarget as HTMLInputElement).value);
               setOpenedId(null);
-              setInlineCompose(null);
+              setIsComposing(false);
             }}
           />
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#9aa0a6"
-            stroke-width="1.8"
-            aria-hidden="true"
-          >
-            <line x1="4" y1="7" x2="20" y2="7" />
-            <circle cx="9" cy="7" r="2" fill="#282a2c" />
-            <line x1="4" y1="17" x2="20" y2="17" />
-            <circle cx="15" cy="17" r="2" fill="#282a2c" />
-          </svg>
         </div>
 
-        <div class="inbox-provider-switch" role="tablist" aria-label="Mail provider">
-          <button type="button" class="inbox-provider-btn is-active">
-            <GmailLogo size={14} />
-            <span>Gmail</span>
-          </button>
-          <button
-            type="button"
-            class="inbox-provider-btn"
-            onClick={() => onSwitchProvider('outlook')}
-          >
-            <OutlookLogo size={14} />
-            <span>Outlook</span>
-          </button>
-        </div>
+        <InboxProviderSwitch
+          activeProvider={activeProvider}
+          onSwitchProvider={onSwitchProvider}
+        />
       </header>
 
       <div class="gmail-body">
@@ -210,7 +169,8 @@ export function GmailInboxRenderer({
             class="gmail-compose-btn"
             onClick={() => {
               setOpenedId(null);
-              setInlineCompose({ to: '', subject: '', body: '' });
+              clearPreview();
+              setIsComposing(true);
             }}
             title="Compose"
           >
@@ -240,7 +200,7 @@ export function GmailInboxRenderer({
               setFolder('inbox');
               setActiveLabel(null);
               setOpenedId(null);
-              setInlineCompose(null);
+              setIsComposing(false);
             }}
           >
             <span class="gmail-folder-left">
@@ -261,7 +221,7 @@ export function GmailInboxRenderer({
               setFolder('starred');
               setActiveLabel(null);
               setOpenedId(null);
-              setInlineCompose(null);
+              setIsComposing(false);
             }}
           >
             <span class="gmail-folder-left">
@@ -280,7 +240,7 @@ export function GmailInboxRenderer({
               setFolder('sent');
               setActiveLabel(null);
               setOpenedId(null);
-              setInlineCompose(null);
+              setIsComposing(false);
             }}
           >
             <span class="gmail-folder-left">
@@ -300,7 +260,7 @@ export function GmailInboxRenderer({
               setFolder('archive');
               setActiveLabel(null);
               setOpenedId(null);
-              setInlineCompose(null);
+              setIsComposing(false);
             }}
           >
             <span class="gmail-folder-left">
@@ -325,7 +285,7 @@ export function GmailInboxRenderer({
                     setFolder('inbox');
                     setActiveLabel((curr) => (curr === lbl.text ? null : lbl.text));
                     setOpenedId(null);
-                    setInlineCompose(null);
+                    setIsComposing(false);
                   }}
                 >
                   <span class="gmail-folder-left">
@@ -339,68 +299,27 @@ export function GmailInboxRenderer({
         </nav>
 
         <section class="gmail-sheet" aria-label="Messages">
-          {inlineCompose ? (
+          {isComposing ? (
             <>
               <div class="gmail-action-strip">
                 <button
                   type="button"
                   class="ghost-pill"
-                  onClick={() => setInlineCompose(null)}
+                  onClick={() => setIsComposing(false)}
                 >
                   ← Back to Inbox
                 </button>
                 <span class="sheet-meta-count">New Message</span>
               </div>
-              <form class="inline-pane-compose-form" onSubmit={submitInlineNewMail}>
-                <input
-                  type="text"
-                  class="profile-input"
-                  placeholder="To"
-                  value={inlineCompose.to}
-                  onInput={(e) =>
-                    setInlineCompose((c) =>
-                      c ? { ...c, to: (e.currentTarget as HTMLInputElement).value } : c
-                    )
-                  }
-                />
-                <input
-                  type="text"
-                  class="profile-input"
-                  placeholder="Subject"
-                  value={inlineCompose.subject}
-                  onInput={(e) =>
-                    setInlineCompose((c) =>
-                      c ? { ...c, subject: (e.currentTarget as HTMLInputElement).value } : c
-                    )
-                  }
-                />
-                <textarea
-                  rows={10}
-                  class="mail-draft-textarea"
-                  placeholder="Write message…"
-                  value={inlineCompose.body}
-                  onInput={(e) =>
-                    setInlineCompose((c) =>
-                      c ? { ...c, body: (e.currentTarget as HTMLTextAreaElement).value } : c
-                    )
-                  }
-                />
-                <div class="mail-inline-reply-footer">
-                  <span class="sheet-meta-count">From {senderEmail}</span>
-                  <div class="stage-subbar-group">
-                    <button
-                      type="button"
-                      class="ghost-pill"
-                      onClick={() => setInlineCompose(null)}
-                    >
-                      Discard
-                    </button>
-                    <button type="submit" class="primary-action-pill is-sm">
-                      Send
-                    </button>
-                  </div>
-                </div>
-              </form>
+              <InlineNewMailForm
+                variant="gmail"
+                senderEmail={senderEmail}
+                onDiscard={() => setIsComposing(false)}
+                onSend={(to, subject, body) => {
+                  onSendMail(to, subject, body);
+                  setIsComposing(false);
+                }}
+              />
             </>
           ) : openedThread ? (
             <>
@@ -411,7 +330,7 @@ export function GmailInboxRenderer({
                     class="ghost-pill"
                     onClick={() => {
                       setOpenedId(null);
-                      setPreviewBlock(null);
+                      clearPreview();
                     }}
                   >
                     ← Back to Inbox
@@ -451,17 +370,8 @@ export function GmailInboxRenderer({
                   )}
                 </h2>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    flexWrap: 'wrap',
-                    marginBottom: '18px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
+                <div class="gmail-sender-row">
+                  <div class="gmail-sender-meta">
                     <div
                       class="outlook-avatar"
                       style={{
@@ -472,16 +382,12 @@ export function GmailInboxRenderer({
                     >
                       {openedThread.senderInitials}
                     </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div class="outlook-sender-addresses">
                       <div>
-                        <strong style={{ color: '#f1f3f4' }}>
-                          {openedThread.senderName}
-                        </strong>{' '}
-                        <span style={{ color: '#8e918f', fontSize: '12px' }}>
-                          &lt;{openedThread.senderEmail}&gt;
-                        </span>
+                        <strong class="mail-sender-strong">{openedThread.senderName}</strong>{' '}
+                        <span class="mail-sender-addr">&lt;{openedThread.senderEmail}&gt;</span>
                       </div>
-                      <div style={{ color: '#8e918f', fontSize: '11.5px', marginTop: '2px' }}>
+                      <div class="mail-sender-to">
                         to {openedThread.toList}
                         {openedThread.ccList ? ` · cc ${openedThread.ccList}` : ''}
                       </div>
@@ -497,7 +403,7 @@ export function GmailInboxRenderer({
                   </button>
                 </div>
 
-                <div class="prose-content" style={{ maxWidth: '720px' }}>
+                <div class="prose-content mail-prose-measure">
                   {openedThread.bodyParagraphs.map((p, idx) => (
                     <p key={idx} class="prose-paragraph">
                       {p}
@@ -505,70 +411,14 @@ export function GmailInboxRenderer({
                   ))}
                 </div>
 
-                {openedThread.attachments.length > 0 && (
-                  <div class="mail-attachment-deck">
-                    {openedThread.attachments.map((att) => {
-                      const isOpen = previewBlock?.att.id === att.id;
-                      return (
-                        <button
-                          key={att.id}
-                          type="button"
-                          class={`mail-att-card ${isOpen ? 'is-active' : ''}`}
-                          onClick={() => void inspectAttachmentInline(att)}
-                        >
-                          <span class="artifact-badge accent-sky">{att.badge}</span>
-                          <span>
-                            <strong style={{ display: 'block', fontSize: '12px', color: '#f1f3f4' }}>
-                              {att.filename}
-                            </strong>
-                            <span style={{ fontSize: '11px', color: '#9aa0a6' }}>
-                              {att.sizeLabel}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {previewBlock && (
-                  <div class="embedded-mail-stage">
-                    <div class="artifact-stage-header">
-                      <div class="artifact-stage-title-group">
-                        <span class="artifact-badge accent-sky">
-                          {previewBlock.att.badge}
-                        </span>
-                        <strong class="artifact-stage-title">
-                          {previewBlock.att.filename}
-                        </strong>
-                      </div>
-                      <div class="artifact-stage-controls">
-                        <button
-                          type="button"
-                          class="ghost-pill"
-                          onClick={() =>
-                            onNavigateSource({ pluginRoute: previewBlock.att.pluginRoute })
-                          }
-                        >
-                          Open in Split Stage ↗
-                        </button>
-                        <button
-                          type="button"
-                          class="icon-action-btn"
-                          onClick={() => setPreviewBlock(null)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                    <BlockSlot
-                      key={previewBlock.block.id}
-                      block={previewBlock.block}
-                      registry={registry}
-                      isCompact={false}
-                    />
-                  </div>
-                )}
+                <InlineAttachmentDeck
+                  attachments={openedThread.attachments}
+                  previewBlock={previewBlock}
+                  registry={registry}
+                  onToggleAttachment={(att) => void openAttachment(att)}
+                  onClearPreview={clearPreview}
+                  onNavigateSource={onNavigateSource}
+                />
 
                 <MailIntelligencePanel
                   thread={openedThread}
@@ -579,7 +429,7 @@ export function GmailInboxRenderer({
                     const matchedAtt = openedThread.attachments.find(
                       (a) => a.pluginRoute === route
                     );
-                    if (matchedAtt) void inspectAttachmentInline(matchedAtt);
+                    if (matchedAtt) void openAttachment(matchedAtt);
                     else onNavigateSource({ pluginRoute: route });
                   }}
                   onSendReply={onSendMail}
@@ -591,12 +441,10 @@ export function GmailInboxRenderer({
               <div class="gmail-action-strip">
                 <div class="stage-subbar-group">
                   <span class="gmail-row-check" aria-hidden="true" />
-                  <span style={{ marginLeft: '4px', fontSize: '13px' }}>↻</span>
+                  <span>↻</span>
                   {activeLabel && (
                     <>
-                      <span style={{ color: '#e3e3e3', fontWeight: 500 }}>
-                        Label: {activeLabel}
-                      </span>
+                      <span class="mail-sender-strong">Label: {activeLabel}</span>
                       <button
                         type="button"
                         class="ghost-pill"
@@ -607,7 +455,7 @@ export function GmailInboxRenderer({
                     </>
                   )}
                   {folder !== 'inbox' && !activeLabel && (
-                    <span style={{ color: '#e3e3e3', fontWeight: 500 }}>
+                    <span class="mail-sender-strong">
                       {folder === 'archive' ? 'All Mail' : folder[0]?.toUpperCase() + folder.slice(1)}
                     </span>
                   )}
@@ -616,7 +464,6 @@ export function GmailInboxRenderer({
                   <span>
                     1–{visibleThreads.length} of {visibleThreads.length}
                   </span>
-                  <span style={{ letterSpacing: '6px', color: '#5f6368' }}>‹ ›</span>
                 </div>
               </div>
 
@@ -672,10 +519,10 @@ export function GmailInboxRenderer({
                 {visibleThreads.map((item) => (
                   <div
                     key={item.id}
-                    class={`gmail-row ${item.unread ? 'is-unread' : ''} ${item.attachments.length > 0 ? 'has-attachments' : ''}`}
+                    class={`gmail-row ${item.unread ? 'is-unread' : ''}`}
                     onClick={() => {
                       setOpenedId(item.id);
-                      setPreviewBlock(null);
+                      clearPreview();
                       if (item.unread) onMarkRead(item.id, false);
                     }}
                   >
@@ -718,7 +565,7 @@ export function GmailInboxRenderer({
                             class="gmail-att-pill"
                             onClick={(e) => {
                               e.stopPropagation();
-                              void openThreadWithAttachment(item, att);
+                              openThreadWithAttachment(item, att);
                             }}
                           >
                             <span class="gmail-att-badge">{att.badge}</span>

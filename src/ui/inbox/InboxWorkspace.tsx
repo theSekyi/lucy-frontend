@@ -1,12 +1,23 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { INITIAL_MAIL_THREADS, type MailThreadItem } from '../../core/inbox';
-import type { RendererRegistry } from '../../core/renderers';
+import {
+  INITIAL_MAIL_THREADS,
+  queryAcrossInbox,
+  type InboxGlobalAnswer,
+  type MailThreadItem,
+} from '../../core/inbox';
+import { loadWithRetry, type RendererRegistry } from '../../core/renderers';
 import type { InboxProvider } from '../../core/types';
 import type { GmailInboxRenderer as GmailComp } from './GmailInboxRenderer';
 import type { DeepLinkTarget } from './MailIntelligencePanel';
 import type { OutlookInboxRenderer as OutlookComp } from './OutlookInboxRenderer';
 import './inbox.css';
+
+const INBOX_QUICK_QUERIES: ReadonlyArray<{ readonly label: string; readonly prompt: string }> = [
+  { label: 'Unread sign-offs', prompt: 'What unread items need partner sign-off today?' },
+  { label: 'HMRC & tax deadlines', prompt: 'Summarize upcoming HMRC & statutory tax deadlines' },
+  { label: 'Variances & PBC', prompt: 'List open bank variances and missing PBC items' },
+];
 
 interface InboxWorkspaceProps {
   readonly provider: InboxProvider;
@@ -32,15 +43,47 @@ export function InboxWorkspace({
   const [threads, setThreads] = useState<MailThreadItem[]>(() => [...INITIAL_MAIL_THREADS]);
   const [GmailView, setGmailView] = useState<typeof GmailComp | null>(null);
   const [OutlookView, setOutlookView] = useState<typeof OutlookComp | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  const [focusedThreadReq, setFocusedThreadReq] = useState<{
+    readonly id: string;
+    readonly pulse: number;
+  } | null>(() => (selectedMailId ? { id: selectedMailId, pulse: 1 } : null));
+
+  const [askInput, setAskInput] = useState('');
+  const [activeAnswer, setActiveAnswer] = useState<InboxGlobalAnswer | null>(null);
 
   useEffect(() => {
-    if (provider === 'gmail' && !GmailView) {
-      void import('./GmailInboxRenderer').then((m) => setGmailView(() => m.GmailInboxRenderer));
-    } else if (provider === 'outlook' && !OutlookView) {
-      void import('./OutlookInboxRenderer').then((m) =>
-        setOutlookView(() => m.OutlookInboxRenderer)
-      );
+    if (selectedMailId) {
+      setFocusedThreadReq((prev) => ({ id: selectedMailId, pulse: (prev?.pulse ?? 0) + 1 }));
     }
+  }, [selectedMailId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadFailed(false);
+
+    if (provider === 'gmail' && !GmailView) {
+      loadWithRetry(() => import('./GmailInboxRenderer'), 2, 220)
+        .then((m) => {
+          if (!cancelled) setGmailView(() => m.GmailInboxRenderer);
+        })
+        .catch(() => {
+          if (!cancelled) setLoadFailed(true);
+        });
+    } else if (provider === 'outlook' && !OutlookView) {
+      loadWithRetry(() => import('./OutlookInboxRenderer'), 2, 220)
+        .then((m) => {
+          if (!cancelled) setOutlookView(() => m.OutlookInboxRenderer);
+        })
+        .catch(() => {
+          if (!cancelled) setLoadFailed(true);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [provider, GmailView, OutlookView]);
 
   const unreadCallbackRef = useRef(onUnreadCountChange);
@@ -107,30 +150,159 @@ export function InboxWorkspace({
     setThreads((prev) => [sentItem, ...prev]);
   }
 
+  function runInboxAsk(question: string) {
+    const clean = question.trim();
+    if (!clean) return;
+    setActiveAnswer(queryAcrossInbox(threads, clean));
+    setAskInput('');
+  }
+
+  function jumpToMatchedThread(threadId: string) {
+    setFocusedThreadReq((prev) => ({ id: threadId, pulse: (prev?.pulse ?? 0) + 1 }));
+    markRead(threadId, false);
+  }
+
   const ActiveRenderer = provider === 'gmail' ? GmailView : OutlookView;
 
   return (
     <div class="inbox-host-shell">
-      {ActiveRenderer ? (
-        <ActiveRenderer
-          threads={threads}
-          initialThreadId={selectedMailId}
-          registry={registry}
-          activeProvider={provider}
-          senderEmail={senderEmail}
-          onSwitchProvider={onSwitchProvider}
-          onToggleStar={toggleStar}
-          onToggleFlag={toggleFlag}
-          onMarkRead={markRead}
-          onArchive={archiveThread}
-          onSendMail={appendSentMessage}
-          onNavigateSource={onNavigateSource}
-        />
-      ) : (
-        <div class="launchpad-scroll">
-          <div class="renderer-skeleton">Loading {provider}…</div>
+      <div class="inbox-provider-stage">
+        {ActiveRenderer ? (
+          <ActiveRenderer
+            threads={threads}
+            focusedThreadReq={focusedThreadReq}
+            registry={registry}
+            activeProvider={provider}
+            senderEmail={senderEmail}
+            onSwitchProvider={onSwitchProvider}
+            onToggleStar={toggleStar}
+            onToggleFlag={toggleFlag}
+            onMarkRead={markRead}
+            onArchive={archiveThread}
+            onSendMail={appendSentMessage}
+            onNavigateSource={onNavigateSource}
+          />
+        ) : loadFailed ? (
+          <div class="launchpad-scroll">
+            <div class="renderer-skeleton is-retry-box">
+              <span>Connection interrupted while loading {provider}.</span>
+              <button
+                type="button"
+                class="primary-action-pill is-sm"
+                onClick={() => setLoadFailed(false)}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div class="launchpad-scroll">
+            <div class="renderer-skeleton">Loading {provider}…</div>
+          </div>
+        )}
+      </div>
+
+      {/* Persistent Cross-Inbox Ask Dock */}
+      <section class="inbox-bottom-ask-dock" aria-label="Ask across inbox">
+        {activeAnswer && (
+          <div class="inbox-ask-drawer" role="region" aria-label="Inbox query answer">
+            <div class="inbox-ask-drawer-top">
+              <span class="mail-term-q">
+                <span class="mail-term-prompt">›</span>
+                <span>{activeAnswer.question}</span>
+              </span>
+              <button
+                type="button"
+                class="ghost-pill"
+                onClick={() => setActiveAnswer(null)}
+              >
+                Close ×
+              </button>
+            </div>
+
+            <p class="inbox-ask-answer-text">{activeAnswer.answer}</p>
+
+            {(activeAnswer.matchedThreads.length > 0 || activeAnswer.sources.length > 0) && (
+              <div class="inbox-ask-links-row">
+                {activeAnswer.matchedThreads.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    class="mail-deeplink-chip"
+                    onClick={() => jumpToMatchedThread(item.id)}
+                  >
+                    <span class="mail-deeplink-kind">EMAIL</span>
+                    <span>{item.senderName}</span>
+                    <span>→</span>
+                  </button>
+                ))}
+
+                {activeAnswer.sources.map((src) => (
+                  <button
+                    key={src.id}
+                    type="button"
+                    class="mail-deeplink-chip"
+                    onClick={() =>
+                      onNavigateSource({
+                        pluginRoute: src.pluginRoute,
+                        anchor: src.anchor,
+                        connectorId: src.connectorId,
+                      })
+                    }
+                  >
+                    <span class="mail-deeplink-kind">{src.kindLabel}</span>
+                    <span>{src.label}</span>
+                    <span>↗</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div class="inbox-ask-bar-row">
+          <form
+            class="inbox-ask-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              runInboxAsk(askInput);
+            }}
+          >
+            <span class="mail-term-prompt" aria-hidden="true">
+              ›
+            </span>
+            <input
+              type="text"
+              class="inbox-ask-input"
+              aria-label="Ask across your inbox"
+              placeholder="Ask across inbox — unread sign-offs, HMRC deadlines, variances, or clauses…"
+              value={askInput}
+              onInput={(e) => setAskInput((e.currentTarget as HTMLInputElement).value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && activeAnswer) {
+                  setActiveAnswer(null);
+                }
+              }}
+            />
+            <button type="submit" class="mail-term-run-btn">
+              Ask ↵
+            </button>
+          </form>
+
+          <div class="inbox-ask-quick-pills">
+            {INBOX_QUICK_QUERIES.map((q) => (
+              <button
+                key={q.label}
+                type="button"
+                class="mail-term-chip"
+                onClick={() => runInboxAsk(q.prompt)}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+      </section>
     </div>
   );
 }

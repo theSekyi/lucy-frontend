@@ -8,9 +8,9 @@ import type {
 import {
   AdminIcon,
   BellIcon,
-  BotItemIcon,
   ClientsIcon,
   ConnectorsIcon,
+  DocumentItemIcon,
   HomeIcon,
   InboxIcon,
   LucyBrandMark,
@@ -46,7 +46,7 @@ interface SidebarProps {
 function renderRecentPrefix(kind?: SidebarIconKind) {
   if (kind === 'hash') return <span class="recent-hash-glyph">#</span>;
   if (kind === 'spinner') return <SpinnerItemIcon />;
-  return <BotItemIcon />;
+  return <DocumentItemIcon />;
 }
 
 export function Sidebar({
@@ -72,12 +72,23 @@ export function Sidebar({
   onToggleMoreRecents,
   onOpenTopic,
 }: SidebarProps) {
+  function closeOnMobile() {
+    if (typeof window !== 'undefined' && window.innerWidth <= 860 && isOpen) {
+      onToggleSidebar();
+    }
+  }
+
+  function navigateSection(section: NavSection) {
+    onSelectSection(section);
+    closeOnMobile();
+  }
+
   if (!isOpen) {
     return (
       <aside class="sidebar is-collapsed" aria-label="Collapsed navigation">
         <button
           type="button"
-          class="icon-action-btn"
+          class="icon-action-btn sidebar-expand-trigger"
           aria-label="Expand sidebar"
           onClick={onToggleSidebar}
         >
@@ -95,167 +106,187 @@ export function Sidebar({
   const isProfileActive = activeSection === 'profile' && activeTopicId === null;
 
   return (
-    <aside class="sidebar" aria-label="Workspace navigation">
-      <div class="sidebar-top-bar">
-        <button
-          type="button"
-          class="brand-button"
-          onClick={() => onSelectSection('home')}
-        >
-          <LucyBrandMark />
-          <span class="brand-name">Lucy</span>
-        </button>
+    <>
+      <div
+        class="sidebar-mobile-scrim"
+        aria-hidden="true"
+        onClick={onToggleSidebar}
+      />
 
-        <div class="sidebar-top-actions">
+      <aside class="sidebar" aria-label="Workspace navigation">
+        <div class="sidebar-top-bar">
           <button
             type="button"
-            class="icon-action-btn"
-            aria-label="Collapse sidebar"
-            onClick={onToggleSidebar}
+            class="brand-button"
+            onClick={() => navigateSection('home')}
           >
-            <PanelToggleIcon />
+            <LucyBrandMark />
+            <span class="brand-name">Lucy</span>
           </button>
-          <button type="button" class="icon-action-btn" aria-label="Notifications">
-            <BellIcon />
-          </button>
-        </div>
-      </div>
 
-      <nav class="sidebar-primary-nav" aria-label="Main sections">
-        {isSearchOpen ? (
-          <div class="sidebar-search-box">
-            <SearchIcon />
-            <input
-              type="search"
-              class="sidebar-search-input"
-              placeholder="Filter… (Esc)"
-              value={searchQuery}
-              autoFocus
-              onInput={(e) => onSearchChange((e.currentTarget as HTMLInputElement).value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') onToggleSearch();
-              }}
-            />
-          </div>
-        ) : (
-          <button type="button" class="nav-row" onClick={onToggleSearch}>
-            <SearchIcon />
-            <span>Search</span>
-          </button>
-        )}
-
-        <button
-          type="button"
-          class={`nav-row ${isHomeActive ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('home')}
-        >
-          <HomeIcon />
-          <span>Home</span>
-        </button>
-
-        <button
-          type="button"
-          class={`nav-row ${isInboxActive ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('inbox')}
-        >
-          <InboxIcon />
-          <span>Inbox</span>
-          {unreadInboxCount > 0 && (
-            <span class="nav-count-badge is-unread">{unreadInboxCount}</span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          class={`nav-row ${isClientsActive ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('clients')}
-        >
-          <ClientsIcon />
-          <span>Clients</span>
-          <span class="nav-count-badge">{clientCount}</span>
-        </button>
-
-        <button
-          type="button"
-          class={`nav-row ${isConnectorsActive ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('connectors')}
-        >
-          <ConnectorsIcon />
-          <span>Connectors</span>
-          <span class="nav-count-badge">{connectedCount}</span>
-        </button>
-
-        <button
-          type="button"
-          class={`nav-row ${isAdminActive ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('admin')}
-        >
-          <AdminIcon />
-          <span>Firm Admin</span>
-        </button>
-      </nav>
-
-      <section class="sidebar-section" aria-label="Recent threads">
-        <button
-          type="button"
-          class="sidebar-section-header"
-          aria-expanded={isRecentsOpen}
-          onClick={onToggleRecents}
-        >
-          <span>Recents</span>
-          <span class="section-caret">{isRecentsOpen ? '▾' : '▸'}</span>
-        </button>
-
-        {isRecentsOpen && (
-          <div class="sidebar-recents-list">
-            {recentTopics.map((topic) => (
-              <button
-                key={topic.id}
-                type="button"
-                class={`recent-sidebar-item ${activeTopicId === topic.id ? 'is-active' : ''}`}
-                onClick={() => onOpenTopic(topic.id)}
-                title={topic.title}
-              >
-                <span class="recent-item-icon">{renderRecentPrefix(topic.sidebarIcon)}</span>
-                <span class="recent-item-label">{topic.title}</span>
-              </button>
-            ))}
-
+          <div class="sidebar-top-actions">
             <button
               type="button"
-              class="recent-sidebar-item is-more"
-              onClick={onToggleMoreRecents}
+              class="icon-action-btn"
+              aria-label="Collapse sidebar"
+              onClick={onToggleSidebar}
             >
-              <span class="recent-dots">•••</span>
-              <span>{showAllRecents ? 'Less' : 'More'}</span>
+              <PanelToggleIcon />
+            </button>
+            <button
+              type="button"
+              class="icon-action-btn"
+              aria-label="Inbox alerts"
+              onClick={() => navigateSection('inbox')}
+            >
+              <BellIcon />
             </button>
           </div>
-        )}
-      </section>
+        </div>
 
-      <div class="sidebar-bottom-stack">
-        {networkStatus !== 'online' && (
-          <div class="sidebar-network-pill" role="status">
-            <span class={`net-dot is-${networkStatus}`} />
-            <span>
-              {networkStatus === 'offline'
-                ? `Offline${queuedCount > 0 ? ` · ${queuedCount} queued` : ''}`
-                : 'Low-bandwidth mode'}
+        <nav class="sidebar-primary-nav" aria-label="Main sections">
+          {isSearchOpen ? (
+            <div class="sidebar-search-box">
+              <SearchIcon />
+              <input
+                type="search"
+                class="sidebar-search-input"
+                placeholder="Filter workpapers… (Esc)"
+                value={searchQuery}
+                autoFocus
+                onInput={(e) => onSearchChange((e.currentTarget as HTMLInputElement).value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') onToggleSearch();
+                }}
+              />
+            </div>
+          ) : (
+            <button type="button" class="nav-row" onClick={onToggleSearch}>
+              <SearchIcon />
+              <span>Search</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            class={`nav-row ${isHomeActive ? 'is-active' : ''}`}
+            onClick={() => navigateSection('home')}
+          >
+            <HomeIcon />
+            <span>Home</span>
+          </button>
+
+          <button
+            type="button"
+            class={`nav-row ${isInboxActive ? 'is-active' : ''}`}
+            onClick={() => navigateSection('inbox')}
+          >
+            <InboxIcon />
+            <span>Inbox</span>
+            {unreadInboxCount > 0 && (
+              <span class="nav-count-badge is-unread">{unreadInboxCount}</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            class={`nav-row ${isClientsActive ? 'is-active' : ''}`}
+            onClick={() => navigateSection('clients')}
+          >
+            <ClientsIcon />
+            <span>Clients</span>
+            <span class="nav-count-badge">{clientCount}</span>
+          </button>
+
+          <button
+            type="button"
+            class={`nav-row ${isConnectorsActive ? 'is-active' : ''}`}
+            onClick={() => navigateSection('connectors')}
+          >
+            <ConnectorsIcon />
+            <span>Connectors</span>
+            <span class="nav-count-badge">{connectedCount}</span>
+          </button>
+
+          <button
+            type="button"
+            class={`nav-row ${isAdminActive ? 'is-active' : ''}`}
+            onClick={() => navigateSection('admin')}
+          >
+            <AdminIcon />
+            <span>Firm Admin</span>
+          </button>
+        </nav>
+
+        <section class="sidebar-section" aria-label="Recent workpapers">
+          <button
+            type="button"
+            class="sidebar-section-header"
+            aria-expanded={isRecentsOpen}
+            onClick={onToggleRecents}
+          >
+            <span>Workpapers</span>
+            <span class="section-caret">{isRecentsOpen ? '▾' : '▸'}</span>
+          </button>
+
+          {isRecentsOpen && (
+            <div class="sidebar-recents-list">
+              {recentTopics.map((topic) => (
+                <button
+                  key={topic.id}
+                  type="button"
+                  class={`recent-sidebar-item ${activeTopicId === topic.id ? 'is-active' : ''}`}
+                  onClick={() => {
+                    onOpenTopic(topic.id);
+                    closeOnMobile();
+                  }}
+                  title={topic.title}
+                >
+                  <span class="recent-item-icon">{renderRecentPrefix(topic.sidebarIcon)}</span>
+                  <span class="recent-item-label">{topic.title}</span>
+                </button>
+              ))}
+
+              {!searchQuery && (
+                <button
+                  type="button"
+                  class="recent-sidebar-item is-more"
+                  onClick={onToggleMoreRecents}
+                >
+                  <span class="recent-dots">•••</span>
+                  <span>{showAllRecents ? 'Less' : 'More'}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        <div class="sidebar-bottom-stack">
+          {networkStatus !== 'online' && (
+            <div class="sidebar-network-pill" role="status">
+              <span class={`net-dot is-${networkStatus}`} />
+              <span>
+                {networkStatus === 'offline'
+                  ? `Offline${queuedCount > 0 ? ` · ${queuedCount} queued` : ''}`
+                  : 'Low-bandwidth mode'}
+              </span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            class={`sidebar-profile-footer ${isProfileActive ? 'is-active' : ''}`}
+            onClick={() => navigateSection('profile')}
+          >
+            <span class="sidebar-avatar-sm" aria-hidden="true">
+              {userProfile.initials}
             </span>
-          </div>
-        )}
-
-        <button
-          type="button"
-          class={`sidebar-profile-footer ${isProfileActive ? 'is-active' : ''}`}
-          onClick={() => onSelectSection('profile')}
-        >
-          <span class="sidebar-avatar-sm" aria-hidden="true">
-            {userProfile.initials}
-          </span>
-          <span class="sidebar-profile-name">{userProfile.fullName}</span>
-        </button>
-      </div>
-    </aside>
+            <span class="sidebar-profile-text">
+              <span class="sidebar-profile-name">{userProfile.fullName}</span>
+            </span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

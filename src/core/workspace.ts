@@ -2,6 +2,7 @@ import type { RendererRegistry } from './renderers';
 import { createInitialWorkspaceState } from './seed';
 import { createStore, type ReadableStore } from './store';
 import type {
+  AuthProviderId,
   ContentBlock,
   ConversationTurn,
   InboxProvider,
@@ -18,25 +19,37 @@ export interface WorkspaceOptions<TView = unknown> {
   readonly registry?: RendererRegistry<TView>;
 }
 
+export interface SignInCompletionPayload {
+  readonly provider: AuthProviderId;
+  readonly email: string;
+  readonly fullName?: string;
+  readonly role?: string;
+  readonly firm?: string;
+  readonly organizationDomain: string;
+  readonly ssoTenantLabel: string;
+  readonly nextSection?: NavSection;
+}
+
 export interface WorkspaceController extends ReadableStore<WorkspaceState> {
   selectSection: (section: NavSection) => void;
   openClient: (clientId: string | null, engagementId?: string | null) => void;
   openMailThread: (mailId: string | null, provider?: InboxProvider) => void;
   setInboxProvider: (provider: InboxProvider) => void;
   setUnreadInboxCount: (count: number) => void;
+  setClientCount: (count: number) => void;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
+  completeSignIn: (payload: SignInCompletionPayload) => void;
+  signOut: () => void;
   toggleConnector: (connectorId: string) => void;
   openTopic: (topicId: string) => void;
   returnHome: () => void;
   toggleSidebar: () => void;
+  setSidebarOpen: (isOpen: boolean) => void;
   toggleRecents: () => void;
   toggleMoreSidebarRecents: () => void;
-  stepDailyBrief: (delta: -1 | 1) => void;
   setSearchOpen: (isOpen: boolean) => void;
   setSearchQuery: (query: string) => void;
   updateDraft: (draft: string) => void;
-  setMode: (modeId: string) => void;
-  setModel: (modelId: string) => void;
   attachContent: (block: ContentBlock) => void;
   removeAttachment: (blockId: string) => void;
   inspectArtifact: (blockId: string | null, anchor?: string | null) => void;
@@ -49,6 +62,7 @@ export interface WorkspaceController extends ReadableStore<WorkspaceState> {
   setNetworkStatus: (status: NetworkStatus) => void;
   launchPluginSample: (pluginId: string) => Promise<string | null>;
   submitPrompt: (overridePrompt?: string) => string | null;
+  dispose: () => void;
 }
 
 let idSequence = 100;
@@ -57,12 +71,24 @@ export function nextWorkspaceId(prefix: string): string {
   return `${prefix}-${idSequence}`;
 }
 
+function computeInitialsFromName(name: string, fallback = 'EC'): string {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+  return initials || fallback;
+}
+
 export function createWorkspace<TView = unknown>(
   options: WorkspaceOptions<TView> = {}
 ): WorkspaceController {
   const store = createStore<WorkspaceState>(options.initialState ?? createInitialWorkspaceState());
   const delayMs = options.responseDelayMs ?? 90;
   const registry = options.registry;
+  const activeTimers = new Set<ReturnType<typeof setTimeout>>();
+  let isDisposed = false;
 
   function isStageBlock(block: ContentBlock): boolean {
     if (registry) return registry.resolve(block).placement === 'stage';
@@ -84,7 +110,7 @@ export function createWorkspace<TView = unknown>(
           {
             id: nextWorkspaceId('block'),
             kind: 'prose',
-            data: `Opened **${attachedStage.filename ?? attachedStage.title ?? 'your artifact'}** in the side-by-side stage so you can inspect, filter, or verify details directly alongside our thread.`,
+            data: `Opened **${attachedStage.filename ?? attachedStage.title ?? 'your workpaper'}** in the side-by-side stage so you can inspect, filter, or verify figures directly alongside this thread.`,
           },
           attachedStage,
         ],
@@ -105,7 +131,7 @@ export function createWorkspace<TView = unknown>(
         {
           id: nextWorkspaceId('block'),
           kind: 'prose',
-          data: `Understood — working on **"${prompt}"**.\n\n• Ask for a **contract review**, **redline diff**, **SQL cohort chart**, **incident lineage graph**, **QBR slide deck**, or **Excel forecast** anytime (or launch any renderer from the **+** button).`,
+          data: `Prepared workspace note for **"${prompt}"**.\n\n• Open a **Trial Balance**, **Bank Reconciliation**, **Schedule M-1 Tax Bridge**, **Vouching Workpaper**, **Contract Redline**, or **Excel Model** anytime from the **+** menu.`,
         },
       ],
     };
@@ -117,10 +143,12 @@ export function createWorkspace<TView = unknown>(
     prompt: string,
     attachments: ReadonlyArray<ContentBlock>
   ) {
+    if (isDisposed) return;
     const { blocks: generatedBlocks, defaultAnchor } = await resolveAssistantOutput(
       prompt,
       attachments
     );
+    if (isDisposed) return;
     const stageArtifactId = findFirstStageArtifact(generatedBlocks);
 
     store.update((state) => ({
@@ -158,6 +186,7 @@ export function createWorkspace<TView = unknown>(
   const controller: WorkspaceController = {
     getState: store.getState,
     subscribe: store.subscribe,
+    getListenerCount: store.getListenerCount,
 
     selectSection(section) {
       store.update((state) => ({
@@ -218,24 +247,70 @@ export function createWorkspace<TView = unknown>(
       );
     },
 
+    setClientCount(count) {
+      const clamped = Math.max(0, count);
+      store.update((state) =>
+        state.clientCount === clamped ? state : { ...state, clientCount: clamped }
+      );
+    },
+
     updateUserProfile(patch) {
       store.update((state) => {
         const nextName = patch.fullName ?? state.userProfile.fullName;
-        const computedInitials = nextName
-          .trim()
-          .split(/\s+/)
-          .slice(0, 2)
-          .map((part) => part[0]?.toUpperCase() ?? '')
-          .join('');
         return {
           ...state,
           userProfile: {
             ...state.userProfile,
             ...patch,
-            initials: computedInitials || state.userProfile.initials,
+            initials: computeInitialsFromName(nextName, state.userProfile.initials),
           },
         };
       });
+    },
+
+    completeSignIn(payload) {
+      store.update((state) => {
+        const nextName = payload.fullName?.trim() || state.userProfile.fullName;
+        const nextEmail = payload.email.trim() || state.userProfile.email;
+        const nextRole = payload.role?.trim() || state.userProfile.role;
+        const nextFirm = payload.firm?.trim() || state.userProfile.firm;
+        return {
+          ...state,
+          activeSection: payload.nextSection ?? 'home',
+          activeTopicId: null,
+          inspectedBlockId: null,
+          authSession: {
+            isAuthenticated: true,
+            provider: payload.provider,
+            organizationDomain: payload.organizationDomain,
+            ssoTenantLabel: payload.ssoTenantLabel,
+            lastVerifiedAt: 'Verified just now',
+          },
+          userProfile: {
+            ...state.userProfile,
+            fullName: nextName,
+            initials: computeInitialsFromName(nextName, state.userProfile.initials),
+            email: nextEmail,
+            role: nextRole,
+            firm: nextFirm,
+          },
+        };
+      });
+    },
+
+    signOut() {
+      store.update((state) => ({
+        ...state,
+        activeSection: 'login',
+        activeTopicId: null,
+        inspectedBlockId: null,
+        inspectedAnchor: null,
+        authSession: {
+          ...state.authSession,
+          isAuthenticated: false,
+          lastVerifiedAt: 'Signed out',
+        },
+      }));
     },
 
     toggleConnector(connectorId) {
@@ -292,6 +367,12 @@ export function createWorkspace<TView = unknown>(
       store.update((state) => ({ ...state, isSidebarOpen: !state.isSidebarOpen }));
     },
 
+    setSidebarOpen(isOpen) {
+      store.update((state) =>
+        state.isSidebarOpen === isOpen ? state : { ...state, isSidebarOpen: isOpen }
+      );
+    },
+
     toggleRecents() {
       store.update((state) => ({ ...state, isRecentsOpen: !state.isRecentsOpen }));
     },
@@ -301,14 +382,6 @@ export function createWorkspace<TView = unknown>(
         ...state,
         showAllSidebarRecents: !state.showAllSidebarRecents,
       }));
-    },
-
-    stepDailyBrief(delta) {
-      store.update((state) => {
-        const count = state.briefs.length;
-        const nextIndex = (state.activeBriefIndex + delta + count) % count;
-        return { ...state, activeBriefIndex: nextIndex };
-      });
     },
 
     setSearchOpen(isOpen) {
@@ -325,14 +398,6 @@ export function createWorkspace<TView = unknown>(
 
     updateDraft(draft) {
       store.update((state) => ({ ...state, composerDraft: draft }));
-    },
-
-    setMode(modeId) {
-      store.update((state) => ({ ...state, selectedModeId: modeId }));
-    },
-
-    setModel(modelId) {
-      store.update((state) => ({ ...state, selectedModelId: modelId }));
     },
 
     attachContent(block) {
@@ -371,7 +436,7 @@ export function createWorkspace<TView = unknown>(
         const targetBlock = targetTopic.turns
           .flatMap((t) => t.blocks)
           .find((b) => b.id === blockId);
-        const artifactLabel = targetBlock?.filename ?? targetBlock?.title ?? 'artifact';
+        const artifactLabel = targetBlock?.filename ?? targetBlock?.title ?? 'workpaper';
         const bulletLines = changeSummary.map((line) => `• ${line}`).join('\n');
 
         const userRevisionTurn: ConversationTurn = {
@@ -397,7 +462,7 @@ export function createWorkspace<TView = unknown>(
             {
               id: nextWorkspaceId('block'),
               kind: 'prose',
-              data: `Saved ${changeSummary.length} revision${changeSummary.length === 1 ? '' : 's'} to **${artifactLabel}**. Thread state updated.`,
+              data: `Saved ${changeSummary.length} revision${changeSummary.length === 1 ? '' : 's'} to **${artifactLabel}**. Workpaper state updated.`,
             },
           ],
         };
@@ -431,7 +496,9 @@ export function createWorkspace<TView = unknown>(
     },
 
     setNetworkStatus(status) {
-      store.update((state) => ({ ...state, networkStatus: status }));
+      store.update((state) =>
+        state.networkStatus === status ? state : { ...state, networkStatus: status }
+      );
       if (status !== 'offline' && pendingOfflinePayloads.size > 0) {
         for (const [turnId, item] of pendingOfflinePayloads.entries()) {
           pendingOfflinePayloads.delete(turnId);
@@ -444,6 +511,7 @@ export function createWorkspace<TView = unknown>(
       const plugin = registry?.listPlugins().find((p) => p.id === pluginId);
       if (!plugin?.createSample) return null;
       const sample = await plugin.createSample(nextWorkspaceId);
+      if (isDisposed) return null;
 
       const userTurn: ConversationTurn = {
         id: nextWorkspaceId('turn-user'),
@@ -485,7 +553,7 @@ export function createWorkspace<TView = unknown>(
                 title: titleText,
                 preview: sample.prose.replace(/\s+/g, ' ').slice(0, 140),
                 dateLabel: 'Just now',
-                sidebarIcon: 'bot' as const,
+                sidebarIcon: 'doc' as const,
                 pinnedInSidebar: true,
                 listedOnHome: true,
                 turns: [userTurn, assistantTurn],
@@ -515,7 +583,7 @@ export function createWorkspace<TView = unknown>(
       if (!rawPrompt && attached.length === 0) return null;
 
       const effectivePrompt =
-        rawPrompt || `Inspect ${attached.map((a) => a.filename ?? a.title ?? 'artifact').join(', ')}`;
+        rawPrompt || `Inspect ${attached.map((a) => a.filename ?? a.title ?? 'workpaper').join(', ')}`;
 
       const userBlocks: ContentBlock[] = [];
       if (rawPrompt) {
@@ -545,8 +613,8 @@ export function createWorkspace<TView = unknown>(
             id: nextWorkspaceId('block'),
             kind: 'prose',
             data: isOffline
-              ? 'Connection offline — your request is safely queued and will run automatically as soon as connectivity returns.'
-              : 'Thinking…',
+              ? 'Connection offline — your request is queued locally and will execute automatically as soon as connectivity returns.'
+              : 'Preparing workpaper…',
           },
         ],
       };
@@ -571,7 +639,7 @@ export function createWorkspace<TView = unknown>(
               effectivePrompt.length > 34 ? `${effectivePrompt.slice(0, 34)}...` : effectivePrompt,
             preview: effectivePrompt,
             dateLabel: 'Just now',
-            sidebarIcon: 'bot',
+            sidebarIcon: 'doc',
             pinnedInSidebar: true,
             listedOnHome: true,
             turns: [userTurn, assistantTurn],
@@ -602,12 +670,23 @@ export function createWorkspace<TView = unknown>(
         void deliverAssistantTurn(targetTopicId, assistantTurnId, effectivePrompt, attached);
       } else {
         const effectiveDelay = current.networkStatus === 'slow' ? delayMs * 2 : delayMs;
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+          activeTimers.delete(timer);
           void deliverAssistantTurn(targetTopicId, assistantTurnId, effectivePrompt, attached);
         }, effectiveDelay);
+        activeTimers.add(timer);
       }
 
       return targetTopicId;
+    },
+
+    dispose() {
+      isDisposed = true;
+      for (const timer of activeTimers) {
+        clearTimeout(timer);
+      }
+      activeTimers.clear();
+      pendingOfflinePayloads.clear();
     },
   };
 
@@ -618,13 +697,15 @@ export function selectHomeRecentTopics(state: WorkspaceState): ReadonlyArray<Top
   return state.topics.filter((topic) => topic.listedOnHome);
 }
 
-export function selectHomeRecentTotalCount(state: WorkspaceState): number {
-  return Math.max(0, state.topics.length - 1);
-}
-
 export function selectSidebarRecentTopics(state: WorkspaceState): ReadonlyArray<TopicThread> {
+  const q = state.searchQuery.trim().toLowerCase();
   const pinned = state.topics.filter((topic) => topic.pinnedInSidebar);
-  return state.showAllSidebarRecents ? pinned : pinned.slice(0, 5);
+  const filtered = q
+    ? pinned.filter(
+        (t) => t.title.toLowerCase().includes(q) || t.preview.toLowerCase().includes(q)
+      )
+    : pinned;
+  return state.showAllSidebarRecents || q ? filtered : filtered.slice(0, 5);
 }
 
 export function selectFilteredTopics(state: WorkspaceState): ReadonlyArray<TopicThread> {

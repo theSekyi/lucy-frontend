@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import {
   defaultFirmAdmin,
   type EngagementStage,
@@ -8,22 +8,29 @@ import {
   type SigningAuthority,
 } from '../../core/admin';
 import type { DeepLinkTarget } from '../inbox/MailIntelligencePanel';
+import { SelectMenu, type SelectMenuOption } from '../primitives/SelectMenu';
 import './admin.css';
 
-const STAGES: ReadonlyArray<EngagementStage> = [
-  'Intake',
-  'Fieldwork',
-  'Review',
-  'Sign-Off',
-  'Complete',
+const STAGE_OPTIONS: ReadonlyArray<SelectMenuOption<EngagementStage>> = [
+  { value: 'Intake', label: 'Intake' },
+  { value: 'Fieldwork', label: 'Fieldwork' },
+  { value: 'Review', label: 'Review' },
+  { value: 'Sign-Off', label: 'Sign-Off' },
+  { value: 'Complete', label: 'Complete' },
 ];
 
-const AUTHORITIES: ReadonlyArray<SigningAuthority> = [
-  'Partner',
-  'Director',
-  'Manager',
-  'Senior',
-  'Associate',
+const PRACTICE_OPTIONS: ReadonlyArray<SelectMenuOption<PracticeLine>> = [
+  { value: 'Bookkeeping', label: 'Bookkeeping' },
+  { value: 'Audit', label: 'Audit' },
+  { value: 'Tax', label: 'Tax' },
+];
+
+const AUTHORITY_OPTIONS: ReadonlyArray<SelectMenuOption<SigningAuthority>> = [
+  { value: 'Partner', label: 'Partner' },
+  { value: 'Director', label: 'Director' },
+  { value: 'Manager', label: 'Manager' },
+  { value: 'Senior', label: 'Senior' },
+  { value: 'Associate', label: 'Associate' },
 ];
 
 type AdminTab = 'engagements' | 'people';
@@ -32,18 +39,25 @@ interface FirmAdminPageProps {
   readonly controller?: FirmAdminController;
   readonly onOpenClientEngagement?: (clientId: string, engagementId: string) => void;
   readonly onOpenWorkpaper: (target: DeepLinkTarget) => void;
+  readonly onOpenOnboarding?: () => void;
+  readonly onClientCountChange?: (count: number) => void;
 }
 
 export function FirmAdminPage({
   controller = defaultFirmAdmin,
   onOpenClientEngagement,
   onOpenWorkpaper,
+  onOpenOnboarding,
+  onClientCountChange,
 }: FirmAdminPageProps) {
   const [state, setState] = useState<FirmAdminState>(() => controller.getState());
   const [tab, setTab] = useState<AdminTab>('engagements');
   const [practiceFilter, setPracticeFilter] = useState<'All' | PracticeLine>('All');
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddEngagement, setShowAddEngagement] = useState(false);
+
+  const countRef = useRef(onClientCountChange);
+  countRef.current = onClientCountChange;
 
   const [newMember, setNewMember] = useState<{
     fullName: string;
@@ -72,6 +86,15 @@ export function FirmAdminPage({
   });
 
   useEffect(() => controller.subscribe(setState), [controller]);
+
+  useEffect(() => {
+    countRef.current?.(state.clients.length);
+  }, [state.clients.length]);
+
+  const memberOptions = useMemo<ReadonlyArray<SelectMenuOption<string>>>(
+    () => state.members.map((m) => ({ value: m.id, label: m.fullName, meta: m.authority })),
+    [state.members]
+  );
 
   const openEngagements = state.engagements.filter((e) => e.stage !== 'Complete');
   const signOffQueueCount = state.engagements.filter((e) => e.stage === 'Sign-Off').length;
@@ -122,17 +145,29 @@ export function FirmAdminPage({
         <header class="admin-top-header">
           <h1 class="hero-title">Firm Admin</h1>
 
-          <div class="admin-dept-pills" role="group" aria-label="Filter practice line">
-            {(['All', 'Bookkeeping', 'Audit', 'Tax'] as const).map((dept) => (
+          <div class="stage-subbar-group">
+            <div class="admin-dept-pills" role="group" aria-label="Filter practice line">
+              {(['All', 'Bookkeeping', 'Audit', 'Tax'] as const).map((dept) => (
+                <button
+                  key={dept}
+                  type="button"
+                  class={`conn-tab-btn ${practiceFilter === dept ? 'is-active' : ''}`}
+                  onClick={() => setPracticeFilter(dept)}
+                >
+                  {dept}
+                </button>
+              ))}
+            </div>
+
+            {onOpenOnboarding && (
               <button
-                key={dept}
                 type="button"
-                class={`conn-tab-btn ${practiceFilter === dept ? 'is-active' : ''}`}
-                onClick={() => setPracticeFilter(dept)}
+                class="ghost-pill"
+                onClick={onOpenOnboarding}
               >
-                {dept}
+                Workspace Setup →
               </button>
-            ))}
+            )}
           </div>
         </header>
 
@@ -227,36 +262,22 @@ export function FirmAdminPage({
                     }))
                   }
                 />
-                <select
-                  class="profile-input"
+                <SelectMenu
+                  size="md"
+                  fullWidth
+                  ariaLabel="Practice line"
                   value={newEng.practice}
-                  onChange={(e) =>
-                    setNewEng((p) => ({
-                      ...p,
-                      practice: (e.currentTarget as HTMLSelectElement).value as PracticeLine,
-                    }))
-                  }
-                >
-                  <option value="Bookkeeping">Bookkeeping</option>
-                  <option value="Audit">Audit</option>
-                  <option value="Tax">Tax</option>
-                </select>
-                <select
-                  class="profile-input"
+                  options={PRACTICE_OPTIONS}
+                  onChange={(practice) => setNewEng((p) => ({ ...p, practice }))}
+                />
+                <SelectMenu
+                  size="md"
+                  fullWidth
+                  ariaLabel="Engagement owner"
                   value={newEng.ownerId}
-                  onChange={(e) =>
-                    setNewEng((p) => ({
-                      ...p,
-                      ownerId: (e.currentTarget as HTMLSelectElement).value,
-                    }))
-                  }
-                >
-                  {state.members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.fullName}
-                    </option>
-                  ))}
-                </select>
+                  options={memberOptions}
+                  onChange={(ownerId) => setNewEng((p) => ({ ...p, ownerId }))}
+                />
                 <input
                   type="text"
                   class="profile-input"
@@ -344,42 +365,27 @@ export function FirmAdminPage({
                         </div>
                       </td>
                       <td>
-                        <select
-                          class="admin-inline-select"
-                          aria-label={`Owner for ${eng.deliverable}`}
+                        <SelectMenu
+                          size="sm"
+                          ariaLabel={`Owner for ${eng.deliverable}`}
                           value={eng.ownerId}
-                          onChange={(e) =>
-                            controller.reassignEngagement(
-                              eng.id,
-                              (e.currentTarget as HTMLSelectElement).value
-                            )
+                          options={memberOptions}
+                          onChange={(nextOwnerId) =>
+                            controller.reassignEngagement(eng.id, nextOwnerId)
                           }
-                        >
-                          {state.members.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.fullName}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </td>
                       <td>
-                        <select
-                          class="admin-inline-select"
-                          aria-label={`Stage for ${eng.deliverable}`}
+                        <SelectMenu
+                          size="sm"
+                          align="right"
+                          ariaLabel={`Stage for ${eng.deliverable}`}
                           value={eng.stage}
-                          onChange={(e) =>
-                            controller.updateEngagementStage(
-                              eng.id,
-                              (e.currentTarget as HTMLSelectElement).value as EngagementStage
-                            )
+                          options={STAGE_OPTIONS}
+                          onChange={(nextStage) =>
+                            controller.updateEngagementStage(eng.id, nextStage)
                           }
-                        >
-                          {STAGES.map((st) => (
-                            <option key={st} value={st}>
-                              {st}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </td>
                       <td class="is-right">
                         <span class={`admin-due-label ${eng.atRisk ? 'is-urgent' : ''}`}>
@@ -420,36 +426,26 @@ export function FirmAdminPage({
                     }))
                   }
                 />
-                <select
-                  class="profile-input"
+                <SelectMenu
+                  size="md"
+                  fullWidth
+                  ariaLabel="Department"
                   value={newMember.department}
-                  onChange={(e) =>
-                    setNewMember((p) => ({
-                      ...p,
-                      department: (e.currentTarget as HTMLSelectElement).value as PracticeLine,
-                    }))
+                  options={PRACTICE_OPTIONS}
+                  onChange={(department) =>
+                    setNewMember((p) => ({ ...p, department }))
                   }
-                >
-                  <option value="Bookkeeping">Bookkeeping</option>
-                  <option value="Audit">Audit</option>
-                  <option value="Tax">Tax</option>
-                </select>
-                <select
-                  class="profile-input"
+                />
+                <SelectMenu
+                  size="md"
+                  fullWidth
+                  ariaLabel="Signing authority"
                   value={newMember.authority}
-                  onChange={(e) =>
-                    setNewMember((p) => ({
-                      ...p,
-                      authority: (e.currentTarget as HTMLSelectElement).value as SigningAuthority,
-                    }))
+                  options={AUTHORITY_OPTIONS}
+                  onChange={(authority) =>
+                    setNewMember((p) => ({ ...p, authority }))
                   }
-                >
-                  {AUTHORITIES.map((auth) => (
-                    <option key={auth} value={auth}>
-                      {auth}
-                    </option>
-                  ))}
-                </select>
+                />
                 <button type="submit" class="primary-action-pill is-sm">
                   Add
                 </button>
@@ -487,23 +483,15 @@ export function FirmAdminPage({
                           <span class="admin-dept-badge">{member.department}</span>
                         </td>
                         <td>
-                          <select
-                            class="admin-inline-select"
-                            aria-label={`Role for ${member.fullName}`}
+                          <SelectMenu
+                            size="sm"
+                            ariaLabel={`Role for ${member.fullName}`}
                             value={member.authority}
-                            onChange={(e) =>
-                              controller.updateMemberAuthority(
-                                member.id,
-                                (e.currentTarget as HTMLSelectElement).value as SigningAuthority
-                              )
+                            options={AUTHORITY_OPTIONS}
+                            onChange={(authority) =>
+                              controller.updateMemberAuthority(member.id, authority)
                             }
-                          >
-                            {AUTHORITIES.map((auth) => (
-                              <option key={auth} value={auth}>
-                                {auth}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </td>
                         <td class="admin-mono-muted">{activeCount}</td>
                         <td class="admin-mono-muted">{member.workpapersCompleted}</td>

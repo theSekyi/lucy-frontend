@@ -3,12 +3,12 @@ import type { LoadedRenderer, RendererContext } from '../../core/renderers';
 import type { TopologyGraphData, TopologyNode } from '../../core/types';
 import '../enterprise-stage.css';
 
-const NODE_W = 142;
+const NODE_W = 156;
 const NODE_H = 56;
 
 function baseNodeCoords(node: TopologyNode) {
   return {
-    x: 30 + node.layer * 168,
+    x: 24 + node.layer * 174,
     y: 36 + node.lane * 90,
   };
 }
@@ -227,8 +227,8 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
           if (drag.mode === 'pan') {
             setPan({ x: drag.origX + dx, y: drag.origY + dy });
           } else {
-            const svgWidth = svgRef.current?.clientWidth ?? 700;
-            const ratio = 700 / Math.max(280, svgWidth) / scale;
+            const svgWidth = svgRef.current?.clientWidth ?? 728;
+            const ratio = 728 / Math.max(280, svgWidth) / scale;
             setNodeOffsets((prev) => ({
               ...prev,
               [drag.nodeId]: { x: drag.origX + dx * ratio, y: drag.origY + dy * ratio },
@@ -242,7 +242,7 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
           dragStateRef.current = null;
         }}
       >
-        <svg ref={svgRef} viewBox="0 0 700 300" width="100%" height="100%">
+        <svg ref={svgRef} viewBox="0 0 728 300" width="100%" height="100%">
           <defs>
             <marker
               id="dagArrow"

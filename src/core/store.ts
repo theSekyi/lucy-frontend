@@ -3,6 +3,7 @@ export type Listener<TState> = (state: TState) => void;
 export interface ReadableStore<TState> {
   getState: () => TState;
   subscribe: (listener: Listener<TState>) => () => void;
+  getListenerCount: () => number;
 }
 
 export interface Store<TState> extends ReadableStore<TState> {
@@ -16,11 +17,18 @@ export function createStore<TState>(initialState: TState): Store<TState> {
   return {
     getState: () => state,
 
+    getListenerCount: () => listeners.size,
+
     update(updater) {
       const nextState = updater(state);
       if (Object.is(nextState, state)) return;
       state = nextState;
-      for (const notify of listeners) notify(state);
+      const snapshot = [...listeners];
+      for (const notify of snapshot) {
+        if (listeners.has(notify)) {
+          notify(state);
+        }
+      }
     },
 
     subscribe(listener) {

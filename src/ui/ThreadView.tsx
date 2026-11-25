@@ -1,10 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import type { RendererRegistry } from '../core/renderers';
-import type {
-  ContentBlock,
-  ModelChoice,
-  TopicThread,
-} from '../core/types';
+import type { ContentBlock, TopicThread } from '../core/types';
 import { BlockSlot } from './BlockSlot';
 import { Composer } from './Composer';
 
@@ -17,8 +13,6 @@ interface ThreadViewProps {
   readonly isStageMaximized: boolean;
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
-  readonly models: ReadonlyArray<ModelChoice>;
-  readonly selectedModelId: string;
   readonly onReturnHome: () => void;
   readonly onInspectBlock: (blockId: string | null, anchor?: string | null) => void;
   readonly onCommitRevision: (
@@ -28,7 +22,6 @@ interface ThreadViewProps {
   ) => void;
   readonly onToggleMaximizeStage: () => void;
   readonly onDraftChange: (value: string) => void;
-  readonly onModelChange: (modelId: string) => void;
   readonly onIngestFile: (file: File) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample: (pluginId: string) => void;
@@ -44,14 +37,11 @@ export function ThreadView({
   isStageMaximized,
   draft,
   attachments,
-  models,
-  selectedModelId,
   onReturnHome,
   onInspectBlock,
   onCommitRevision,
   onToggleMaximizeStage,
   onDraftChange,
-  onModelChange,
   onIngestFile,
   onRemoveAttachment,
   onLaunchPluginSample,
@@ -135,14 +125,11 @@ export function ThreadView({
               <div class="thread-turns-column">
                 <Composer
                   compact
-                  placeholder="Follow up, refine, or click + to switch views…"
+                  placeholder="Follow up, verify figures, or click + to switch workpapers…"
                   draft={draft}
                   attachments={attachments}
-                  models={models}
-                  selectedModelId={selectedModelId}
                   registry={registry}
                   onDraftChange={onDraftChange}
-                  onModelChange={onModelChange}
                   onIngestFile={onIngestFile}
                   onRemoveAttachment={onRemoveAttachment}
                   onLaunchPluginSample={onLaunchPluginSample}

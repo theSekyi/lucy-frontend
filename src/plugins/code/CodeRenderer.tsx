@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { LoadedRenderer, RendererContext } from '../../core/renderers';
 import type { CodeFileEntry, CodeSnippetData } from '../../core/types';
 import './code.css';
@@ -197,6 +197,15 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
   const [copied, setCopied] = useState(false);
   const [synced, setSynced] = useState(false);
   const [lineRange, setLineRange] = useState<{ start: number; end: number } | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const activeFile = files[activeIdx] ?? files[0]!;
   const origFile = baselineFiles[activeIdx] ?? baselineFiles[0]!;
@@ -220,7 +229,13 @@ function CodeWorkbenchView({ context }: { context: RendererContext<CodeSnippetDa
   function copyActiveFile() {
     navigator.clipboard?.writeText(activeFile.code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1300);
+    if (copyTimerRef.current !== null) {
+      clearTimeout(copyTimerRef.current);
+    }
+    copyTimerRef.current = setTimeout(() => {
+      copyTimerRef.current = null;
+      setCopied(false);
+    }, 1300);
   }
 
   function downloadActiveFile() {

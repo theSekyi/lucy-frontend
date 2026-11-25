@@ -47,11 +47,32 @@ export interface RendererRegistry<TView> {
 }
 
 /**
+ * Resilient async loader with automatic backoff retry for flaky 2G/3G/train networks.
+ * Shared across both block-level renderer chunks and route-level UI page chunks.
+ */
+export async function loadWithRetry<T>(
+  loader: () => Promise<T>,
+  retries = 1,
+  retryDelayMs = 220
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await loader();
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries && retryDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+  }
+  throw lastError;
+}
+
+/**
  * Self-describing plug-and-play renderer registry.
- * Dropping a plugin descriptor into the registry automatically enables:
- * 1. Block matching & lazy chunk loading (with flaky-network retry)
- * 2. Zero-download inline summary cards for `stage` placement
- * 3. Optional prompt routing & `+` menu sample launching
+ * Priority order is memoized and only recomputed when plugins register/unregister,
+ * making `resolve()` O(N) over a stable array with zero per-render allocations.
  */
 export function createRendererRegistry<TView>(
   fallbackPlugin: RendererPlugin<TView>
@@ -59,9 +80,15 @@ export function createRendererRegistry<TView>(
   const plugins = new Map<string, RendererPlugin<TView>>();
   const resolvedCache = new Map<string, LoadedRenderer<TView>>();
   const inflightLoads = new Map<string, Promise<LoadedRenderer<TView>>>();
+  let cachedSorted: ReadonlyArray<RendererPlugin<TView>> | null = null;
 
-  function sortedPlugins(): RendererPlugin<TView>[] {
-    return [...plugins.values()].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+  function sortedPlugins(): ReadonlyArray<RendererPlugin<TView>> {
+    if (!cachedSorted) {
+      cachedSorted = [...plugins.values()].sort(
+        (a, b) => (b.priority ?? 0) - (a.priority ?? 0)
+      );
+    }
+    return cachedSorted;
   }
 
   function resolve(block: ContentBlock): RendererPlugin<TView> {
@@ -86,12 +113,7 @@ export function createRendererRegistry<TView>(
     const existingPromise = inflightLoads.get(plugin.id);
     if (existingPromise) return existingPromise;
 
-    const loadAttempt = plugin
-      .load()
-      .catch(async () => {
-        await new Promise((r) => setTimeout(r, 250));
-        return plugin.load();
-      })
+    const loadAttempt = loadWithRetry(() => plugin.load(), 1, 220)
       .then((loaded) => {
         resolvedCache.set(plugin.id, loaded);
         inflightLoads.delete(plugin.id);
@@ -109,9 +131,11 @@ export function createRendererRegistry<TView>(
   return {
     register(plugin) {
       plugins.set(plugin.id, plugin as RendererPlugin<TView>);
+      cachedSorted = null;
       return () => {
         plugins.delete(plugin.id);
         resolvedCache.delete(plugin.id);
+        cachedSorted = null;
       };
     },
 

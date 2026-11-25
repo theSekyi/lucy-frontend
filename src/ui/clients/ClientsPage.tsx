@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   defaultFirmAdmin,
   selectClientEngagementGroups,
@@ -7,13 +7,15 @@ import {
   type FirmAdminState,
 } from '../../core/admin';
 import type { DeepLinkTarget } from '../inbox/MailIntelligencePanel';
+import { SelectMenu, type SelectMenuOption } from '../primitives/SelectMenu';
+import './clients.css';
 
-const STAGES: ReadonlyArray<EngagementStage> = [
-  'Intake',
-  'Fieldwork',
-  'Review',
-  'Sign-Off',
-  'Complete',
+const STAGE_OPTIONS: ReadonlyArray<SelectMenuOption<EngagementStage>> = [
+  { value: 'Intake', label: 'Intake' },
+  { value: 'Fieldwork', label: 'Fieldwork' },
+  { value: 'Review', label: 'Review' },
+  { value: 'Sign-Off', label: 'Sign-Off' },
+  { value: 'Complete', label: 'Complete' },
 ];
 
 interface ClientsPageProps {
@@ -22,6 +24,7 @@ interface ClientsPageProps {
   readonly selectedEngagementId: string | null;
   readonly onSelectClient: (clientId: string | null, engagementId?: string | null) => void;
   readonly onOpenWorkpaper: (target: DeepLinkTarget) => void;
+  readonly onClientCountChange?: (count: number) => void;
 }
 
 export function ClientsPage({
@@ -30,6 +33,7 @@ export function ClientsPage({
   selectedEngagementId,
   onSelectClient,
   onOpenWorkpaper,
+  onClientCountChange,
 }: ClientsPageProps) {
   const [state, setState] = useState<FirmAdminState>(() => controller.getState());
   const [filter, setFilter] = useState<'all' | 'active' | 'complete'>('all');
@@ -37,7 +41,14 @@ export function ClientsPage({
   const [detailTab, setDetailTab] = useState<'bookkeeping' | 'engagements'>('bookkeeping');
   const [expandedEngId, setExpandedEngId] = useState<string | null>(selectedEngagementId);
 
+  const countRef = useRef(onClientCountChange);
+  countRef.current = onClientCountChange;
+
   useEffect(() => controller.subscribe(setState), [controller]);
+
+  useEffect(() => {
+    countRef.current?.(state.clients.length);
+  }, [state.clients.length]);
 
   useEffect(() => {
     if (selectedEngagementId) {
@@ -278,24 +289,16 @@ export function ClientsPage({
                           </span>
 
                           <div class="stage-subbar-group">
-                            <select
-                              class="client-stage-select"
-                              aria-label={`Stage for ${eng.deliverable}`}
+                            <SelectMenu
+                              size="sm"
+                              align="right"
+                              ariaLabel={`Stage for ${eng.deliverable}`}
                               value={eng.stage}
-                              onChange={(e) =>
-                                controller.updateEngagementStage(
-                                  eng.id,
-                                  (e.currentTarget as HTMLSelectElement)
-                                    .value as EngagementStage
-                                )
+                              options={STAGE_OPTIONS}
+                              onChange={(nextStage) =>
+                                controller.updateEngagementStage(eng.id, nextStage)
                               }
-                            >
-                              {STAGES.map((st) => (
-                                <option key={st} value={st}>
-                                  {st}
-                                </option>
-                              ))}
-                            </select>
+                            />
 
                             {eng.pluginRoute && (
                               <button

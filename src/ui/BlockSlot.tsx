@@ -70,11 +70,14 @@ export function BlockSlot({
       return;
     }
 
-    registry.loadRenderer(block).then((loaded) => {
-      if (!cancelled) {
-        setLoadedEntry({ pluginId: plugin.id, renderer: loaded });
-      }
-    });
+    registry
+      .loadRenderer(block)
+      .then((loaded) => {
+        if (!cancelled) {
+          setLoadedEntry({ pluginId: plugin.id, renderer: loaded });
+        }
+      })
+      .catch(() => {});
 
     return () => {
       cancelled = true;

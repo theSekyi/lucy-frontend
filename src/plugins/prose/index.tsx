@@ -8,7 +8,7 @@ function formatInlineTokens(
   const tokens = line.split(/(\*\*[^*]+\*\*|`[^`]+`|\[§[\d.]+\]|<mention\s+name="[^"]+"\s*\/?>)/g);
   return tokens.map((segment, index) => {
     if (segment.startsWith('**') && segment.endsWith('**')) {
-      return <strong key={index}>{segment.slice(2, -2)}</strong>;
+      return <strong key={index}>{formatInlineTokens(segment.slice(2, -2), context)}</strong>;
     }
     if (segment.startsWith('`') && segment.endsWith('`')) {
       return (

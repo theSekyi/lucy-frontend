@@ -3,7 +3,6 @@ import { CONNECTOR_CATALOG } from '../core/connectors';
 import type { RendererRegistry } from '../core/renderers';
 import type {
   ContentBlock,
-  ModelChoice,
   TodayWorkItem,
   UserProfile,
 } from '../core/types';
@@ -17,11 +16,8 @@ interface LaunchpadProps {
   readonly disconnectedIds: ReadonlyArray<string>;
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
-  readonly models: ReadonlyArray<ModelChoice>;
-  readonly selectedModelId: string;
   readonly registry: RendererRegistry<ComponentChildren>;
   readonly onDraftChange: (value: string) => void;
-  readonly onModelChange: (modelId: string) => void;
   readonly onIngestFile: (file: File) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample: (pluginId: string) => void;
@@ -40,11 +36,8 @@ export function Launchpad({
   disconnectedIds,
   draft,
   attachments,
-  models,
-  selectedModelId,
   registry,
   onDraftChange,
-  onModelChange,
   onIngestFile,
   onRemoveAttachment,
   onLaunchPluginSample,
@@ -92,11 +85,8 @@ export function Launchpad({
         <Composer
           draft={draft}
           attachments={attachments}
-          models={models}
-          selectedModelId={selectedModelId}
           registry={registry}
           onDraftChange={onDraftChange}
-          onModelChange={onModelChange}
           onIngestFile={onIngestFile}
           onRemoveAttachment={onRemoveAttachment}
           onLaunchPluginSample={onLaunchPluginSample}
@@ -105,7 +95,7 @@ export function Launchpad({
 
         <section class="dashboard-clients-section" aria-label="Today">
           <div class="dashboard-section-bar">
-            <div class="recent-topics-header" style={{ marginBottom: 0 }}>
+            <div class="recent-topics-header">
               <h2 class="recent-topics-title">Today</h2>
               <span class="recent-count-badge">{todayItems.length}</span>
             </div>
@@ -146,7 +136,7 @@ export function Launchpad({
 
         <section class="recent-topics-section" aria-label="Disconnected connectors">
           <div class="dashboard-section-bar">
-            <div class="recent-topics-header" style={{ marginBottom: 0 }}>
+            <div class="recent-topics-header">
               <h2 class="recent-topics-title">Disconnected</h2>
               <span class="recent-count-badge">{disconnectedApps.length}</span>
             </div>

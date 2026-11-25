@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lucy-shell-v3';
+const CACHE_NAME = 'lucy-shell-v4';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -16,11 +16,14 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-first for HTML navigations (always fresh when online, instant cache fallback when offline);
-// Cache-first with background refresh for hashed static assets.
+// Network-first for HTML navigations (instant cache fallback when offline);
+// Pure cache-hit for content-hashed immutable /assets/* bundles;
+// Stale-while-revalidate for unhashed static files.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || !request.url.startsWith(self.location.origin)) return;
+
+  const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
     event.respondWith(
@@ -33,6 +36,19 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => caches.match(request).then((res) => res || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        const fresh = await fetch(request);
+        if (fresh.ok) cache.put(request, fresh.clone());
+        return fresh;
+      })
     );
     return;
   }

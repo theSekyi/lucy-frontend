@@ -13,21 +13,29 @@ function ContractInspectorView({ context }: { context: RendererContext<CitedDocu
   const [query, setQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  function scrollClauseIntoMat(section: string) {
+    const container = scrollRef.current;
+    if (!container) return;
+    const el = container.querySelector<HTMLElement>(
+      `[data-clause="${CSS.escape(section)}"]`
+    );
+    if (!el) return;
+    const cRect = container.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    const targetTop =
+      container.scrollTop + (eRect.top - cRect.top) - Math.max(24, (cRect.height - eRect.height) / 3);
+    container.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+  }
+
   useEffect(() => {
     if (!context.focusAnchor) return;
     setActiveClause(context.focusAnchor);
-    const el = scrollRef.current?.querySelector<HTMLElement>(
-      `[data-clause="${CSS.escape(context.focusAnchor)}"]`
-    );
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    scrollClauseIntoMat(context.focusAnchor);
   }, [context.focusAnchor, context.anchorPulse]);
 
   function jumpToClause(section: string) {
     setActiveClause(section);
-    const el = scrollRef.current?.querySelector<HTMLElement>(
-      `[data-clause="${CSS.escape(section)}"]`
-    );
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    scrollClauseIntoMat(section);
   }
 
   const filterLower = query.trim().toLowerCase();

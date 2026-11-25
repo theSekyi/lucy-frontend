@@ -183,7 +183,7 @@ const TOPOLOGY_SAMPLE: TopologyGraphData = {
       lane: 1,
       kind: 'service',
       status: 'impacted',
-      owner: 'AI Runtime',
+      owner: 'Core Services',
       latency: '260 ms p95',
       note: 'Inherits +180 ms upstream auth tail latency on uncached session handshakes.',
     },
@@ -231,7 +231,7 @@ const SLIDE_DECK_SAMPLE: SlideDeckData = {
       title: 'Enterprise ARR Reached $5.64M (+65% YoY) With Best-in-Class Efficiency',
       takeaway: 'Net Dollar Retention expanded 980 bps to 128.2% driven by multi-department seat adoption.',
       metrics: [
-        { label: 'Ending Enterprise ARR', value: '$5.64M', delta: '+65% YoY' },
+        { label: 'Ending ARR', value: '$5.64M', delta: '+65% YoY' },
         { label: 'Net Dollar Retention', value: '128.2%', delta: '+9.8 pts' },
         { label: 'Gross Margin', value: '85.1%', delta: '+3.9 pts' },
       ],
@@ -354,38 +354,38 @@ export function createEnterprisePresetTurn(
     case 'code-workspace':
       return {
         prose:
-          'Prepared the **4-file media frame alignment patch** across TypeScript, Python QA validation, SQL telemetry, and canary rollout config.',
+          'Prepared the **4-file ERP webhook & reconciliation validation patch** across TypeScript, Python QA checks, SQL telemetry, and canary rollout config.',
         artifact: {
           id: idFactory('block-code-ws'),
           kind: 'code-workspace',
-          title: 'Media Frame Alignment Patch',
-          filename: 'media-frame-patch (4 files)',
-          summary: 'TS · PY · SQL · YAML — Keyframe normalizer, validator & canary config',
+          title: 'ERP Webhook & Batch Validator',
+          filename: 'erp-sync-patch (4 files)',
+          summary: 'TS · PY · SQL · YAML — Ledger normalizer, validator & canary config',
           data: {
             files: [
               {
-                filename: 'normalizeReferenceFrame.ts',
-                filepath: 'packages/media-core/src/normalizeReferenceFrame.ts',
+                filename: 'normalizeJournalBatch.ts',
+                filepath: 'packages/erp-sync/src/normalizeJournalBatch.ts',
                 language: 'typescript',
-                code: `// Clamp frame buffers to even codec macroblocks\nexport interface FrameSize {\n  readonly width: number;\n  readonly height: number;\n}\n\nexport function clampEvenDimensions(width: number, height: number): FrameSize {\n  return {\n    width: Math.max(2, width - (width % 2)),\n    height: Math.max(2, height - (height % 2)),\n  };\n}`,
+                code: `// Enforce zero-variance double-entry invariant before ERP write-back\nexport interface JournalLine {\n  readonly accountCode: string;\n  readonly debitCents: number;\n  readonly creditCents: number;\n}\n\nexport function isBalancedBatch(lines: ReadonlyArray<JournalLine>): boolean {\n  const net = lines.reduce((sum, l) => sum + l.debitCents - l.creditCents, 0);\n  return lines.length > 0 && net === 0;\n}`,
               },
               {
-                filename: 'verify_keyframes.py',
-                filepath: 'scripts/qa/verify_keyframes.py',
+                filename: 'reconcile_subledger.py',
+                filepath: 'scripts/audit/reconcile_subledger.py',
                 language: 'python',
-                code: `# Verify stream aspect metadata across edge buckets\ndef validate_aspect(width: int, height: int) -> bool:\n    if width <= 0 or height <= 0:\n        return False\n    return (width % 2 == 0) and (height % 2 == 0)\n\ndef summarize_batch(frames: list) -> dict:\n    valid = sum(1 for w, h in frames if validate_aspect(w, h))\n    return {"checked": len(frames), "valid": valid}`,
+                code: `# Tie payout settlement batches to general ledger clearing account\ndef check_cutoff_variance(bank_cents: int, gl_cents: int, ctt_cents: int = 125000) -> str:\n    diff = abs(bank_cents - gl_cents)\n    if diff == 0:\n        return "TIED"\n    return "TRIVIAL_FX" if diff <= ctt_cents else "EXCEPTION"`,
               },
               {
-                filename: 'frame_upload_failures.sql',
-                filepath: 'analytics/queries/frame_upload_failures.sql',
+                filename: 'unmatched_payouts.sql',
+                filepath: 'audit/queries/unmatched_payouts.sql',
                 language: 'sql',
-                code: `-- Post-deploy 24h retry rate across regional POPs\nSELECT\n  codec,\n  region,\n  COUNT(*) AS retry_events\nFROM media_telemetry.upload_events\nWHERE status = 'RETRY' AND hours_ago <= 24\nGROUP BY 1, 2\nORDER BY 3 DESC\nLIMIT 25;`,
+                code: `-- Open bank-to-NetSuite clearing items exceeding cutoff window\nSELECT\n  entity_code,\n  gl_account,\n  SUM(statement_amount - gl_amount) AS variance_usd\nFROM prod_audit.bank_clearing_nov26\nWHERE match_status = 'UNMATCHED'\nGROUP BY 1, 2\nORDER BY ABS(SUM(statement_amount - gl_amount)) DESC;`,
               },
               {
-                filename: 'transcoder-rollout.yaml',
-                filepath: 'deploy/canary/transcoder-rollout.yaml',
+                filename: 'netsuite-sync.yaml',
+                filepath: 'deploy/connectors/netsuite-sync.yaml',
                 language: 'yaml',
-                code: `# Progressive canary rollout gate\nservice: media-transcoder\nrollout:\n  stage: "canary-25"\n  maxErrorPct: 0.05\n  healthProbeMs: 1500\n  autoRollback: true`,
+                code: `# Dual-control ERP journal posting policy\nconnector: oracle-netsuite\npostingGate:\n  requirePartnerSignOff: true\n  maxImbalanceCents: 0\n  retryBackoffMs: 250`,
               },
             ],
           },
@@ -408,26 +408,4 @@ export function createEnterprisePresetTurn(
         },
       };
   }
-}
-
-export function detectEnterprisePreset(prompt: string): EnterpriseArtifactPreset | null {
-  if (/\b(contract|msa|soc2|clause|pdf|10-k|rfp|indemnif|liability)\b/i.test(prompt)) {
-    return 'contract';
-  }
-  if (/\b(redline|diff|patch|iam|terraform|accept|reject|amendment)\b/i.test(prompt)) {
-    return 'redline';
-  }
-  if (/\b(sql|snowflake|bigquery|warehouse|cohort|pivot|chart|query)\b/i.test(prompt)) {
-    return 'sql-canvas';
-  }
-  if (/\b(lineage|topology|blast\s*radius|incident|dag|graph|mermaid|dependency|architecture)\b/i.test(prompt)) {
-    return 'topology';
-  }
-  if (/\b(slide|deck|pptx|qbr|board\s*memo|presentation|executive\s*brief)\b/i.test(prompt)) {
-    return 'slide-deck';
-  }
-  if (/\b(excel|xlsx|csv|spreadsheet|sheet|table|budget|forecast|revenue|financial)\b/i.test(prompt)) {
-    return 'spreadsheet';
-  }
-  return null;
 }

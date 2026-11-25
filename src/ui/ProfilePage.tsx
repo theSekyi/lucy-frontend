@@ -1,17 +1,21 @@
-import type { NavSection, UserProfile } from '../core/types';
+import type { AuthSession, NavSection, UserProfile } from '../core/types';
 
 interface ProfilePageProps {
   readonly profile: UserProfile;
+  readonly authSession: AuthSession;
   readonly connectedCount: number;
   readonly onUpdateProfile: (patch: Partial<UserProfile>) => void;
   readonly onNavigate: (section: NavSection) => void;
+  readonly onSignOut: () => void;
 }
 
 export function ProfilePage({
   profile,
+  authSession,
   connectedCount,
   onUpdateProfile,
   onNavigate,
+  onSignOut,
 }: ProfilePageProps) {
   return (
     <div class="launchpad-scroll">
@@ -25,13 +29,23 @@ export function ProfilePage({
             <span>←</span>
             <span>Dashboard</span>
           </button>
-          <button
-            type="button"
-            class="ghost-pill"
-            onClick={() => onNavigate('connectors')}
-          >
-            {connectedCount} Connected →
-          </button>
+
+          <div class="stage-subbar-group">
+            <button
+              type="button"
+              class="ghost-pill"
+              onClick={() => onNavigate('connectors')}
+            >
+              {connectedCount} Connected →
+            </button>
+            <button
+              type="button"
+              class="ghost-pill"
+              onClick={onSignOut}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
 
         <div class="profile-card-shell">
@@ -41,6 +55,7 @@ export function ProfilePage({
             </div>
             <div class="profile-identity-meta">
               <h1 class="profile-name-heading">{profile.fullName}</h1>
+              <span class="profile-sso-pill">{authSession.ssoTenantLabel}</span>
             </div>
           </header>
 
