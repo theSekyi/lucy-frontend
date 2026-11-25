@@ -316,19 +316,38 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(termRes.citations.some((c) => c.anchor === '§4.2')).toBe(true);
   });
 
-  it('manages Clients engagement groupings and Firm Admin staff roster with safe reassignment on removal', () => {
+  it('manages Clients 12-month bookkeeping close, engagement checklists, and Firm Admin roster', () => {
     const admin = createFirmAdminController();
     const initialCount = admin.getState().members.length;
 
     const initialGroups = selectClientEngagementGroups(admin.getState());
-    expect(initialGroups.length).toBeGreaterThanOrEqual(4);
-    expect(initialGroups[0]?.engagements.length).toBeGreaterThanOrEqual(2);
-    expect(initialGroups[0]?.averageProgressPct).toBeGreaterThan(0);
+    expect(initialGroups).toHaveLength(4);
+    const acme = initialGroups.find((g) => g.clientId === 'acme')!;
+    expect(acme.periods).toHaveLength(12);
+    expect(acme.currentMonthStatus).toBe('in-progress');
+
+    // Switch bookkeeping month and lock November books
+    admin.setActiveBookkeepingMonth('acme', '2026-10');
+    expect(admin.getState().clients[0]?.activeMonthKey).toBe('2026-10');
+
+    admin.toggleBookkeepingMonthLock('acme', '2026-11');
+    const afterLock = selectClientEngagementGroups(admin.getState()).find(
+      (g) => g.clientId === 'acme'
+    )!;
+    expect(afterLock.currentMonthStatus).toBe('closed');
+    expect(afterLock.currentMonthProgressPct).toBe(100);
+
+    // Toggle an engagement checklist task and verify live progress recalculation
+    const eng = admin.getState().engagements[0]!;
+    const uncheckedTask = eng.tasks.find((t) => !t.done)!;
+    admin.toggleEngagementTask(eng.id, uncheckedTask.id);
+    expect(admin.getState().engagements[0]?.progressPct).toBe(100);
+    expect(admin.getState().engagements[0]?.stage).toBe('Complete');
 
     const newId = admin.addMember({
       fullName: 'Sophie Grant',
       email: 's.grant@cartervance.co.uk',
-      department: 'Audit',
+      department: 'Bookkeeping',
       authority: 'Associate',
     });
     expect(newId).toBeTruthy();
@@ -344,10 +363,6 @@ describe('Headless Workspace state and offline resilience', () => {
     const reassignedOwnerId = admin.getState().engagements[0]!.ownerId;
     expect(reassignedOwnerId).not.toBe(newId);
     expect(admin.getState().members.some((m) => m.id === reassignedOwnerId)).toBe(true);
-
-    // Updating stage automatically updates engagement progress percentage
-    admin.updateEngagementStage(firstEngId, 'Complete');
-    expect(admin.getState().engagements[0]?.progressPct).toBe(100);
   });
 });
 

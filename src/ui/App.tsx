@@ -57,7 +57,9 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         return;
       }
       if (rawPage === 'clients') {
-        workspace.selectSection('clients');
+        const clientParam = params.get('client')?.trim() || null;
+        const engParam = params.get('eng')?.trim() || null;
+        workspace.openClient(clientParam, engParam);
         return;
       }
       if (rawPage === 'connectors') {
@@ -121,6 +123,20 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     if (state.activeSection === 'inbox') {
       nextUrl.searchParams.set('page', 'inbox');
       nextUrl.searchParams.set('provider', state.inboxProvider);
+      nextUrl.searchParams.delete('client');
+      nextUrl.searchParams.delete('eng');
+      window.history.replaceState(
+        null,
+        '',
+        `${nextUrl.pathname}?${nextUrl.searchParams.toString()}`
+      );
+    } else if (state.activeSection === 'clients') {
+      nextUrl.searchParams.set('page', 'clients');
+      nextUrl.searchParams.delete('provider');
+      if (state.selectedClientId) nextUrl.searchParams.set('client', state.selectedClientId);
+      else nextUrl.searchParams.delete('client');
+      if (state.selectedEngagementId) nextUrl.searchParams.set('eng', state.selectedEngagementId);
+      else nextUrl.searchParams.delete('eng');
       window.history.replaceState(
         null,
         '',
@@ -128,12 +144,13 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
       );
     } else if (
       state.activeSection === 'profile' ||
-      state.activeSection === 'clients' ||
       state.activeSection === 'connectors' ||
       state.activeSection === 'admin'
     ) {
       nextUrl.searchParams.set('page', state.activeSection);
       nextUrl.searchParams.delete('provider');
+      nextUrl.searchParams.delete('client');
+      nextUrl.searchParams.delete('eng');
       window.history.replaceState(
         null,
         '',
@@ -145,6 +162,8 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
   }, [
     registry,
     state.activeSection,
+    state.selectedClientId,
+    state.selectedEngagementId,
     state.activeTopicId,
     state.inboxProvider,
     state.inspectedAnchor,
@@ -348,6 +367,11 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         ) : state.activeSection === 'clients' ? (
           ClientsLoaded ? (
             <ClientsLoaded
+              selectedClientId={state.selectedClientId}
+              selectedEngagementId={state.selectedEngagementId}
+              onSelectClient={(clientId, engId) =>
+                workspace.openClient(clientId, engId)
+              }
               onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)}
             />
           ) : (
@@ -370,7 +394,12 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
           )
         ) : state.activeSection === 'admin' ? (
           AdminLoaded ? (
-            <AdminLoaded onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)} />
+            <AdminLoaded
+              onOpenClientEngagement={(clientId, engId) =>
+                workspace.openClient(clientId, engId)
+              }
+              onOpenWorkpaper={(target) => void handleNavigateDeepLink(target)}
+            />
           ) : (
             <div class="launchpad-scroll">
               <div class="renderer-skeleton">Loading firm admin…</div>
@@ -409,7 +438,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
             onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
             onSubmit={() => workspace.submitPrompt()}
             onOpenTopic={(id) => workspace.openTopic(id)}
-            onOpenClients={() => workspace.selectSection('clients')}
+            onOpenClients={(clientId) => workspace.openClient(clientId ?? null)}
             onOpenProfile={() => workspace.selectSection('profile')}
             onOpenConnectors={() => workspace.selectSection('connectors')}
           />

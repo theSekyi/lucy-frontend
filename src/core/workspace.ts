@@ -20,6 +20,7 @@ export interface WorkspaceOptions<TView = unknown> {
 
 export interface WorkspaceController extends ReadableStore<WorkspaceState> {
   selectSection: (section: NavSection) => void;
+  openClient: (clientId: string | null, engagementId?: string | null) => void;
   setInboxProvider: (provider: InboxProvider) => void;
   setUnreadInboxCount: (count: number) => void;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
@@ -161,6 +162,20 @@ export function createWorkspace<TView = unknown>(
       store.update((state) => ({
         ...state,
         activeSection: section,
+        selectedClientId: section === 'clients' ? null : state.selectedClientId,
+        selectedEngagementId: null,
+        activeTopicId: null,
+        inspectedBlockId: null,
+        inspectedAnchor: null,
+      }));
+    },
+
+    openClient(clientId, engagementId = null) {
+      store.update((state) => ({
+        ...state,
+        activeSection: 'clients',
+        selectedClientId: clientId,
+        selectedEngagementId: engagementId,
         activeTopicId: null,
         inspectedBlockId: null,
         inspectedAnchor: null,

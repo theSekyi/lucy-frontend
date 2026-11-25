@@ -192,6 +192,8 @@ export interface ComposerMode {
 
 export interface WorkspaceState {
   readonly activeSection: NavSection;
+  readonly selectedClientId: string | null;
+  readonly selectedEngagementId: string | null;
   readonly inboxProvider: InboxProvider;
   readonly unreadInboxCount: number;
   readonly userProfile: UserProfile;

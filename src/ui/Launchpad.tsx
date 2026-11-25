@@ -29,7 +29,7 @@ interface LaunchpadProps {
   readonly onLaunchPluginSample: (pluginId: string) => void;
   readonly onSubmit: () => void;
   readonly onOpenTopic: (topicId: string) => void;
-  readonly onOpenClients: () => void;
+  readonly onOpenClients: (clientId?: string) => void;
   readonly onOpenProfile: () => void;
   readonly onOpenConnectors: () => void;
 }
@@ -111,7 +111,7 @@ export function Launchpad({
             <button
               type="button"
               class="conn-open-link"
-              onClick={onOpenClients}
+              onClick={() => onOpenClients()}
             >
               View all →
             </button>
@@ -120,20 +120,22 @@ export function Launchpad({
           <div class="dashboard-clients-box">
             {clientGroups.map((client) => (
               <button
-                key={client.clientName}
+                key={client.clientId}
                 type="button"
                 class="dashboard-client-row"
-                onClick={onOpenClients}
+                onClick={() => onOpenClients(client.clientId)}
               >
                 <div class="dashboard-client-left">
                   <span class="dashboard-client-name">{client.clientName}</span>
-                  <span class="dashboard-client-count">
-                    {client.totalCount} {client.totalCount === 1 ? 'engagement' : 'engagements'}
-                  </span>
+                  <span class="dashboard-client-count">{client.ledger}</span>
                 </div>
 
                 <div class="dashboard-client-right">
-                  <span class="dashboard-client-due">{client.nextDueLabel}</span>
+                  <span class="dashboard-client-due">
+                    {client.currentMonthStatus === 'closed'
+                      ? 'Nov Closed'
+                      : `Nov · ${client.currentMonthProgressPct}%`}
+                  </span>
                   <div class="client-progress-inline is-sm">
                     <div class="client-progress-track">
                       <span

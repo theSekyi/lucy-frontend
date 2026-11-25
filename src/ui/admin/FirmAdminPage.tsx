@@ -30,11 +30,13 @@ type AdminTab = 'engagements' | 'people';
 
 interface FirmAdminPageProps {
   readonly controller?: FirmAdminController;
+  readonly onOpenClientEngagement?: (clientId: string, engagementId: string) => void;
   readonly onOpenWorkpaper: (target: DeepLinkTarget) => void;
 }
 
 export function FirmAdminPage({
   controller = defaultFirmAdmin,
+  onOpenClientEngagement,
   onOpenWorkpaper,
 }: FirmAdminPageProps) {
   const [state, setState] = useState<FirmAdminState>(() => controller.getState());
@@ -121,7 +123,7 @@ export function FirmAdminPage({
           <h1 class="hero-title">Firm Admin</h1>
 
           <div class="admin-dept-pills" role="group" aria-label="Filter practice line">
-            {(['All', 'Audit', 'Tax', 'CAS'] as const).map((dept) => (
+            {(['All', 'Bookkeeping', 'Audit', 'Tax'] as const).map((dept) => (
               <button
                 key={dept}
                 type="button"
@@ -235,9 +237,9 @@ export function FirmAdminPage({
                     }))
                   }
                 >
+                  <option value="Bookkeeping">Bookkeeping</option>
                   <option value="Audit">Audit</option>
                   <option value="Tax">Tax</option>
-                  <option value="CAS">CAS</option>
                 </select>
                 <select
                   class="profile-input"
@@ -289,10 +291,28 @@ export function FirmAdminPage({
                 <tbody>
                   {filteredEngagements.map((eng) => (
                     <tr key={eng.id}>
-                      <td class="admin-cell-primary">{eng.clientName}</td>
+                      <td>
+                        <button
+                          type="button"
+                          class="admin-client-jump-btn"
+                          onClick={() =>
+                            onOpenClientEngagement?.(eng.clientId, eng.id)
+                          }
+                        >
+                          {eng.clientName}
+                        </button>
+                      </td>
                       <td>
                         <div class="admin-deliverable-cell">
-                          <span>{eng.deliverable}</span>
+                          <button
+                            type="button"
+                            class="admin-client-jump-btn is-normal"
+                            onClick={() =>
+                              onOpenClientEngagement?.(eng.clientId, eng.id)
+                            }
+                          >
+                            {eng.deliverable}
+                          </button>
                           {eng.pluginRoute && (
                             <button
                               type="button"
@@ -410,9 +430,9 @@ export function FirmAdminPage({
                     }))
                   }
                 >
+                  <option value="Bookkeeping">Bookkeeping</option>
                   <option value="Audit">Audit</option>
                   <option value="Tax">Tax</option>
-                  <option value="CAS">CAS</option>
                 </select>
                 <select
                   class="profile-input"

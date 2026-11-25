@@ -20,6 +20,22 @@
   flex-wrap: wrap;
 }
 
+.admin-client-jump-btn {
+  font-weight: 500;
+  color: #f4f4f6;
+  text-align: left;
+}
+
+.admin-client-jump-btn.is-normal {
+  font-weight: 400;
+  color: #d4d4d8;
+}
+
+.admin-client-jump-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .admin-dept-pills {
   display: flex;
   align-items: center;

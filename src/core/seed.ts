@@ -401,6 +401,8 @@ export const EXTRA_SIDEBAR_INVESTIGATION: TopicThread = {
 export function createInitialWorkspaceState(): WorkspaceState {
   return {
     activeSection: 'home',
+    selectedClientId: null,
+    selectedEngagementId: null,
     inboxProvider: 'gmail',
     unreadInboxCount: 5,
     userProfile: {
