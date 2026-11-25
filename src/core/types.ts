@@ -190,14 +190,28 @@ export interface ComposerMode {
   readonly label: string;
 }
 
+export interface TodayWorkItem {
+  readonly id: string;
+  readonly kindLabel: 'Email' | 'Tax' | 'Close' | 'Audit';
+  readonly title: string;
+  readonly metaLabel: string;
+  readonly target:
+    | { readonly kind: 'mail'; readonly mailId: string }
+    | { readonly kind: 'client'; readonly clientId: string; readonly engagementId?: string }
+    | { readonly kind: 'stage'; readonly pluginRoute: string; readonly anchor?: string };
+}
+
 export interface WorkspaceState {
   readonly activeSection: NavSection;
   readonly selectedClientId: string | null;
   readonly selectedEngagementId: string | null;
+  readonly selectedMailId: string | null;
   readonly inboxProvider: InboxProvider;
   readonly unreadInboxCount: number;
   readonly userProfile: UserProfile;
   readonly connectedAppIds: ReadonlyArray<string>;
+  readonly disconnectedAppIds: ReadonlyArray<string>;
+  readonly todayItems: ReadonlyArray<TodayWorkItem>;
   readonly activeTopicId: string | null;
   readonly inspectedBlockId: string | null;
   readonly inspectedAnchor: string | null;

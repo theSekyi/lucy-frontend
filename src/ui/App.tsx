@@ -6,11 +6,8 @@ import {
   type FirmAdminState,
 } from '../core/admin';
 import type { RendererRegistry } from '../core/renderers';
-import type { WorkspaceState } from '../core/types';
+import type { TodayWorkItem, WorkspaceState } from '../core/types';
 import {
-  selectFilteredTopics,
-  selectHomeRecentTopics,
-  selectHomeRecentTotalCount,
   selectSidebarRecentTopics,
   type WorkspaceController,
 } from '../core/workspace';
@@ -71,7 +68,13 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         return;
       }
       if (rawPage === 'inbox' || rawProvider === 'gmail' || rawProvider === 'outlook') {
-        workspace.setInboxProvider(rawProvider === 'outlook' ? 'outlook' : 'gmail');
+        const threadParam = params.get('thread')?.trim() || null;
+        const targetProvider = rawProvider === 'outlook' ? 'outlook' : 'gmail';
+        if (threadParam) {
+          workspace.openMailThread(threadParam, targetProvider);
+        } else {
+          workspace.setInboxProvider(targetProvider);
+        }
         return;
       }
 
@@ -268,9 +271,6 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
 
   const activeTopic = state.topics.find((t) => t.id === state.activeTopicId) ?? null;
   const sidebarRecents = selectSidebarRecentTopics(state);
-  const homeTopics = state.searchQuery.trim()
-    ? selectFilteredTopics(state)
-    : selectHomeRecentTopics(state);
   const clientGroups = selectClientEngagementGroups(adminState);
 
   async function handleNavigateDeepLink(target: DeepLinkTarget) {
@@ -288,6 +288,21 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
     if (target.connectorId) {
       workspace.selectSection('connectors');
     }
+  }
+
+  function handleOpenTodayItem(item: TodayWorkItem) {
+    if (item.target.kind === 'mail') {
+      workspace.openMailThread(item.target.mailId);
+      return;
+    }
+    if (item.target.kind === 'client') {
+      workspace.openClient(item.target.clientId, item.target.engagementId ?? null);
+      return;
+    }
+    void handleNavigateDeepLink({
+      pluginRoute: item.target.pluginRoute,
+      anchor: item.target.anchor,
+    });
   }
 
   return (
@@ -352,6 +367,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
           InboxLoaded ? (
             <InboxLoaded
               provider={state.inboxProvider}
+              selectedMailId={state.selectedMailId}
               registry={registry}
               senderEmail={state.userProfile.email}
               senderName={state.userProfile.fullName}
@@ -383,6 +399,7 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
           ConnectorsLoaded ? (
             <ConnectorsLoaded
               connectedIds={state.connectedAppIds}
+              disconnectedIds={state.disconnectedAppIds}
               onToggleConnector={(id) => workspace.toggleConnector(id)}
               onOpenInboxProvider={(provider) => workspace.setInboxProvider(provider)}
               onNavigate={(sec) => workspace.selectSection(sec)}
@@ -421,24 +438,23 @@ export function App({ workspace, registry, onIngestFile }: AppProps) {
         ) : (
           <Launchpad
             userProfile={state.userProfile}
-            clientGroups={clientGroups}
+            todayItems={state.todayItems}
             connectedCount={state.connectedAppIds.length}
-            recentTopics={homeTopics}
-            totalRecentCount={selectHomeRecentTotalCount(state)}
+            disconnectedIds={state.disconnectedAppIds}
             draft={state.composerDraft}
             attachments={state.attachments}
             models={state.models}
             selectedModelId={state.selectedModelId}
             registry={registry}
-            searchQuery={state.searchQuery}
             onDraftChange={(text) => workspace.updateDraft(text)}
             onModelChange={(id) => workspace.setModel(id)}
             onIngestFile={onIngestFile}
             onRemoveAttachment={(id) => workspace.removeAttachment(id)}
             onLaunchPluginSample={(pluginId) => void workspace.launchPluginSample(pluginId)}
             onSubmit={() => workspace.submitPrompt()}
-            onOpenTopic={(id) => workspace.openTopic(id)}
-            onOpenClients={(clientId) => workspace.openClient(clientId ?? null)}
+            onOpenTodayItem={handleOpenTodayItem}
+            onReconnectConnector={(id) => workspace.toggleConnector(id)}
+            onOpenInbox={() => workspace.selectSection('inbox')}
             onOpenProfile={() => workspace.selectSection('profile')}
             onOpenConnectors={() => workspace.selectSection('connectors')}
           />

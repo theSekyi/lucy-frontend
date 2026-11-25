@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import type {
   GmailCategory,
   MailAttachmentLink,
@@ -15,6 +15,7 @@ import { MailIntelligencePanel, type DeepLinkTarget } from './MailIntelligencePa
 
 export interface MailProviderViewProps {
   readonly threads: ReadonlyArray<MailThreadItem>;
+  readonly initialThreadId?: string | null;
   readonly registry: RendererRegistry<ComponentChildren>;
   readonly activeProvider: InboxProvider;
   readonly senderEmail: string;
@@ -36,6 +37,7 @@ const GMAIL_LABELS: ReadonlyArray<{ text: string; color: string }> = [
 
 export function GmailInboxRenderer({
   threads,
+  initialThreadId = null,
   registry,
   senderEmail,
   onSwitchProvider,
@@ -50,8 +52,14 @@ export function GmailInboxRenderer({
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const [isRailCollapsed, setIsRailCollapsed] = useState(false);
   const [query, setQuery] = useState('');
-  const [openedId, setOpenedId] = useState<string | null>(null);
+  const [openedId, setOpenedId] = useState<string | null>(initialThreadId);
   const [replyPulse, setReplyPulse] = useState(0);
+
+  useEffect(() => {
+    if (initialThreadId) {
+      setOpenedId(initialThreadId);
+    }
+  }, [initialThreadId]);
   const [inlineCompose, setInlineCompose] = useState<{
     to: string;
     subject: string;

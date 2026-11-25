@@ -10,6 +10,7 @@ import './inbox.css';
 
 interface InboxWorkspaceProps {
   readonly provider: InboxProvider;
+  readonly selectedMailId?: string | null;
   readonly registry: RendererRegistry<ComponentChildren>;
   readonly senderEmail: string;
   readonly senderName: string;
@@ -20,6 +21,7 @@ interface InboxWorkspaceProps {
 
 export function InboxWorkspace({
   provider,
+  selectedMailId = null,
   registry,
   senderEmail,
   senderName,
@@ -112,6 +114,7 @@ export function InboxWorkspace({
       {ActiveRenderer ? (
         <ActiveRenderer
           threads={threads}
+          initialThreadId={selectedMailId}
           registry={registry}
           activeProvider={provider}
           senderEmail={senderEmail}

@@ -1,63 +1,64 @@
 import type { ComponentChildren } from 'preact';
-import type { ClientEngagementGroup } from '../core/admin';
+import { CONNECTOR_CATALOG } from '../core/connectors';
 import type { RendererRegistry } from '../core/renderers';
 import type {
   ContentBlock,
   ModelChoice,
-  TopicThread,
+  TodayWorkItem,
   UserProfile,
 } from '../core/types';
 import { Composer } from './Composer';
-import { ThreadItemIcon } from './icons';
+import { CONNECTOR_LOGOS } from './connectors/connectorLogos';
 
 interface LaunchpadProps {
   readonly userProfile: UserProfile;
-  readonly clientGroups: ReadonlyArray<ClientEngagementGroup>;
+  readonly todayItems: ReadonlyArray<TodayWorkItem>;
   readonly connectedCount: number;
-  readonly recentTopics: ReadonlyArray<TopicThread>;
-  readonly totalRecentCount: number;
+  readonly disconnectedIds: ReadonlyArray<string>;
   readonly draft: string;
   readonly attachments: ReadonlyArray<ContentBlock>;
   readonly models: ReadonlyArray<ModelChoice>;
   readonly selectedModelId: string;
   readonly registry: RendererRegistry<ComponentChildren>;
-  readonly searchQuery: string;
   readonly onDraftChange: (value: string) => void;
   readonly onModelChange: (modelId: string) => void;
   readonly onIngestFile: (file: File) => void;
   readonly onRemoveAttachment: (blockId: string) => void;
   readonly onLaunchPluginSample: (pluginId: string) => void;
   readonly onSubmit: () => void;
-  readonly onOpenTopic: (topicId: string) => void;
-  readonly onOpenClients: (clientId?: string) => void;
+  readonly onOpenTodayItem: (item: TodayWorkItem) => void;
+  readonly onReconnectConnector: (connectorId: string) => void;
+  readonly onOpenInbox: () => void;
   readonly onOpenProfile: () => void;
   readonly onOpenConnectors: () => void;
 }
 
 export function Launchpad({
   userProfile,
-  clientGroups,
+  todayItems,
   connectedCount,
-  recentTopics,
-  totalRecentCount,
+  disconnectedIds,
   draft,
   attachments,
   models,
   selectedModelId,
   registry,
-  searchQuery,
   onDraftChange,
   onModelChange,
   onIngestFile,
   onRemoveAttachment,
   onLaunchPluginSample,
   onSubmit,
-  onOpenTopic,
-  onOpenClients,
+  onOpenTodayItem,
+  onReconnectConnector,
+  onOpenInbox,
   onOpenProfile,
   onOpenConnectors,
 }: LaunchpadProps) {
   const firstName = userProfile.fullName.trim().split(/\s+/)[0] ?? 'Partner';
+  const disconnectedApps = disconnectedIds
+    .map((id) => CONNECTOR_CATALOG.find((c) => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
   return (
     <div class="launchpad-scroll">
@@ -102,86 +103,89 @@ export function Launchpad({
           onSubmit={onSubmit}
         />
 
-        <section class="dashboard-clients-section" aria-label="Clients summary">
+        <section class="dashboard-clients-section" aria-label="Today">
           <div class="dashboard-section-bar">
             <div class="recent-topics-header" style={{ marginBottom: 0 }}>
-              <h2 class="recent-topics-title">Clients</h2>
-              <span class="recent-count-badge">{clientGroups.length}</span>
+              <h2 class="recent-topics-title">Today</h2>
+              <span class="recent-count-badge">{todayItems.length}</span>
             </div>
             <button
               type="button"
               class="conn-open-link"
-              onClick={() => onOpenClients()}
+              onClick={onOpenInbox}
             >
-              View all →
+              Inbox →
             </button>
           </div>
 
           <div class="dashboard-clients-box">
-            {clientGroups.map((client) => (
+            {todayItems.map((item) => (
               <button
-                key={client.clientId}
+                key={item.id}
                 type="button"
                 class="dashboard-client-row"
-                onClick={() => onOpenClients(client.clientId)}
+                onClick={() => onOpenTodayItem(item)}
               >
-                <div class="dashboard-client-left">
-                  <span class="dashboard-client-name">{client.clientName}</span>
-                  <span class="dashboard-client-count">{client.ledger}</span>
+                <div class="dashboard-today-left">
+                  <span class={`today-kind-pill is-${item.kindLabel.toLowerCase()}`}>
+                    {item.kindLabel}
+                  </span>
+                  <span class="dashboard-client-name">{item.title}</span>
                 </div>
 
                 <div class="dashboard-client-right">
-                  <span class="dashboard-client-due">
-                    {client.currentMonthStatus === 'closed'
-                      ? 'Nov Closed'
-                      : `Nov · ${client.currentMonthProgressPct}%`}
+                  <span class="dashboard-client-due">{item.metaLabel}</span>
+                  <span class="client-dir-chevron" aria-hidden="true">
+                    ›
                   </span>
-                  <div class="client-progress-inline is-sm">
-                    <div class="client-progress-track">
-                      <span
-                        class="client-progress-fill"
-                        style={{ width: `${client.averageProgressPct}%` }}
-                      />
-                    </div>
-                    <span class="client-progress-pct">{client.averageProgressPct}%</span>
-                  </div>
                 </div>
               </button>
             ))}
           </div>
         </section>
 
-        <section class="recent-topics-section" aria-label="Recent items">
-          <div class="recent-topics-header">
-            <h2 class="recent-topics-title">
-              {searchQuery.trim() ? 'Matching' : 'Recent'}
-            </h2>
-            <span class="recent-count-badge">
-              {searchQuery.trim() ? recentTopics.length : totalRecentCount}
-            </span>
+        <section class="recent-topics-section" aria-label="Disconnected connectors">
+          <div class="dashboard-section-bar">
+            <div class="recent-topics-header" style={{ marginBottom: 0 }}>
+              <h2 class="recent-topics-title">Disconnected</h2>
+              <span class="recent-count-badge">{disconnectedApps.length}</span>
+            </div>
+            <button
+              type="button"
+              class="conn-open-link"
+              onClick={onOpenConnectors}
+            >
+              All connectors →
+            </button>
           </div>
 
-          <div class="recent-topics-list">
-            {recentTopics.map((topic) => (
-              <button
-                key={topic.id}
-                type="button"
-                class="topic-row"
-                onClick={() => onOpenTopic(topic.id)}
-              >
-                <div class="topic-row-avatar">
-                  <ThreadItemIcon size={18} />
-                </div>
+          {disconnectedApps.length === 0 ? (
+            <div class="dashboard-empty-box">All connectors active.</div>
+          ) : (
+            <div class="conn-list-box">
+              {disconnectedApps.map((app) => {
+                const Logo = CONNECTOR_LOGOS[app.id];
+                return (
+                  <div key={app.id} class="conn-row">
+                    <div class="conn-row-left">
+                      <span class="conn-row-logo">{Logo && <Logo size={18} />}</span>
+                      <span class="conn-row-name">{app.name}</span>
+                    </div>
 
-                <div class="topic-row-content">
-                  <div class="topic-row-top">
-                    <span class="topic-row-title">{topic.title}</span>
-                    <span class="topic-row-date">{topic.dateLabel}</span>
+                    <div class="conn-row-right">
+                      <button
+                        type="button"
+                        class="conn-oauth-btn"
+                        onClick={() => onReconnectConnector(app.id)}
+                      >
+                        Reconnect ↗
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
     </div>

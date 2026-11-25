@@ -51,6 +51,7 @@ function CalendarFluentIcon() {
 
 export function OutlookInboxRenderer({
   threads,
+  initialThreadId = null,
   registry,
   senderEmail,
   onSwitchProvider,
@@ -65,8 +66,17 @@ export function OutlookInboxRenderer({
   const [bucket, setBucket] = useState<OutlookBucket>('focused');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string>(threads[0]?.id ?? '');
+  const [selectedId, setSelectedId] = useState<string>(
+    initialThreadId ?? threads[0]?.id ?? ''
+  );
   const [replyPulse, setReplyPulse] = useState(0);
+
+  useEffect(() => {
+    if (!initialThreadId) return;
+    setSelectedId(initialThreadId);
+    const matched = threads.find((t) => t.id === initialThreadId);
+    if (matched) setBucket(matched.outlook.bucket);
+  }, [initialThreadId, threads]);
   const [inlineNewMail, setInlineNewMail] = useState<{
     to: string;
     subject: string;

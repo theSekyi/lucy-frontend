@@ -268,13 +268,21 @@ describe('Headless Workspace state and offline resilience', () => {
     expect(workspace.getState().userProfile.fullName).toBe('Arthur Pendelton');
     expect(workspace.getState().userProfile.initials).toBe('AP');
 
-    // Connector toggle adds & removes cleanly
+    // Connector toggle moves apps cleanly between connectedAppIds and disconnectedAppIds
+    expect(workspace.getState().disconnectedAppIds).toContain('quickbooks');
     const beforeCount = workspace.getState().connectedAppIds.length;
     workspace.toggleConnector('quickbooks');
     expect(workspace.getState().connectedAppIds).toContain('quickbooks');
+    expect(workspace.getState().disconnectedAppIds).not.toContain('quickbooks');
     expect(workspace.getState().connectedAppIds.length).toBe(beforeCount + 1);
     workspace.toggleConnector('quickbooks');
     expect(workspace.getState().connectedAppIds).not.toContain('quickbooks');
+    expect(workspace.getState().disconnectedAppIds).toContain('quickbooks');
+
+    // Direct mail thread deep-linking from Today queue
+    workspace.openMailThread('mail-acme-cfo-tb', 'gmail');
+    expect(workspace.getState().activeSection).toBe('inbox');
+    expect(workspace.getState().selectedMailId).toBe('mail-acme-cfo-tb');
 
     // Inbox provider switching activates inbox section & unread count setter is idempotent
     workspace.setInboxProvider('outlook');

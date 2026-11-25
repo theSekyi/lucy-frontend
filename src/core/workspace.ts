@@ -21,6 +21,7 @@ export interface WorkspaceOptions<TView = unknown> {
 export interface WorkspaceController extends ReadableStore<WorkspaceState> {
   selectSection: (section: NavSection) => void;
   openClient: (clientId: string | null, engagementId?: string | null) => void;
+  openMailThread: (mailId: string | null, provider?: InboxProvider) => void;
   setInboxProvider: (provider: InboxProvider) => void;
   setUnreadInboxCount: (count: number) => void;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
@@ -164,6 +165,7 @@ export function createWorkspace<TView = unknown>(
         activeSection: section,
         selectedClientId: section === 'clients' ? null : state.selectedClientId,
         selectedEngagementId: null,
+        selectedMailId: section === 'inbox' ? null : state.selectedMailId,
         activeTopicId: null,
         inspectedBlockId: null,
         inspectedAnchor: null,
@@ -176,6 +178,18 @@ export function createWorkspace<TView = unknown>(
         activeSection: 'clients',
         selectedClientId: clientId,
         selectedEngagementId: engagementId,
+        activeTopicId: null,
+        inspectedBlockId: null,
+        inspectedAnchor: null,
+      }));
+    },
+
+    openMailThread(mailId, provider) {
+      store.update((state) => ({
+        ...state,
+        activeSection: 'inbox',
+        inboxProvider: provider ?? state.inboxProvider,
+        selectedMailId: mailId,
         activeTopicId: null,
         inspectedBlockId: null,
         inspectedAnchor: null,
@@ -226,12 +240,20 @@ export function createWorkspace<TView = unknown>(
 
     toggleConnector(connectorId) {
       store.update((state) => {
-        const exists = state.connectedAppIds.includes(connectorId);
+        const isCurrentlyConnected = state.connectedAppIds.includes(connectorId);
+        if (isCurrentlyConnected) {
+          return {
+            ...state,
+            connectedAppIds: state.connectedAppIds.filter((id) => id !== connectorId),
+            disconnectedAppIds: state.disconnectedAppIds.includes(connectorId)
+              ? state.disconnectedAppIds
+              : [connectorId, ...state.disconnectedAppIds],
+          };
+        }
         return {
           ...state,
-          connectedAppIds: exists
-            ? state.connectedAppIds.filter((id) => id !== connectorId)
-            : [...state.connectedAppIds, connectorId],
+          connectedAppIds: [...state.connectedAppIds, connectorId],
+          disconnectedAppIds: state.disconnectedAppIds.filter((id) => id !== connectorId),
         };
       });
     },

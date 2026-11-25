@@ -1,55 +1,15 @@
 import { useState } from 'preact/hooks';
+import {
+  CONNECTOR_CATALOG,
+  CONNECTOR_GROUPS,
+  type ConnectorCategory,
+} from '../../core/connectors';
 import type { InboxProvider, NavSection } from '../../core/types';
 import { CONNECTOR_LOGOS } from './connectorLogos';
 
-type ConnectorCategory = 'email' | 'storage' | 'ledgers' | 'tax' | 'practice' | 'banking';
-
-interface ConnectorDefinition {
-  readonly id: string;
-  readonly name: string;
-  readonly category: ConnectorCategory;
-  readonly inboxTarget?: InboxProvider;
-}
-
-const CATEGORY_GROUPS: ReadonlyArray<{
-  readonly id: ConnectorCategory;
-  readonly label: string;
-}> = [
-  { id: 'email', label: 'Email' },
-  { id: 'storage', label: 'Storage & Docs' },
-  { id: 'ledgers', label: 'Ledgers' },
-  { id: 'tax', label: 'Tax & HMRC' },
-  { id: 'practice', label: 'Practice' },
-  { id: 'banking', label: 'Banking & Payroll' },
-];
-
-const CONNECTORS: ReadonlyArray<ConnectorDefinition> = [
-  { id: 'gmail', name: 'Google Workspace (Gmail)', category: 'email', inboxTarget: 'gmail' },
-  { id: 'outlook', name: 'Microsoft 365 Outlook', category: 'email', inboxTarget: 'outlook' },
-  { id: 'sharepoint', name: 'Microsoft SharePoint', category: 'storage' },
-  { id: 'onedrive', name: 'Microsoft OneDrive', category: 'storage' },
-  { id: 'gdrive', name: 'Google Drive', category: 'storage' },
-  { id: 'xero', name: 'Xero', category: 'ledgers' },
-  { id: 'quickbooks', name: 'QuickBooks Online', category: 'ledgers' },
-  { id: 'sage', name: 'Sage Intacct & 50', category: 'ledgers' },
-  { id: 'netsuite', name: 'Oracle NetSuite', category: 'ledgers' },
-  { id: 'freeagent', name: 'FreeAgent', category: 'ledgers' },
-  { id: 'hmrc-mtd', name: 'HMRC Making Tax Digital', category: 'tax' },
-  { id: 'companies-house', name: 'Companies House', category: 'tax' },
-  { id: 'cch-axcess', name: 'Wolters Kluwer CCH Axcess', category: 'tax' },
-  { id: 'ultratax', name: 'Thomson Reuters UltraTax CS', category: 'tax' },
-  { id: 'iris-tax', name: 'IRIS Elements', category: 'tax' },
-  { id: 'karbon', name: 'Karbon', category: 'practice' },
-  { id: 'caseware', name: 'Caseware Cloud', category: 'practice' },
-  { id: 'dext', name: 'Dext Prepare', category: 'practice' },
-  { id: 'ignition', name: 'Ignition', category: 'practice' },
-  { id: 'open-banking', name: 'Open Banking UK / Plaid', category: 'banking' },
-  { id: 'stripe', name: 'Stripe', category: 'banking' },
-  { id: 'gusto', name: 'Gusto', category: 'banking' },
-];
-
 interface ConnectorsPageProps {
   readonly connectedIds: ReadonlyArray<string>;
+  readonly disconnectedIds?: ReadonlyArray<string>;
   readonly onToggleConnector: (id: string) => void;
   readonly onOpenInboxProvider: (provider: InboxProvider) => void;
   readonly onNavigate?: (section: NavSection) => void;
@@ -57,10 +17,13 @@ interface ConnectorsPageProps {
 
 export function ConnectorsPage({
   connectedIds,
+  disconnectedIds = [],
   onToggleConnector,
   onOpenInboxProvider,
 }: ConnectorsPageProps) {
-  const [filterCat, setFilterCat] = useState<'all' | 'connected' | ConnectorCategory>('all');
+  const [filterCat, setFilterCat] = useState<
+    'all' | 'connected' | 'disconnected' | ConnectorCategory
+  >('all');
   const [query, setQuery] = useState('');
 
   const q = query.trim().toLowerCase();
@@ -95,7 +58,16 @@ export function ConnectorsPage({
           >
             Connected ({connectedIds.length})
           </button>
-          {CATEGORY_GROUPS.map((g) => (
+          {disconnectedIds.length > 0 && (
+            <button
+              type="button"
+              class={`conn-tab-btn ${filterCat === 'disconnected' ? 'is-active' : ''}`}
+              onClick={() => setFilterCat('disconnected')}
+            >
+              Disconnected ({disconnectedIds.length})
+            </button>
+          )}
+          {CONNECTOR_GROUPS.map((g) => (
             <button
               key={g.id}
               type="button"
@@ -108,14 +80,22 @@ export function ConnectorsPage({
         </nav>
 
         <div class="connectors-groups-stack">
-          {CATEGORY_GROUPS.map((group) => {
-            if (filterCat !== 'all' && filterCat !== 'connected' && filterCat !== group.id) {
+          {CONNECTOR_GROUPS.map((group) => {
+            if (
+              filterCat !== 'all' &&
+              filterCat !== 'connected' &&
+              filterCat !== 'disconnected' &&
+              filterCat !== group.id
+            ) {
               return null;
             }
 
-            const items = CONNECTORS.filter((item) => {
+            const items = CONNECTOR_CATALOG.filter((item) => {
               if (item.category !== group.id) return false;
               if (filterCat === 'connected' && !connectedIds.includes(item.id)) return false;
+              if (filterCat === 'disconnected' && !disconnectedIds.includes(item.id)) {
+                return false;
+              }
               if (q && !item.name.toLowerCase().includes(q)) return false;
               return true;
             });
@@ -129,6 +109,7 @@ export function ConnectorsPage({
                 <div class="conn-list-box">
                   {items.map((item) => {
                     const isConnected = connectedIds.includes(item.id);
+                    const wasDisconnected = disconnectedIds.includes(item.id);
                     const Logo = CONNECTOR_LOGOS[item.id];
 
                     return (
@@ -163,13 +144,18 @@ export function ConnectorsPage({
                               </button>
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              class="conn-oauth-btn"
-                              onClick={() => onToggleConnector(item.id)}
-                            >
-                              Connect ↗
-                            </button>
+                            <div class="conn-connected-actions">
+                              {wasDisconnected && (
+                                <span class="conn-disconnected-badge">Disconnected</span>
+                              )}
+                              <button
+                                type="button"
+                                class="conn-oauth-btn"
+                                onClick={() => onToggleConnector(item.id)}
+                              >
+                                {wasDisconnected ? 'Reconnect ↗' : 'Connect ↗'}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
