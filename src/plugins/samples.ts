@@ -119,8 +119,8 @@ const SQL_CANVAS_SAMPLE: SqlCanvasData = {
   executionMs: 142,
   scannedMb: 38.4,
   labelColumn: 'Quarter',
-  metricColumns: ['Recognized Rev ($K)', 'Deferred Add ($K)'],
-  columns: ['Quarter', 'Recognized Rev ($K)', 'Deferred Add ($K)', 'Net Retention (%)', 'Gross Margin (%)'],
+  metricColumns: ['Recognized ($K)', 'Deferred ($K)'],
+  columns: ['Quarter', 'Recognized ($K)', 'Deferred ($K)', 'Retention (%)', 'Margin (%)'],
   rows: [
     ['Q1 26', 3420, 480, 118.4, 81.2],
     ['Q2 26', 3980, 610, 121.0, 82.5],
@@ -129,10 +129,10 @@ const SQL_CANVAS_SAMPLE: SqlCanvasData = {
   ],
   query: `SELECT
   fiscal_quarter                        AS "Quarter",
-  ROUND(SUM(recognized_rev) / 1000, 0)  AS "Recognized Rev ($K)",
-  ROUND(SUM(deferred_add) / 1000, 0)    AS "Deferred Add ($K)",
-  ROUND(AVG(net_retention_pct), 1)      AS "Net Retention (%)",
-  ROUND(AVG(gross_margin_pct), 1)       AS "Gross Margin (%)"
+  ROUND(SUM(recognized_rev) / 1000, 0)  AS "Recognized ($K)",
+  ROUND(SUM(deferred_add) / 1000, 0)    AS "Deferred ($K)",
+  ROUND(AVG(net_retention_pct), 1)      AS "Retention (%)",
+  ROUND(AVG(gross_margin_pct), 1)       AS "Margin (%)"
 FROM prod_audit.gl_4010_revenue_cohorts
 WHERE entity_group = 'Acme Consolidated'
   AND fiscal_year = 2026

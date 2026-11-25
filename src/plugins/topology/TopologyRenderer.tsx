@@ -144,9 +144,9 @@ function TopologyStageView({ context }: { context: RendererContext<TopologyGraph
       <div class="stage-subbar">
         <div class="stage-subbar-group">
           <span class="cell-pill tone-good">
-            {graph.nodes.length - impactedTotal} Healthy
+            {graph.nodes.length - impactedTotal} Synced
           </span>
-          <span class="cell-pill tone-warn">{impactedTotal} In Blast Radius</span>
+          <span class="cell-pill tone-warn">{impactedTotal} Delayed</span>
           <input
             type="search"
             class="sheet-filter-input"

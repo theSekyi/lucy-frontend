@@ -136,7 +136,7 @@ export function InlineAttachmentDeck({
                   onNavigateSource({ pluginRoute: previewBlock.att.pluginRoute })
                 }
               >
-                Open in Split Stage ↗
+                Open workpaper ↗
               </button>
               <button
                 type="button"

@@ -5,14 +5,14 @@ import type { SpreadsheetWorkbook } from '../../core/types';
 export const spreadsheetPlugin: RendererPlugin<ComponentChildren, SpreadsheetWorkbook> = {
   id: 'spreadsheet',
   aliases: ['excel', 'xlsx', 'csv'],
-  label: 'Spreadsheet Workbook',
+  label: 'Financial Workbook',
   badge: 'XLSX',
   accent: 'emerald',
-  ctaLabel: 'Open sheet →',
+  ctaLabel: 'Open',
   placement: 'stage',
   priority: 30,
   promptPattern: /\b(excel|xlsx|csv|spreadsheet|sheet|budget|forecast|revenue|financial)\b/i,
-  sampleMenuLabel: 'Financial Workbook (.xlsx)',
+  sampleMenuLabel: 'Financial Workbook',
   createSample: async (nextId) => {
     const { createEnterprisePresetTurn } = await import('../samples');
     return createEnterprisePresetTurn('spreadsheet', nextId);

@@ -56,6 +56,11 @@ describe('UI Hygiene, Zero Native <select>, Zero AI Clichés & Zero Dead CSS', (
       'INBOX_QUICK_QUERIES',
       'Generate response',
       'Ask terminal',
+      'Hide reasoning',
+      'Open in Split Stage',
+      'Virtualized Grid',
+      'mail-sources-strip',
+      'mail-deeplink-kind',
       'Click any ',
       '⚡',
     ];
@@ -99,6 +104,31 @@ describe('UI Hygiene, Zero Native <select>, Zero AI Clichés & Zero Dead CSS', (
       }
     }
     expect(unused).toEqual([]);
+  });
+
+  it('guarantees every static CSS class referenced in JSX exists in src/**/*.css', () => {
+    const cssTargets = walkFiles(join(process.cwd(), 'src'), (f) => f.endsWith('.css'));
+    const definedClasses = new Set<string>();
+    for (const cssPath of cssTargets) {
+      const css = readFileSync(cssPath, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const m of css.matchAll(/\.([a-zA-Z0-9_-]+)/g)) {
+        definedClasses.add(m[1]!);
+      }
+    }
+
+    const tsxFiles = walkFiles(join(process.cwd(), 'src'), (f) => f.endsWith('.tsx'));
+    const undefinedRefs: string[] = [];
+    for (const file of tsxFiles) {
+      const source = readFileSync(file, 'utf8');
+      for (const attr of source.matchAll(/\bclass="([^"]+)"/g)) {
+        for (const cls of attr[1]!.split(/\s+/).filter(Boolean)) {
+          if (!definedClasses.has(cls)) {
+            undefinedRefs.push(`${file.split('/src/')[1]}:.${cls}`);
+          }
+        }
+      }
+    }
+    expect(undefinedRefs).toEqual([]);
   });
 });
 

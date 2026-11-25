@@ -94,9 +94,9 @@ export function MailIntelligencePanel({
   const sources = intel?.sources ?? [];
 
   return (
-    <section class="mail-intel-shell" aria-label="Reasoning, inline reply, and terminal">
+    <section class="mail-intel-shell" aria-label="Verification checks, reply, and thread search">
       {intel && (
-        <div class="mail-reasoning-header-wrap">
+        <div>
           <div class="mail-intel-header">
             <span class="mail-intel-verdict">{intel.verdict}</span>
             <button
@@ -104,7 +104,7 @@ export function MailIntelligencePanel({
               class="mail-intel-toggle-btn"
               onClick={() => setShowReasoning((v) => !v)}
             >
-              {showReasoning ? 'Hide reasoning ▴' : 'Reasoning ▾'}
+              {showReasoning ? 'Hide checks' : 'Checks'}
             </button>
           </div>
 
@@ -115,7 +115,9 @@ export function MailIntelligencePanel({
                   const linked = sources.find((s) => s.id === item.sourceId);
                   return (
                     <div key={idx} class="mail-reasoning-row">
-                      <span class="mail-step-num">0{idx + 1}</span>
+                      <span class="mail-step-bullet" aria-hidden="true">
+                        —
+                      </span>
                       <div class="mail-step-body">
                         <span>{item.check}</span>
                         {linked && (
@@ -124,7 +126,6 @@ export function MailIntelligencePanel({
                             class="mail-deeplink-chip"
                             onClick={() => triggerSource(linked)}
                           >
-                            <span class="mail-deeplink-kind">{linked.kindLabel}</span>
                             <span>{linked.label}</span>
                             <span>↗</span>
                           </button>
@@ -134,32 +135,6 @@ export function MailIntelligencePanel({
                   );
                 })}
               </div>
-
-              {sources.length > 0 && (
-                <div class="mail-sources-strip">
-                  <span class="mail-sources-label">Sources</span>
-                  <div class="mail-sources-list">
-                    {sources.map((src) => (
-                      <button
-                        key={src.id}
-                        type="button"
-                        class="mail-source-pill"
-                        onClick={() =>
-                          onNavigateSource({
-                            pluginRoute: src.pluginRoute,
-                            anchor: src.anchor,
-                            connectorId: src.connectorId,
-                          })
-                        }
-                      >
-                        <span class="mail-deeplink-kind">{src.kindLabel}</span>
-                        <span>{src.label}</span>
-                        <span class="mail-source-arrow">↗</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -262,7 +237,6 @@ export function MailIntelligencePanel({
                         })
                       }
                     >
-                      <span class="mail-deeplink-kind">{cit.kindLabel}</span>
                       <span>{cit.label} ↗</span>
                     </button>
                   ))}

@@ -47,19 +47,6 @@ const INITIAL_TOPICS: ReadonlyArray<TopicThread> = [
     listedOnHome: true,
     turns: [
       {
-        id: 't1-u',
-        role: 'user',
-        createdAt: 'Today · 09:20',
-        status: 'complete',
-        blocks: [
-          {
-            id: 'b-t1-u',
-            kind: 'prose',
-            data: 'Summarize the November Consolidated Trial Balance flux exceptions for Acme Holdings Ltd.',
-          },
-        ],
-      },
-      {
         id: 't1-a',
         role: 'assistant',
         createdAt: 'Today · 09:20',

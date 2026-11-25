@@ -513,20 +513,6 @@ export function createWorkspace<TView = unknown>(
       const sample = await plugin.createSample(nextWorkspaceId);
       if (isDisposed) return null;
 
-      const userTurn: ConversationTurn = {
-        id: nextWorkspaceId('turn-user'),
-        role: 'user',
-        createdAt: 'Just now',
-        status: 'complete',
-        blocks: [
-          {
-            id: nextWorkspaceId('block'),
-            kind: 'prose',
-            data: plugin.label,
-          },
-        ],
-      };
-
       const assistantTurn: ConversationTurn = {
         id: nextWorkspaceId('turn-assistant'),
         role: 'assistant',
@@ -544,7 +530,7 @@ export function createWorkspace<TView = unknown>(
         const topics = existing
           ? state.topics.map((t) =>
               t.id === targetTopicId
-                ? { ...t, dateLabel: 'Just now', turns: [...t.turns, userTurn, assistantTurn] }
+                ? { ...t, dateLabel: 'Just now', turns: [...t.turns, assistantTurn] }
                 : t
             )
           : [
@@ -556,7 +542,7 @@ export function createWorkspace<TView = unknown>(
                 sidebarIcon: 'doc' as const,
                 pinnedInSidebar: true,
                 listedOnHome: true,
-                turns: [userTurn, assistantTurn],
+                turns: [assistantTurn],
               },
               ...state.topics,
             ];

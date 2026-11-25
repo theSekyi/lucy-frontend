@@ -152,7 +152,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
             class={`seg-tab ${tab === 'grid' ? 'is-active' : ''}`}
             onClick={() => setTab('grid')}
           >
-            Virtualized Grid ({filteredGridRows.length.toLocaleString()})
+            Rows ({filteredGridRows.length.toLocaleString()})
           </button>
           <button
             type="button"
@@ -385,7 +385,7 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
                   <button
                     key={col}
                     type="button"
-                    class="vgrid-header-btn"
+                    class={`vgrid-header-btn ${idx > 0 ? 'is-num' : ''}`}
                     onClick={() =>
                       setSortCol((prev) =>
                         prev?.idx === idx ? { idx, asc: !prev.asc } : { idx, asc: false }
@@ -430,8 +430,8 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
 
           <div class="sheet-tabs-bar">
             <span class="sheet-meta-count">
-              Rows: <strong>{filteredGridRows.length.toLocaleString()}</strong> · Sum ARR:{' '}
-              <strong>${summaryStats.sumArr.toLocaleString('en-US')}K</strong> · Avg NDR:{' '}
+              Rows: <strong>{filteredGridRows.length.toLocaleString()}</strong> · Recognized:{' '}
+              <strong>${summaryStats.sumArr.toLocaleString('en-US')}K</strong> · Avg Retention:{' '}
               <strong>{summaryStats.avgNdr}%</strong>
             </span>
             {(selectedQuarter || selectedSegment !== 'All' || filter || sqlLimit) && (
@@ -454,8 +454,8 @@ function SqlCanvasStageView({ context }: { context: RendererContext<SqlCanvasDat
 
       {tab === 'sql' && (
         <div class="stage-scroll-area">
-          <div class="code-block-card">
-            <div class="code-block-header">
+          <div class="sql-editor-card">
+            <div class="sql-editor-header">
               <span>{data.warehouse}</span>
               <button type="button" class="primary-stage-btn" onClick={runInteractiveQuery}>
                 Run query

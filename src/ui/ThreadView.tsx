@@ -125,7 +125,7 @@ export function ThreadView({
               <div class="thread-turns-column">
                 <Composer
                   compact
-                  placeholder="Follow up, verify figures, or click + to switch workpapers…"
+                  placeholder="Add a workpaper note or click + to open a schedule…"
                   draft={draft}
                   attachments={attachments}
                   registry={registry}

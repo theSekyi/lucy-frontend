@@ -224,7 +224,6 @@ export function InboxWorkspace({
                       class="mail-deeplink-chip"
                       onClick={() => jumpToMatchedThread(item.id)}
                     >
-                      <span class="mail-deeplink-kind">Email</span>
                       <span>{item.senderName}</span>
                     </button>
                   ))}
@@ -242,7 +241,6 @@ export function InboxWorkspace({
                         })
                       }
                     >
-                      <span class="mail-deeplink-kind">{src.kindLabel}</span>
                       <span>{src.label} ↗</span>
                     </button>
                   ))}

@@ -30,12 +30,14 @@ const fallbackPlugin: RendererPlugin<ComponentChildren> = {
   load: async () => ({
     render({ block }) {
       return (
-        <div class="fallback-block">
-          <div class="fallback-header">
-            <span class="artifact-badge">{block.kind.toUpperCase()}</span>
-            <span>{block.filename ?? block.title ?? 'Unhandled content block'}</span>
-          </div>
-          {block.summary && <p class="fallback-summary">{block.summary}</p>}
+        <div class="artifact-inline-card">
+          <span class="artifact-badge">{block.kind.toUpperCase()}</span>
+          <span class="artifact-card-body">
+            <span class="artifact-card-title">
+              {block.filename ?? block.title ?? 'Structured record'}
+            </span>
+            {block.summary && <span class="artifact-card-summary">{block.summary}</span>}
+          </span>
         </div>
       );
     },
